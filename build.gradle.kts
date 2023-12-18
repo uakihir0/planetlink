@@ -13,7 +13,7 @@ repositories {
 }
 
 kotlin {
-    jvmToolchain(18)
+    jvmToolchain(17)
 
     jvm { withJava() }
 
@@ -78,10 +78,6 @@ tasks.wrapper {
     gradleVersion = "8.5"
     distributionType = Wrapper.DistributionType.ALL
 }
-
-//tasks.withType<KotlinCompile> {
-//    kotlinOptions.jvmTarget = "17"
-//}
 
 tasks.named<Test>("jvmTest") {
     useJUnitPlatform()
