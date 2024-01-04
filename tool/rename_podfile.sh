@@ -11,12 +11,14 @@ mkdir -p ../build/cocoapods/repository/release
 cd $BASE_PATH
 cd ../build/cocoapods/publish/debug
 cp planetlink.podspec ../../repository/planetlink-debug.podspec
+cd ../../repository/
 sed -i -e "s|'planetlink'|'planetlink-debug'|g" planetlink-debug.podspec
 sed -i -e "s|'planetlink.xcframework'|'debug/planetlink.xcframework'|g" planetlink-debug.podspec
 rm *.podspec-e
 cd $BASE_PATH
 cd ../build/cocoapods/publish/release
 cp planetlink.podspec ../../repository/planetlink-release.podspec
+cd ../../repository/
 sed -i -e "s|'planetlink'|'planetlink-release'|g" planetlink-release.podspec
 sed -i -e "s|'planetlink.xcframework'|'release/planetlink.xcframework'|g" planetlink-release.podspec
 rm *.podspec-e
