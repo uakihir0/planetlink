@@ -1,9 +1,9 @@
 package net.socialhub.planetlink.model.paging
 
 import net.socialhub.planetlink.model.Identify
-import net.socialhub.planetlink.model.Paging
-import net.socialhub.planetlink.model.Paging.copyTo
-import net.socialhub.planetlink.model.Paging.count
+import work.socialhub.planetlink.model.Paging
+import work.socialhub.planetlink.model.Paging.copyTo
+import work.socialhub.planetlink.model.Paging.count
 
 /**
  * Paging with page number

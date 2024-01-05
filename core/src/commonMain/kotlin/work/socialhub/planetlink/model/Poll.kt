@@ -1,6 +1,7 @@
 package net.socialhub.planetlink.model
 
 import net.socialhub.planetlink.model.support.PollOption
+import work.socialhub.planetlink.model.Service
 
 /**
  * Poll

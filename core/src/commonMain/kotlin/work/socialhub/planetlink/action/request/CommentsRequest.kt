@@ -2,8 +2,8 @@ package net.socialhub.planetlink.action.request
 
 import net.socialhub.planetlink.action.RequestActionImpl.SerializeBuilder
 import net.socialhub.planetlink.action.callback.EventCallback
-import net.socialhub.planetlink.model.Pageable
-import net.socialhub.planetlink.model.Paging
+import work.socialhub.planetlink.model.Pageable
+import work.socialhub.planetlink.model.Paging
 import net.socialhub.planetlink.model.Request
 import net.socialhub.planetlink.model.Stream
 import net.socialhub.planetlink.model.request.CommentForm

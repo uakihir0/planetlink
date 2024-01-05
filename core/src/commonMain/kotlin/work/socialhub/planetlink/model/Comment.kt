@@ -1,6 +1,5 @@
 package work.socialhub.planetlink.model
 
-import net.socialhub.planetlink.action.AccountAction
 import net.socialhub.planetlink.action.CommentAction
 import net.socialhub.planetlink.action.CommentActionImpl
 import net.socialhub.planetlink.model.*
@@ -49,92 +48,70 @@ class Comment(
      */
     var application: Application? = null
 
-    //endregion
     /**
      * Is direct message comment?
      * (Comment and message are same model)
      */
     var directMessage: Boolean = false
 
-    val reactions: List<Reaction>
-        /**
-         * Get many kind of reactions
-         * (like, share, :+1:, and so on)
-         */
-        get() = java.util.ArrayList<Reaction>()
+    /**
+     * Get many kind of reactions
+     * (like, share, :+1:, and so on)
+     */
+    val reactions: List<Reaction>? = null
 
     /**
      * Apply reaction to comment
      * (like, share, :+1:, and so on)
      */
     fun applyReaction(reaction: Reaction?) {
+        // TODO: implement
     }
 
     /**
      * Get Action
      */
     fun action(): CommentAction {
-        val action: AccountAction = getService().getAccount().action()
+        val action = service.account.action
         return CommentActionImpl(action).comment(this)
     }
 
+    /**
+     * Get comment should be shown
+     * (Use return object to display)
+     */
     val displayComment: Comment
-        /**
-         * Get comment should be shown
-         * (Use return object to display)
-         */
         get() = this
 
+    /**
+     * Get Reply Form
+     * 返信用のフォームを取得
+     */
     val replyForm: CommentForm
-        /**
-         * Get Reply Form
-         * 返信用のフォームを取得
-         */
-        get() {
-            throw NotImplimentedException()
-        }
+        get() = throw NotImplimentedException()
 
+
+    /**
+     * Get Quote Form
+     * 引用RT用のフォームを取得
+     */
     val quoteForm: CommentForm
-        /**
-         * Get Quote Form
-         * 引用RT用のフォームを取得
-         */
-        get() {
-            throw NotImplimentedException()
-        }
+        get() = throw NotImplimentedException()
 
+    /**
+     * Get Web Url
+     * Web のアドレスを取得
+     */
     val webUrl: String
-        /**
-         * Get Web Url
-         * Web のアドレスを取得
-         */
-        get() {
-            throw NotImplimentedException()
-        }
+        get() = throw NotImplimentedException()
 
+
+    /**
+     * Only shared content comment.
+     * 共有されたコメント情報のみの場合
+     */
     val isOnlyShared: Boolean
-        /**
-         * Only shared content comment.
-         * 共有されたコメント情報のみの場合
-         */
         get() = ((sharedComment != null)
-                && ((text == null) || (text.getDisplayText().isEmpty()))
-                && ((medias == null) || (medias!!.size == 0)))
-
-    //region // Getter&Setter
-    fun getText(): AttributedString? {
-        return text
-    }
-
-    fun setText(text: AttributedString?) {
-        this.text = text
-    }
-
-    fun getMedias(): List<Media>? {
-        return medias
-    }
-
-    fun setMedias(medias: List<Media>?) {
-        this.medias = medias
-    }
+                && ((text == null) || (text!!.displayText.isEmpty()))
+                && ((medias == null) || (medias!!.isEmpty())))
 }

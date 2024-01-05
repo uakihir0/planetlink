@@ -1,7 +1,7 @@
 package net.socialhub.planetlink.action.group
 
 import net.socialhub.planetlink.action.request.CommentsRequest
-import net.socialhub.planetlink.model.Pageable
+import work.socialhub.planetlink.model.Pageable
 import net.socialhub.planetlink.model.group.CommentGroup
 import work.socialhub.planetlink.model.Comment
 

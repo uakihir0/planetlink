@@ -1,10 +1,7 @@
-package net.socialhub.planetlink.model
+package work.socialhub.planetlink.model
 
-import net.socialhub.planetlink.model.paging.BorderPaging
-import net.socialhub.planetlink.model.paging.CursorPaging
-import net.socialhub.planetlink.model.paging.DatePaging
-import net.socialhub.planetlink.model.paging.IndexPaging
-import net.socialhub.planetlink.model.paging.OffsetPaging
+import net.socialhub.planetlink.model.Identify
+import net.socialhub.planetlink.model.paging.*
 
 /**
  * Paging
@@ -12,13 +9,9 @@ import net.socialhub.planetlink.model.paging.OffsetPaging
  * Specified Paging
  *
  * @see BorderPaging
- *
  * @see CursorPaging
- *
  * @see DatePaging
- *
  * @see IndexPaging
- *
  * @see OffsetPaging
  */
 class Paging : java.io.Serializable {

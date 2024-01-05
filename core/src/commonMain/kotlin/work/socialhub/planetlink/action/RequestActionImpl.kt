@@ -1,7 +1,7 @@
 package net.socialhub.planetlink.action
 
 import com.google.gson.Gson
-import net.socialhub.planetlink.model.Pageable
+import work.socialhub.planetlink.model.Pageable
 import net.socialhub.planetlink.model.Request
 import net.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.Comment

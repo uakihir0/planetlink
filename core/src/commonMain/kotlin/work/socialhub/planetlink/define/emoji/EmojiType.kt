@@ -1,5 +1,7 @@
 package net.socialhub.planetlink.define.emoji
 
+import work.socialhub.planetlink.define.emoji.EmojiCategoryType
+
 @Suppress("unused")
 enum class EmojiType(
     val emoji: String,
@@ -1765,7 +1767,7 @@ enum class EmojiType(
     Secret("㊙️", "secret", "Symbols", 11),
     ; //endregion
 
-    fun getCategory(): EmojiCategoryType {
+    fun category(): EmojiCategoryType {
         return EmojiCategoryType.of(category)
     }
 

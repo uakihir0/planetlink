@@ -7,7 +7,7 @@ import net.socialhub.planetlink.define.emoji.EmojiVariationType
  * Emoji
  */
 class Emoji {
-    // region // Getter&Setter
+
     /**
      * 絵文字本体
      * (カスタム絵文字の場合はショートコードが入る)
@@ -21,7 +21,7 @@ class Emoji {
     var shortCodes: MutableList<String>? = null
         get() {
             if (field == null) {
-                field = java.util.ArrayList<String>()
+                field = mutableListOf()
             }
             return field
         }
@@ -36,7 +36,6 @@ class Emoji {
      */
     var category: String? = null
 
-    // endregion
     /**
      * 絵文字の頻度
      * (カスタム絵文字の場合は 0 固定)
@@ -51,22 +50,27 @@ class Emoji {
         get() = shortCodes!![0]
 
     companion object {
-        fun fromEmojiType(e: EmojiType): Emoji {
-            val emoji = Emoji()
-            emoji.emoji = e.getEmoji()
-            emoji.addShortCode(e.getName())
-            emoji.category = e.getCategory().getCode()
-            emoji.frequentLevel = e.getLevel()
-            return emoji
+
+        fun fromEmojiType(
+            e: EmojiType
+        ): Emoji {
+            return Emoji().also {
+                it.emoji = e.emoji
+                it.addShortCode(e.name)
+                it.category = e.category().code
+                it.frequentLevel = e.level
+            }
         }
 
-        fun fromEmojiVariationType(e: EmojiVariationType): Emoji {
-            val emoji = Emoji()
-            emoji.emoji = e.getEmoji()
-            emoji.addShortCode(e.getName())
-            emoji.category = e.getCategory().getCode()
-            emoji.frequentLevel = e.getLevel()
-            return emoji
+        fun fromEmojiVariationType(
+            e: EmojiVariationType
+        ): Emoji {
+            return Emoji().also {
+                it.emoji = e.emoji
+                it.addShortCode(e.name)
+                it.category = e.category().code
+                it.frequentLevel = e.level
+            }
         }
     }
 }

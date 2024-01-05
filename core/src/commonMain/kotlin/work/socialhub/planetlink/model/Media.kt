@@ -1,4 +1,4 @@
-package net.socialhub.planetlink.model
+package work.socialhub.planetlink.model
 
 import net.socialhub.planetlink.define.MediaType
 
@@ -6,19 +6,17 @@ import net.socialhub.planetlink.define.MediaType
  * Media Model
  * メディアモデル
  */
-class Media : java.io.Serializable {
-    //region // Getter&Setter
-    /** Type of this media  */
+class Media {
+
+    /** Type of this media */
     var type: MediaType? = null
 
-    /** Link of source media url  */
+    /** Link of source media url */
     var sourceUrl: String? = null
 
-    //endregion
-    /** Link of preview image url  */
+    /** Link of preview image url */
     var previewUrl: String? = null
 
-    val requestHeader: Map<String, String>
-        /** Get request header for authorize  */
-        get() = java.util.HashMap<String, String>()
+    /** Request header for media. */
+    val requestHeader = mutableMapOf<String, String>()
 }

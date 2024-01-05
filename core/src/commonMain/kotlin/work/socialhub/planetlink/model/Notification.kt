@@ -1,14 +1,18 @@
-package net.socialhub.planetlink.model
+package work.socialhub.planetlink.model
 
 import net.socialhub.planetlink.define.NotificationActionType
-import work.socialhub.planetlink.model.Comment
+import net.socialhub.planetlink.model.Identify
+import net.socialhub.planetlink.model.Instance
+import net.socialhub.planetlink.model.User
 
 /**
  * Notification
  * 通知
  */
-class Notification(service: Service) : Identify(service) {
-    // region // Getter&Setter
+class Notification(
+    service: Service
+) : Identify(service) {
+
     /**
      * Notification type name
      * Origin name form social media.
@@ -24,12 +28,11 @@ class Notification(service: Service) : Identify(service) {
     var action: String? = null
 
     /** Date of created  */
-    var createAt: java.util.Date? = null
+    var createAt: Instance? = null
 
     /** Associated users  */
     var users: List<User>? = null
 
-    // endregion
     /** Associated comments  */
     var comments: List<Comment>? = null
 }

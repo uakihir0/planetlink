@@ -1,8 +1,9 @@
-package net.socialhub.planetlink.model.error
+package work.socialhub.planetlink.model.error
 
-class SocialHubException : java.lang.RuntimeException {
-    // region
-    // endregion
+import net.socialhub.planetlink.model.error.SocialHubError
+
+class SocialHubException : RuntimeException {
+
     /**
      * Error detail
      * エラー情報をまとめたものを設定

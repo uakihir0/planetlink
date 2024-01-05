@@ -1,7 +1,6 @@
 package work.socialhub.planetlink.model
 
 import net.socialhub.planetlink.action.AccountAction
-import net.socialhub.planetlink.model.Service
 
 /**
  * Account Model

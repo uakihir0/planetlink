@@ -1,5 +1,7 @@
 package net.socialhub.planetlink.model
 
+import work.socialhub.planetlink.model.Service
+
 /**
  * Thread of Group Messaging
  * グループメッセージスレッド

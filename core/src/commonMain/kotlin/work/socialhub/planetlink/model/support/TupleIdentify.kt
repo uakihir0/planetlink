@@ -1,8 +1,7 @@
 package net.socialhub.planetlink.model.support
 
 import net.socialhub.planetlink.model.Identify
-import net.socialhub.planetlink.model.Identify.id
-import net.socialhub.planetlink.model.Service
+import work.socialhub.planetlink.model.Service
 
 class TupleIdentify(service: Service?) : Identify(service!!) {
     //endregion

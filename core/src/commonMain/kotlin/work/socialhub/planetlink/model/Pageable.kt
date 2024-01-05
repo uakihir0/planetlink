@@ -1,18 +1,21 @@
-package net.socialhub.planetlink.model
+package work.socialhub.planetlink.model
+
+import net.socialhub.planetlink.model.Identify
 
 /**
  * ページング可能レスポンス
  * Pageable Response
  */
-class Pageable<T : Identify?> : java.io.Serializable {
+class Pageable<T : Identify> {
+
     /** Paging Information  */
-    private var paging: Paging? = null
+    var paging: Paging? = null
 
     /** Entities  */
-    private var entities: List<T>? = null
+    var entities: List<T>? = null
 
     /** Displayable predicate  */
-    private var predicate: java.util.function.Predicate<T>? = null
+    var predicate: ((T) -> Boolean)? = null
 
     /**
      * Get New Page
@@ -50,7 +53,8 @@ class Pageable<T : Identify?> : java.io.Serializable {
      * Set newest boarder identify. (for streaming)
      */
     fun setNewestIdentify(identify: T) {
-        val model: List<T> = java.util.ArrayList<T>(entities)
+        val model = mutableListOf<T>()
+        model.addAll(entities!!)
         model.add(0, identify)
         setEntities(model)
     }
@@ -59,7 +63,8 @@ class Pageable<T : Identify?> : java.io.Serializable {
      * Set oldest boarder identify.
      */
     fun setOldestIdentify(identify: T) {
-        val model: MutableList<T> = java.util.ArrayList<T>(entities)
+        val model = mutableListOf<T>()
+        model.addAll(entities!!)
         model.add(identify)
         setEntities(model)
     }
@@ -71,15 +76,12 @@ class Pageable<T : Identify?> : java.io.Serializable {
          */
         get() {
             if (predicate == null) {
-                return getEntities()
+                return entities
             }
-            return getEntities() //
-                .stream() //
-                .filter(predicate) //
-                .collect<List<T>, Any>(java.util.stream.Collectors.toList<T>())
+            return entities!!
+                .filter { predicate!!(it) }
         }
 
-    // region // Getter&Setter
     fun getPaging(): Paging? {
         return paging
     }
@@ -87,7 +89,7 @@ class Pageable<T : Identify?> : java.io.Serializable {
     fun setPaging(paging: Paging?) {
         this.paging = paging
         if (this.paging != null && this.entities != null) {
-            this.paging.setMarkPagingEnd(this.entities)
+            this.paging!!.setMarkPagingEnd(this.entities)
         }
     }
 
@@ -98,15 +100,7 @@ class Pageable<T : Identify?> : java.io.Serializable {
     fun setEntities(entities: List<T>?) {
         this.entities = entities
         if (this.paging != null && this.entities != null) {
-            paging.setMarkPagingEnd(this.entities)
+            this.paging!!.setMarkPagingEnd(this.entities)
         }
     }
-
-    fun getPredicate(): java.util.function.Predicate<T>? {
-        return predicate
-    }
-
-    fun setPredicate(predicate: java.util.function.Predicate<T>) {
-        this.predicate = predicate
-    } // endregion
 }

@@ -7,6 +7,7 @@ import net.socialhub.planetlink.model.common.AttributedFiled
 import net.socialhub.planetlink.model.common.AttributedString
 import net.socialhub.planetlink.model.error.NotImplimentedException
 import net.socialhub.planetlink.model.request.CommentForm
+import work.socialhub.planetlink.model.Service
 
 /**
  * SNS ユーザーモデル

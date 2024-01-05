@@ -1,5 +1,7 @@
 package net.socialhub.planetlink.model
 
+import work.socialhub.planetlink.model.Service
+
 /**
  * Identify
  * 識別
@@ -53,7 +55,7 @@ open class Identify(
      * 同じ識別子か？
      */
     fun isSameIdentify(id: Identify): Boolean {
-        return ((service.getType() === id.service.getType())
+        return ((service.type === id.service.type)
                 && (this.id == id.id))
     }
 

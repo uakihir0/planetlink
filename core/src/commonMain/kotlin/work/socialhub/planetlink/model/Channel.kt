@@ -1,5 +1,7 @@
 package net.socialhub.planetlink.model
 
+import work.socialhub.planetlink.model.Service
+
 /**
  * SNS チャンネル (リスト) 情報
  * SNS Channel (List) Model
@@ -10,7 +12,7 @@ class Channel(
 
     var name: String? = null
     var description: String? = null
-    var createAt: Instance = null
+    var createAt: Instance? = null
     var public: Boolean? = null
 }
 
