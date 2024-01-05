@@ -1,0 +1,128 @@
+package net.socialhub.planetlink.model
+
+import net.socialhub.planetlink.model.paging.BorderPaging
+import net.socialhub.planetlink.model.paging.CursorPaging
+import net.socialhub.planetlink.model.paging.DatePaging
+import net.socialhub.planetlink.model.paging.IndexPaging
+import net.socialhub.planetlink.model.paging.OffsetPaging
+
+/**
+ * Paging
+ * ページング情報
+ * Specified Paging
+ *
+ * @see BorderPaging
+ *
+ * @see CursorPaging
+ *
+ * @see DatePaging
+ *
+ * @see IndexPaging
+ *
+ * @see OffsetPaging
+ */
+class Paging : java.io.Serializable {
+    // region // Getter&Setter
+    var count: Long? = null
+    var isHasNew: Boolean = true
+    var isHasPast: Boolean = true
+
+    constructor()
+
+    constructor(count: Long?) {
+        this.count = count
+    }
+
+    fun copy(): Paging {
+        val pg = Paging()
+        pg.count = count
+        pg.isHasNew = isHasNew
+        pg.isHasPast = isHasPast
+        return pg
+    }
+
+    protected fun copyTo(pg: Paging) {
+        pg.count = count
+        pg.isHasNew = isHasNew
+        pg.isHasPast = isHasPast
+    }
+
+    /**
+     * Get page for get newer entities
+     * 新しい情報を取得するページを取得
+     *
+     * @param entities DataList it's ordered by created date time for desc.
+     * 算出するデータリスト、先頭から最新の ID になっている想定
+     */
+    fun <T : Identify?> newPage(entities: List<T>?): Paging? {
+        return null
+    }
+
+    /**
+     * Get page for get past entities
+     * 遡って過去の情報を取得するページを取得
+     *
+     * @param entities DataList it's ordered by created date time for desc.
+     * 算出するデータリスト、先頭から最新の ID になっている想定
+     */
+    fun <T : Identify?> pastPage(entities: List<T>?): Paging? {
+        return null
+    }
+
+    /**
+     * Alias
+     * New <-> Prev
+     */
+    fun <T : Identify?> prevPage(entities: List<T>?): Paging? {
+        return newPage(entities)
+    }
+
+    /**
+     * Alias
+     * Past <-> Next
+     */
+    fun <T : Identify?> nextPage(entities: List<T>?): Paging? {
+        return pastPage(entities)
+    }
+
+    /**
+     * Set mark as paging end
+     * ページの終端をマークする
+     */
+    fun setMarkPagingEnd(entities: List<*>?) {
+        if (isHasPast
+            && entities!!.isEmpty()
+            && (count!! > 0)
+        ) {
+            isHasPast = false
+        }
+    }
+
+    var isHasPrev: Boolean
+        /**
+         * Alias
+         * New <-> Prev
+         */
+        get() = isHasNew
+        /**
+         * Alias
+         * New <-> Prev
+         */
+        set(hasPrev) {
+            isHasNew = hasPrev
+        }
+
+    var isHasNext: Boolean
+        /**
+         * Alias
+         * Past <-> Next
+         */
+        get() = isHasPast
+        /**
+         * Alias
+         * Past <-> Next
+         */
+        set(hasNext) {
+            isHasPast = hasNext
+        } // endregion
+}
