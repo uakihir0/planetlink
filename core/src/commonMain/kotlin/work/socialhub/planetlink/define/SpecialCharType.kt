@@ -1,4 +1,4 @@
-package net.socialhub.planetlink.define
+package work.socialhub.planetlink.define
 
 /**
  * Special char for xml
@@ -6,7 +6,10 @@ package net.socialhub.planetlink.define
  *
  * @link http://www.w3.org/TR/html4/charset.html
  */
-enum class SpecialCharType(val entityRepl: String, val numberRepl: String) {
+enum class SpecialCharType(
+    val entityRepl: String,
+    val numberRepl: String,
+) {
     // Auto Generated Code
     // see ReferGenerator.java (Test)
     nbsp("&nbsp;", "&#160;"),

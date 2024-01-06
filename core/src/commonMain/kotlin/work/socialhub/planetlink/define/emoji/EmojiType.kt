@@ -1,12 +1,10 @@
-package net.socialhub.planetlink.define.emoji
-
-import work.socialhub.planetlink.define.emoji.EmojiCategoryType
+package work.socialhub.planetlink.define.emoji
 
 @Suppress("unused")
 enum class EmojiType(
     val emoji: String,
-    override val name: String,
-    private val category: String,
+    val expr: String,
+    val category: String,
     val level: Int?
 ) {
     // Auto Generated Code
@@ -1765,7 +1763,7 @@ enum class EmojiType(
     PartAlternationMark("〽️", "part_alternation_mark", "Symbols", 11),
     Congratulations("㊗️", "congratulations", "Symbols", 9),
     Secret("㊙️", "secret", "Symbols", 11),
-    ; //endregion
+    ;
 
     fun category(): EmojiCategoryType {
         return EmojiCategoryType.of(category)
@@ -1773,9 +1771,8 @@ enum class EmojiType(
 
     companion object {
         fun fromCategory(category: EmojiCategoryType): List<EmojiType> {
-            return java.util.stream.Stream.of(*entries.toTypedArray()) //
-                .filter(java.util.function.Predicate<EmojiType> { e: EmojiType -> e.getCategory() === category })
-                .collect(java.util.stream.Collectors.toList())
+            return entries.toTypedArray()
+                .filter { it.category == category.code }
         }
     }
 }

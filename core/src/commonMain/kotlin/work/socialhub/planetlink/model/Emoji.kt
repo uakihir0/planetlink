@@ -1,7 +1,7 @@
-package net.socialhub.planetlink.model
+package work.socialhub.planetlink.model
 
-import net.socialhub.planetlink.define.emoji.EmojiType
-import net.socialhub.planetlink.define.emoji.EmojiVariationType
+import work.socialhub.planetlink.define.emoji.EmojiType
+import work.socialhub.planetlink.define.emoji.EmojiVariationType
 
 /**
  * Emoji

@@ -1,15 +1,13 @@
-package net.socialhub.planetlink.model.common
+package work.socialhub.planetlink.model.common
 
 /**
  * 追加フィールド
  * Extra Fields
  */
 class AttributedFiled {
-    //region // Getter&Setter
-    var name: String? = null
-    private var value: AttributedString? = null
 
-    constructor()
+    var name: String? = null
+    var value: AttributedString? = null
 
     constructor(name: String?, value: AttributedString?) {
         this.value = value
@@ -20,12 +18,4 @@ class AttributedFiled {
         this.value = AttributedString.plain(value)
         this.name = name
     }
-
-    fun getValue(): AttributedString? {
-        return value
-    }
-
-    fun setValue(value: AttributedString?) {
-        this.value = value
-    } //endregion
 }

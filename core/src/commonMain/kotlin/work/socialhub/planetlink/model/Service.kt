@@ -1,7 +1,6 @@
 package work.socialhub.planetlink.model
 
-import net.socialhub.planetlink.define.ServiceType
-import net.socialhub.planetlink.model.RateLimit
+import work.socialhub.planetlink.define.ServiceType
 
 /**
  * SNS サービス情報

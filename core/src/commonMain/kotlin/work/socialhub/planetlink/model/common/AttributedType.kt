@@ -1,58 +1,45 @@
-package net.socialhub.planetlink.model.common
+package work.socialhub.planetlink.model.common
 
 interface AttributedType {
+
     /** 属性の種類を取得  */
-    val kind: net.socialhub.planetlink.model.common.AttributedKind?
+    val kind: AttributedKind
 
     /** 正規表現を取得  */
-    val regex: String?
+    val regex: Regex
 
     /** 表示文字列を取得  */
-    fun getDisplayedText(m: java.util.regex.Matcher?): String?
+    fun displayedText(m: MatchResult): String
 
     /** 文字列を取得  */
-    fun getExpandedText(m: java.util.regex.Matcher?): String?
+    fun expandedText(m: MatchResult): String
 
     /**
      * AttributedType のデフォルト実装
      */
     class CommonAttributedType(
-        kind: AttributedKind,
-        override val regex: String,
-        display: java.util.function.Function<java.util.regex.Matcher?, String?>,
-        expand: java.util.function.Function<java.util.regex.Matcher?, String?>
+        override val kind: AttributedKind,
+        override val regex: Regex,
+        val display: ((MatchResult) -> String)?,
+        val expand: ((MatchResult) -> String)?,
     ) : AttributedType {
-        override val kind: AttributedKind = kind
-
-        private val display: java.util.function.Function<java.util.regex.Matcher, String>? = display
-
-        private val expand: java.util.function.Function<java.util.regex.Matcher, String>? = expand
 
         constructor(
             kind: AttributedKind,
-            regex: String
-        ) : this(kind, regex,
-            java.util.function.Function<java.util.regex.Matcher, String> { obj: java.util.regex.Matcher -> obj.group() },
-            java.util.function.Function<java.util.regex.Matcher, String> { obj: java.util.regex.Matcher -> obj.group() })
+            regex: Regex
+        ) : this(
+            kind,
+            regex,
+            { it.value },
+            { it.value }
+        )
 
-        override fun getKind(): AttributedKind {
-            return kind
+        override fun displayedText(m: MatchResult): String {
+            return display?.let { it(m) } ?: m.value
         }
 
-        override fun getDisplayedText(m: java.util.regex.Matcher): String {
-            if (display != null) {
-                return display.apply(m)
-            }
-            // 未定義の場合は全体
-            return m.group()
-        }
-
-        override fun getExpandedText(m: java.util.regex.Matcher?): String? {
-            if (expand != null) {
-                return expand.apply(m)
-            }
-            // 未定義
-            return null
+        override fun expandedText(m: MatchResult): String {
+            return expand?.let { it(m) } ?: m.value
         }
     }
 }

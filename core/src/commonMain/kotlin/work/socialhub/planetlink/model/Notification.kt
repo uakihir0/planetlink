@@ -1,9 +1,6 @@
 package work.socialhub.planetlink.model
 
-import net.socialhub.planetlink.define.NotificationActionType
-import net.socialhub.planetlink.model.Identify
-import net.socialhub.planetlink.model.Instance
-import net.socialhub.planetlink.model.User
+import work.socialhub.planetlink.define.NotificationActionType
 
 /**
  * Notification

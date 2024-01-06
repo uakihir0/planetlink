@@ -1,13 +1,13 @@
-package net.socialhub.planetlink.model
+package work.socialhub.planetlink.model
 
-import net.socialhub.planetlink.define.action.ActionType
-import work.socialhub.planetlink.model.Account
+import work.socialhub.planetlink.define.action.ActionType
 
 /**
  * Common Request Interface
  * リクエスト汎用インターフェース
  */
 interface Request {
+
     /**
      * Get Action Type
      * アクションタイプを取得

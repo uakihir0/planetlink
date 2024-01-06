@@ -1,3 +1,3 @@
-package net.socialhub.planetlink.action.group
+package work.socialhub.planetlink.action.group
 
 interface UsersRequestGroupAction 

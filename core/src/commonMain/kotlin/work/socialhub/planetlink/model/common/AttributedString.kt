@@ -1,22 +1,21 @@
-package net.socialhub.planetlink.model.common
+package work.socialhub.planetlink.model.common
 
-import net.socialhub.planetlink.model.common.xml.XmlConvertRule
+import work.socialhub.planetlink.define.AttributedType.simple
+import work.socialhub.planetlink.model.Emoji
 
 /**
  * String With Attributes
  * 属性付き文字列
  */
 class AttributedString {
-    private var elements: List<AttributedElement>
 
-    // ============================================================================== //
-    // Constructor
-    // ============================================================================== //
+    var elements: List<AttributedElement>
+
     /**
      * Make Attributes String with AttributedElements list.
      * 属性付き要素から属性付き文字列を生成
      */
-    private constructor(elements: List<AttributedElement>) {
+    constructor(elements: List<AttributedElement>) {
         this.elements = elements
     }
 
@@ -25,61 +24,59 @@ class AttributedString {
      * 文字列から属性文字列を作成 (属性を指定)
      */
     private constructor(text: String, kinds: List<AttributedType>) {
-        val model: AttributedItem = AttributedItem()
-        model.setKind(AttributedKind.PLAIN)
-        model.setDisplayText(text)
+        val model = AttributedItem()
+        model.kind = AttributedKind.PLAIN
+        model.displayText = text
 
-        var stream: java.util.stream.Stream<AttributedElement?> = java.util.stream.Stream.of<AttributedElement>(model)
+        var stream = mutableListOf(model)
+
         for (kind in kinds) {
-            stream = stream
-                .map<List<AttributedElement>>(java.util.function.Function<AttributedElement, List<AttributedElement>> { elem: AttributedElement ->
-                    scanElements(
-                        elem,
-                        kind
-                    )
-                })
-                .flatMap<AttributedElement>(java.util.function.Function<List<AttributedElement>, java.util.stream.Stream<out AttributedElement?>> { obj: Collection<*> -> obj.stream() })
+            stream = stream.map {
+                scanElements(it, kind)
+            }.flatten()
+                .map { it as AttributedItem }
+                .toMutableList()
         }
-        elements = stream.collect(java.util.stream.Collectors.toList<Any>())
+
+        elements = stream
     }
 
     /**
      * Add Emoji Element
      * 絵文字要素を追加
      */
-    fun addEmojiElement(emojis: List<Emoji?>?) {
-        if (emojis != null && !emojis.isEmpty()) {
-            var stream: java.util.stream.Stream<AttributedElement?> = elements.stream()
+    fun addEmojiElement(emojis: List<Emoji>?) {
+        if (!emojis.isNullOrEmpty()) {
+
+            var stream = mutableListOf<AttributedElement>()
+            stream.addAll(elements)
+
             for (emoji in emojis) {
                 stream = stream
-                    .map<List<AttributedElement>>(java.util.function.Function<AttributedElement, List<AttributedElement>> { elem: AttributedElement ->
+                    .map { elem ->
                         scanEmojis(
                             elem,
                             emoji
                         )
-                    })
-                    .flatMap<AttributedElement>(java.util.function.Function<List<AttributedElement>, java.util.stream.Stream<out AttributedElement?>> { obj: Collection<*> -> obj.stream() })
+                    }
+                    .flatten()
+                    .toMutableList()
             }
-            elements = stream.collect(java.util.stream.Collectors.toList<Any>())
+            elements = stream
+                .map { it as AttributedItem }
+                .toMutableList()
         }
     }
 
-    /**
-     * Get Elements
-     * 要素情報の取得
-     */
-    fun getElements(): List<AttributedElement> {
-        return this.elements
-    }
 
+    /**
+     * Get Display Text
+     * 表示文字列を取得
+     */
     val displayText: String
-        /**
-         * Get Display Text
-         * 表示文字列を取得
-         */
-        get() = elements.stream()
-            .map<Any>(AttributedElement::getDisplayText)
-            .collect(java.util.stream.Collectors.joining())
+        get() = elements
+            .map { it.displayText }
+            .joinToString { "" }
 
     /**
      * Scan elements
@@ -88,60 +85,61 @@ class AttributedString {
     private fun scanElements(
         element: AttributedElement,
         kind: AttributedType
-    ): List<AttributedElement?> {
-        if (element.getKind() === AttributedKind.PLAIN) {
-            val text: String = element.getDisplayText()
-            if (!text.isEmpty()) {
-                // プレーン文字列の場合にスキャンして走査
+    ): List<AttributedElement> {
 
-                val p: java.util.regex.Pattern = java.util.regex.Pattern.compile(kind.getRegex())
-                val m: java.util.regex.Matcher = p.matcher(text)
+        if (element.kind === AttributedKind.PLAIN) {
+            val text: String = element.displayText
+
+            if (text.isNotEmpty()) {
+
+                // プレーン文字列の場合にスキャンして走査
+                val regex = kind.regex
+                val match = regex.find(text)
 
                 // 見つかった場合分割
-                if (m.find()) {
-                    val i: Int = m.start()
-                    val found: String = m.group()
+                if (match != null) {
+                    val i = match.range.first
+                    val found = match.value
 
                     if (i >= 0) {
                         val before = text.substring(0, i)
                         val after = text.substring(i + found.length)
-                        val results: MutableList<AttributedElement?> = java.util.ArrayList<AttributedElement>()
+                        val results = mutableListOf<AttributedElement>()
 
                         run {
-                            val model: AttributedItem = AttributedItem()
-                            model.setKind(AttributedKind.PLAIN)
-                            model.setDisplayText(before)
+                            val model = AttributedItem()
+                            model.kind = AttributedKind.PLAIN
+                            model.displayText = before
                             results.add(model)
                         }
                         run {
-                            val model: AttributedItem = AttributedItem()
-                            model.setDisplayText(kind.getDisplayedText(m))
-                            model.setExpandedText(kind.getExpandedText(m))
-                            model.setKind(kind.getKind())
+                            val model = AttributedItem()
+                            model.displayText = kind.displayedText(match)
+                            model.expandedText = kind.expandedText(match)
+                            model.kind = kind.kind
                             results.add(model)
                         }
                         run {
-                            val model: AttributedItem = AttributedItem()
-                            model.setKind(AttributedKind.PLAIN)
-                            model.setDisplayText(after)
+                            val model = AttributedItem()
+                            model.kind = AttributedKind.PLAIN
+                            model.displayText = after
 
                             // 再帰的に作成したオブジェクトに対して走査
                             results.addAll(scanElements(model, kind))
                         }
                         return results
+
                     } else {
                         // 特殊環境下でエラーになるようなので調査のためログを挟む
-
-                        val log: Logger = Logger.getLogger(AttributedString::class.java)
-                        log.debug("UnExpected Status")
-                        log.debug("Text : $text")
-                        log.debug("Found: $found")
-                        log.debug("Index: $i")
+                        println("UnExpected Status")
+                        println("Text : $text")
+                        println("Found: $found")
+                        println("Index: $i")
                     }
                 }
             }
         }
-        return listOf<AttributedElement>(element)
+        return listOf(element)
     }
 
     /**
@@ -151,44 +149,43 @@ class AttributedString {
     private fun scanEmojis(
         element: AttributedElement,
         emoji: Emoji
-    ): List<AttributedElement?> {
-        // 文字列の場合のみが対象
+    ): List<AttributedElement> {
 
-        if (element.getKind() === AttributedKind.PLAIN) {
-            val text: String = element.getDisplayText()
+        // 文字列の場合のみが対象
+        if (element.kind === AttributedKind.PLAIN) {
+            val text: String = element.displayText
 
             // プレーン文字列の場合にスキャンして走査
-            val regex = ":" + emoji.shortCode + ":"
-            val p: java.util.regex.Pattern = java.util.regex.Pattern.compile(regex)
-            val m: java.util.regex.Matcher = p.matcher(text)
+            val regex = ":${emoji.shortCode}:".toRegex()
+            val match = regex.find(text)
 
             // 見つかった場合分割
-            if (m.find()) {
-                val i: Int = m.start()
-                val found: String = m.group()
+            if (match != null) {
+                val i = match.range.first
+                val found = match.value
 
                 if (i >= 0) {
                     val before = text.substring(0, i)
                     val after = text.substring(i + found.length)
-                    val results: MutableList<AttributedElement?> = java.util.ArrayList<AttributedElement>()
+                    val results = mutableListOf<AttributedElement>()
 
                     run {
-                        val model: AttributedItem = AttributedItem()
-                        model.setKind(AttributedKind.PLAIN)
-                        model.setDisplayText(before)
+                        val model = AttributedItem()
+                        model.kind = AttributedKind.PLAIN
+                        model.displayText = before
                         results.add(model)
                     }
                     run {
-                        val model: AttributedItem = AttributedItem()
-                        model.setDisplayText(regex)
-                        model.setExpandedText(emoji.imageUrl)
-                        model.setKind(AttributedKind.EMOJI)
+                        val model = AttributedItem()
+                        model.displayText = regex.toString()
+                        model.expandedText = emoji.imageUrl
+                        model.kind = AttributedKind.EMOJI
                         results.add(model)
                     }
                     run {
-                        val model: AttributedItem = AttributedItem()
-                        model.setKind(AttributedKind.PLAIN)
-                        model.setDisplayText(after)
+                        val model = AttributedItem()
+                        model.kind = AttributedKind.PLAIN
+                        model.displayText = after
 
                         // 再帰的に作成したオブジェクトに対して走査
                         results.addAll(scanEmojis(model, emoji))
@@ -196,23 +193,19 @@ class AttributedString {
                     return results
                 } else {
                     // 特殊環境下でエラーになるようなので調査のためログを挟む
-
-                    val log: Logger = Logger.getLogger(AttributedString::class.java)
-                    log.debug("UnExpected Status")
-                    log.debug("Text : $text")
-                    log.debug("Found: $found")
-                    log.debug("Index: $i")
+                    println("UnExpected Status")
+                    println("Text : $text")
+                    println("Found: $found")
+                    println("Index: $i")
                 }
             }
         }
 
-        return listOf<AttributedElement>(element)
+        return listOf(element)
     }
 
     companion object {
-        // ============================================================================== //
-        // Static functions
-        // ============================================================================== //
+
         /**
          * Make Attributed String from plain text.
          * 装飾無しテキストから属性付き文字列を作成
@@ -227,22 +220,6 @@ class AttributedString {
          */
         fun plain(string: String?, kinds: List<AttributedType>): AttributedString {
             return AttributedString(if ((string != null)) string else "", kinds)
-        }
-
-        /**
-         * Make Attributed String from XHTML text.
-         * XHTML テキストから属性付き文字列を作成
-         */
-        fun xhtml(string: String?): AttributedString {
-            return xhtml(string, XmlConvertRule())
-        }
-
-        /**
-         * Make Attributed String from XHTML text with rule.
-         * XHTML テキストから属性付き文字列を作成 (ルールを指定)
-         */
-        fun xhtml(string: String?, rule: XmlConvertRule?): AttributedString {
-            return XmlParseUtil.xhtml(string).toAttributedString(rule)
         }
 
         /**

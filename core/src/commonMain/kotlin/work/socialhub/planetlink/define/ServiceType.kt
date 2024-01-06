@@ -1,4 +1,4 @@
-package net.socialhub.planetlink.define
+package work.socialhub.planetlink.define
 
 /**
  * 対応 SNS

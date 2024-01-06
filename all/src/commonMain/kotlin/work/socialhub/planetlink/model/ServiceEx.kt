@@ -1,7 +1,6 @@
 package work.socialhub.planetlink.model
 
-import net.socialhub.planetlink.define.ServiceType
-import work.socialhub.planetlink.define.Service
+import work.socialhub.planetlink.define.ServiceType
 
 object ServiceEx {
 

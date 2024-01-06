@@ -1,6 +1,6 @@
 package net.socialhub.planetlink.model.group
 
-import net.socialhub.planetlink.action.group.CommentGroupAction
+import work.socialhub.planetlink.action.group.CommentGroupAction
 import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Comment
 

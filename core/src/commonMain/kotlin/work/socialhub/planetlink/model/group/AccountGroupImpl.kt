@@ -1,6 +1,6 @@
 package net.socialhub.planetlink.model.group
 
-import net.socialhub.planetlink.action.group.AccountGroupAction
+import work.socialhub.planetlink.action.group.AccountGroupAction
 
 class AccountGroupImpl(vararg accounts: Account?) : AccountGroup {
     override var accounts: MutableList<Account> = java.util.ArrayList<Account>()

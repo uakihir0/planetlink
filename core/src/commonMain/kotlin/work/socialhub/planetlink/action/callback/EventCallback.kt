@@ -1,4 +1,3 @@
-
-package net.socialhub.planetlink.action.callback
+package work.socialhub.planetlink.action.callback
 
 interface EventCallback 

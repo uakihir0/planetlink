@@ -1,6 +1,6 @@
-package net.socialhub.planetlink.model
+package work.socialhub.planetlink.model
 
-import net.socialhub.planetlink.define.LanguageType
+import work.socialhub.planetlink.define.LanguageType
 import net.socialhub.planetlink.model.error.SocialHubError
 
 class Error(

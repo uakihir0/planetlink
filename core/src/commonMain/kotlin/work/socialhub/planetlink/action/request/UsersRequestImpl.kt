@@ -1,10 +1,10 @@
 package net.socialhub.planetlink.action.request
 
 import net.socialhub.planetlink.action.RequestActionImpl.SerializeBuilder
-import net.socialhub.planetlink.define.action.ActionType
+import work.socialhub.planetlink.define.action.ActionType
 import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Paging
-import net.socialhub.planetlink.model.User
+import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.Account
 
 class UsersRequestImpl : UsersRequest {

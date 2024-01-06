@@ -1,6 +1,6 @@
 package net.socialhub.planetlink.model.group
 
-import net.socialhub.planetlink.action.group.UsersRequestGroupAction
+import work.socialhub.planetlink.action.group.UsersRequestGroupAction
 
 interface UsersRequestGroup {
     /**

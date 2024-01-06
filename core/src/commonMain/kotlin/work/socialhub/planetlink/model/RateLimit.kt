@@ -1,30 +1,38 @@
-package net.socialhub.planetlink.model
+package work.socialhub.planetlink.model
 
-import net.socialhub.planetlink.define.ServiceType
-import net.socialhub.planetlink.define.action.ActionType
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import work.socialhub.planetlink.define.ServiceType
+import work.socialhub.planetlink.define.action.ActionType
 
 /**
  * SNS レートリミット
  * SNS RateLimit
  */
-class RateLimit : java.io.Serializable {
-    private val dictionary: MutableMap<ActionType?, RateLimitValue> = java.util.HashMap<ActionType, RateLimitValue>()
+class RateLimit {
+
+    private val dictionary = mutableMapOf<ActionType, RateLimitValue>()
 
     /**
      * レートリミット情報を格納
      * Set rate limit info
      */
     fun addInfo(
-        action: ActionType?,
-        service: ServiceType?,
+        action: ActionType,
+        service: ServiceType,
         limit: Int,
         remaining: Int,
-        reset: java.util.Date
+        reset: Instant,
     ) {
-        val value = RateLimitValue(
-            service, limit, remaining, reset
+        addInfo(
+            action,
+            RateLimitValue(
+                service,
+                limit,
+                remaining,
+                reset
+            )
         )
-        addInfo(action, value)
     }
 
     /**
@@ -32,7 +40,7 @@ class RateLimit : java.io.Serializable {
      * Set rate limit info
      */
     fun addInfo(
-        action: ActionType?,
+        action: ActionType,
         value: RateLimitValue?
     ) {
         if (value != null) {
@@ -44,40 +52,27 @@ class RateLimit : java.io.Serializable {
      * リクエスト可能かどうか？
      * Is remaining api request count?
      */
-    fun isRemaining(action: ActionType?): Boolean {
-        return dictionary.containsKey(action) &&  //
+    fun isRemaining(
+        action: ActionType
+    ): Boolean {
+        return dictionary.containsKey(action) &&
                 dictionary[action]!!.isRemaining()
     }
 
     class RateLimitValue(
-        service: ServiceType?,
+        val service: ServiceType,
         val limit: Int,
-        private val remaining: Int,
-        reset: java.util.Date
+        val remaining: Int,
+        val reset: Instant
     ) {
-        private val service: ServiceType? = service
-
-        private val reset: java.util.Date = reset
 
         /**
          * リクエスト可能かどうか？
          * Is remaining api request count?
          */
         fun isRemaining(): Boolean {
-            return (remaining > 0) || reset.before(java.util.Date())
+            return (remaining > 0) ||
+                    reset < Clock.System.now()
         }
-
-        // region
-        fun getService(): ServiceType? {
-            return service
-        }
-
-        fun getRemaining(): Int {
-            return remaining
-        }
-
-        fun getReset(): java.util.Date {
-            return reset
-        } // endregion
     }
 }

@@ -1,6 +1,5 @@
-package net.socialhub.planetlink.model.event
+package work.socialhub.planetlink.model.event
 
-class IdentifyEvent(//endregion
-    //region // Getter&Setter
+class IdentifyEvent(
     var id: Any
 )

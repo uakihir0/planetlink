@@ -1,6 +1,6 @@
 package net.socialhub.planetlink.model.group
 
-import net.socialhub.planetlink.action.group.CommentsRequestGroupAction
+import work.socialhub.planetlink.action.group.CommentsRequestGroupAction
 
 class CommentsRequestGroupImpl(vararg requests: CommentsRequest?) : CommentsRequestGroup {
     /** List of Request Actions  */

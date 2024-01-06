@@ -1,6 +1,7 @@
-package net.socialhub.planetlink.define.action
+package work.socialhub.planetlink.define.action
 
-enum class OtherActionType : ActionType {
+enum class SocialActionType : ActionType {
+
     // Get Comment
     GetComment,
     GetContext,

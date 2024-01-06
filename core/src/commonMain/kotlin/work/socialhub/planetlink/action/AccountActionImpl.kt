@@ -2,6 +2,7 @@ package net.socialhub.planetlink.action
 
 import net.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.Account
+import work.socialhub.planetlink.model.User
 
 abstract class AccountActionImpl : AccountAction {
     //endregion

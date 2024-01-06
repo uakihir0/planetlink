@@ -1,35 +1,35 @@
-package net.socialhub.planetlink.action.group
+package work.socialhub.planetlink.action.group
 
-import net.socialhub.planetlink.action.request.CommentsRequest
-import work.socialhub.planetlink.model.Pageable
+import work.socialhub.planetlink.action.request.CommentsRequest
 import net.socialhub.planetlink.model.group.CommentGroup
+import net.socialhub.planetlink.model.group.CommentGroupImpl
+import net.socialhub.planetlink.model.group.CommentsRequestGroupImpl
 import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.Pageable
+import work.socialhub.planetlink.model.Paging
 
-class CommentsRequestGroupActionImpl(requestGroup: CommentsRequestGroupImpl) : CommentsRequestGroupAction {
+class CommentsRequestGroupActionImpl(
     private val requestGroup: CommentsRequestGroupImpl
+) : CommentsRequestGroupAction {
 
-    init {
-        this.requestGroup = requestGroup
-    }
-
-    override val comments: CommentGroup?
-        /**
-         * {@inheritDoc}
-         */
-        get() = getComments(Paging(200L))
 
     /**
      * {@inheritDoc}
      */
-    override fun getComments(count: Int): CommentGroup {
-        return getComments(Paging(count.toLong()))
+    override fun comments(
+        count: Int
+    ): CommentGroup {
+        return comments(Paging(count))
     }
 
     /**
      * コメント情報をページング付きで取得
      */
-    override fun getComments(paging: Paging?): CommentGroup {
-        val model: CommentGroupImpl = CommentGroupImpl()
+    fun comments(
+        paging: Paging
+    ): CommentGroup {
+
+        val model = CommentGroupImpl()
         val pool: ExecutorService = Executors.newCachedThreadPool()
         val copiedPage: Paging? = if ((paging != null)) paging.copy() else null
 

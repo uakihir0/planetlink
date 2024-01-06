@@ -1,5 +1,8 @@
-package net.socialhub.planetlink.action.group
+package work.socialhub.planetlink.action.group
 
 import net.socialhub.planetlink.model.group.UsersRequestGroupImpl
+import work.socialhub.planetlink.action.group.UsersRequestGroupAction
 
-class UsersRequestGroupActionImpl(private val requestGroup: UsersRequestGroupImpl) : UsersRequestGroupAction
+class UsersRequestGroupActionImpl(
+    private val requestGroup: UsersRequestGroupImpl
+) : UsersRequestGroupAction

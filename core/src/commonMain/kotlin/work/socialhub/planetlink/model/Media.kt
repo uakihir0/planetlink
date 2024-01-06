@@ -1,6 +1,6 @@
 package work.socialhub.planetlink.model
 
-import net.socialhub.planetlink.define.MediaType
+import work.socialhub.planetlink.define.MediaType
 
 /**
  * Media Model

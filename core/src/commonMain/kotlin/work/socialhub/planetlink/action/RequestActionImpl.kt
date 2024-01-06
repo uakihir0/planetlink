@@ -2,8 +2,8 @@ package net.socialhub.planetlink.action
 
 import com.google.gson.Gson
 import work.socialhub.planetlink.model.Pageable
-import net.socialhub.planetlink.model.Request
-import net.socialhub.planetlink.model.User
+import work.socialhub.planetlink.model.Request
+import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.Comment
 
 class RequestActionImpl(account: Account?) : RequestAction {

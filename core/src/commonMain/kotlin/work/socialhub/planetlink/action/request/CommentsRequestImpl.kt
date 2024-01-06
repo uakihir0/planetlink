@@ -1,17 +1,19 @@
-package net.socialhub.planetlink.action.request
+package work.socialhub.planetlink.action.request
 
 import net.socialhub.planetlink.action.RequestActionImpl.SerializeBuilder
-import net.socialhub.planetlink.action.callback.EventCallback
-import net.socialhub.planetlink.define.action.ActionType
+import work.socialhub.planetlink.action.callback.EventCallback
+import work.socialhub.planetlink.define.action.ActionType
 import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Paging
-import net.socialhub.planetlink.model.Stream
+import work.socialhub.planetlink.model.Stream
 import net.socialhub.planetlink.model.error.NotSupportedException
 import net.socialhub.planetlink.model.request.CommentForm
+import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Comment
 
 class CommentsRequestImpl : CommentsRequest {
+
     private var commentsFunction: java.util.function.Function<Paging, Pageable<Comment>>? = null
     private var streamFunction: java.util.function.Function<EventCallback, Stream>? = null
 

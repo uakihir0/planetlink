@@ -1,7 +1,8 @@
-package net.socialhub.planetlink.model.group
+package work.socialhub.planetlink.model.group
 
-import net.socialhub.planetlink.action.group.UserGroupAction
-import net.socialhub.planetlink.model.User
+import net.socialhub.planetlink.model.group.UserGroup
+import work.socialhub.planetlink.action.group.UserGroupAction
+import work.socialhub.planetlink.model.User
 
 class UserGroupImpl : UserGroup {
     //endregion

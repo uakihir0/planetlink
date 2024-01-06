@@ -1,6 +1,7 @@
-package net.socialhub.planetlink.define.action
+package work.socialhub.planetlink.define.action
 
 enum class TimeLineActionType : ActionType {
+
     // TimeLine
     HomeTimeLine,
     MentionTimeLine,

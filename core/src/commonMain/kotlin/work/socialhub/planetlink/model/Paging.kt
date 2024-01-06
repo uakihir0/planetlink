@@ -1,6 +1,5 @@
 package work.socialhub.planetlink.model
 
-import net.socialhub.planetlink.model.Identify
 import net.socialhub.planetlink.model.paging.*
 
 /**
@@ -14,27 +13,20 @@ import net.socialhub.planetlink.model.paging.*
  * @see IndexPaging
  * @see OffsetPaging
  */
-class Paging : java.io.Serializable {
-    // region // Getter&Setter
-    var count: Long? = null
+class Paging(
+    var count: Int? = null,
+) {
     var isHasNew: Boolean = true
     var isHasPast: Boolean = true
 
-    constructor()
+    fun copy() =
+        Paging().also {
+            it.count = count
+            it.isHasNew = isHasNew
+            it.isHasPast = isHasPast
+        }
 
-    constructor(count: Long?) {
-        this.count = count
-    }
-
-    fun copy(): Paging {
-        val pg = Paging()
-        pg.count = count
-        pg.isHasNew = isHasNew
-        pg.isHasPast = isHasPast
-        return pg
-    }
-
-    protected fun copyTo(pg: Paging) {
+    fun copyTo(pg: Paging) {
         pg.count = count
         pg.isHasNew = isHasNew
         pg.isHasPast = isHasPast
@@ -47,7 +39,9 @@ class Paging : java.io.Serializable {
      * @param entities DataList it's ordered by created date time for desc.
      * 算出するデータリスト、先頭から最新の ID になっている想定
      */
-    fun <T : Identify?> newPage(entities: List<T>?): Paging? {
+    fun <T : Identify?> newPage(
+        entities: List<T>?
+    ): Paging? {
         return null
     }
 
@@ -58,7 +52,9 @@ class Paging : java.io.Serializable {
      * @param entities DataList it's ordered by created date time for desc.
      * 算出するデータリスト、先頭から最新の ID になっている想定
      */
-    fun <T : Identify?> pastPage(entities: List<T>?): Paging? {
+    fun <T : Identify?> pastPage(
+        entities: List<T>?
+    ): Paging? {
         return null
     }
 
@@ -66,7 +62,9 @@ class Paging : java.io.Serializable {
      * Alias
      * New <-> Prev
      */
-    fun <T : Identify?> prevPage(entities: List<T>?): Paging? {
+    fun <T : Identify?> prevPage(
+        entities: List<T>?
+    ): Paging? {
         return newPage(entities)
     }
 
@@ -74,7 +72,9 @@ class Paging : java.io.Serializable {
      * Alias
      * Past <-> Next
      */
-    fun <T : Identify?> nextPage(entities: List<T>?): Paging? {
+    fun <T : Identify?> nextPage(
+        entities: List<T>?
+    ): Paging? {
         return pastPage(entities)
     }
 
@@ -82,7 +82,9 @@ class Paging : java.io.Serializable {
      * Set mark as paging end
      * ページの終端をマークする
      */
-    fun setMarkPagingEnd(entities: List<*>?) {
+    fun setMarkPagingEnd(
+        entities: List<*>?
+    ) {
         if (isHasPast
             && entities!!.isEmpty()
             && (count!! > 0)
@@ -90,32 +92,4 @@ class Paging : java.io.Serializable {
             isHasPast = false
         }
     }
-
-    var isHasPrev: Boolean
-        /**
-         * Alias
-         * New <-> Prev
-         */
-        get() = isHasNew
-        /**
-         * Alias
-         * New <-> Prev
-         */
-        set(hasPrev) {
-            isHasNew = hasPrev
-        }
-
-    var isHasNext: Boolean
-        /**
-         * Alias
-         * Past <-> Next
-         */
-        get() = isHasPast
-        /**
-         * Alias
-         * Past <-> Next
-         */
-        set(hasNext) {
-            isHasPast = hasNext
-        } // endregion
 }

@@ -1,5 +1,7 @@
 package net.socialhub.planetlink.model
 
+import work.socialhub.planetlink.model.Identify
+import work.socialhub.planetlink.model.Instance
 import work.socialhub.planetlink.model.Service
 
 /**

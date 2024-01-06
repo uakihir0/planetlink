@@ -1,7 +1,7 @@
 package net.socialhub.planetlink.action
 
-import net.socialhub.planetlink.model.Relationship
-import net.socialhub.planetlink.model.User
+import work.socialhub.planetlink.model.Relationship
+import work.socialhub.planetlink.model.User
 
 interface UserAction {
     /**

@@ -1,6 +1,7 @@
-package net.socialhub.planetlink.model.common
+package work.socialhub.planetlink.model.common
 
 enum class AttributedKind {
+
     // STRINGS
     PLAIN,  //
     EMOJI,  //

@@ -1,7 +1,7 @@
 package net.socialhub.planetlink.action
 
-import net.socialhub.planetlink.action.request.CommentsRequest
-import net.socialhub.planetlink.model.Request
+import work.socialhub.planetlink.action.request.CommentsRequest
+import work.socialhub.planetlink.model.Request
 
 interface RequestAction {
     // ============================================================== //

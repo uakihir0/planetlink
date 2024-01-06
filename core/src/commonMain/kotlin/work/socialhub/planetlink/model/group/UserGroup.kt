@@ -1,7 +1,7 @@
 package net.socialhub.planetlink.model.group
 
-import net.socialhub.planetlink.action.group.UserGroupAction
-import net.socialhub.planetlink.model.User
+import work.socialhub.planetlink.action.group.UserGroupAction
+import work.socialhub.planetlink.model.User
 
 interface UserGroup {
     /**

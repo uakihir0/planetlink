@@ -1,4 +1,4 @@
-package net.socialhub.planetlink.model
+package work.socialhub.planetlink.model
 
 /**
  * Stream
@@ -6,8 +6,6 @@ package net.socialhub.planetlink.model
  */
 interface Stream {
     fun open()
-
     fun close()
-
     val isOpened: Boolean
 }

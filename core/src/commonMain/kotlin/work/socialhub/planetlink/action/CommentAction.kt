@@ -1,6 +1,6 @@
 package net.socialhub.planetlink.action
 
-import net.socialhub.planetlink.model.Context
+import work.socialhub.planetlink.model.Context
 import work.socialhub.planetlink.model.Comment
 
 interface CommentAction {

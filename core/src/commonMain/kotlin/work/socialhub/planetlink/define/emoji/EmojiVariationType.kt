@@ -1,12 +1,10 @@
-package net.socialhub.planetlink.define.emoji
-
-import work.socialhub.planetlink.define.emoji.EmojiCategoryType
+package work.socialhub.planetlink.define.emoji
 
 @Suppress("unused")
 enum class EmojiVariationType(
     val emoji: String,
-    override val name: String,
-    private val category: String,
+    val expr: String,
+    val category: String,
     val level: Int?
 ) {
 
@@ -1375,9 +1373,8 @@ enum class EmojiVariationType(
 
     companion object {
         fun fromCategory(category: EmojiCategoryType): List<EmojiVariationType> {
-            return java.util.stream.Stream.of(*entries.toTypedArray()) //
-                .filter(java.util.function.Predicate<EmojiVariationType> { e: EmojiVariationType -> e.getCategory() === category })
-                .collect(java.util.stream.Collectors.toList())
+            return entries.toTypedArray()
+                .filter { it.category == category.code }
         }
     }
 }

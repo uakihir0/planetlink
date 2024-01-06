@@ -1,4 +1,4 @@
-package net.socialhub.planetlink.model
+package work.socialhub.planetlink.model
 
 import work.socialhub.planetlink.model.Service
 

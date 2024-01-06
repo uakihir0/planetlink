@@ -1,12 +1,13 @@
-package net.socialhub.planetlink.model.common
+package work.socialhub.planetlink.model.common
 
 /**
  * Attributes Elements
  * 属性情報
  */
 interface AttributedElement {
+
     /** Get type of element.  */
-    val kind: net.socialhub.planetlink.model.common.AttributedKind
+    val kind: AttributedKind
 
     /** Get text that user see.  */
     val displayText: String

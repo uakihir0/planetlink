@@ -1,6 +1,6 @@
 package net.socialhub.planetlink.model.group
 
-import net.socialhub.planetlink.action.group.UsersRequestGroupAction
+import work.socialhub.planetlink.action.group.UsersRequestGroupAction
 
 class UsersRequestGroupImpl(vararg requests: UsersRequest?) : UsersRequestGroup {
     /** List of Request Actions  */

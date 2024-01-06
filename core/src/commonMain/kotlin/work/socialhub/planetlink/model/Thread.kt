@@ -1,13 +1,15 @@
-package net.socialhub.planetlink.model
+package work.socialhub.planetlink.model
 
-import work.socialhub.planetlink.model.Service
+import kotlinx.datetime.Instant
 
 /**
  * Thread of Group Messaging
  * グループメッセージスレッド
  */
-class Thread(service: Service) : Identify(service) {
-    //region // Getter&Setter
+class Thread(
+    service: Service
+) : Identify(service) {
+
     /**
      * Attendee
      * 参加者
@@ -18,9 +20,8 @@ class Thread(service: Service) : Identify(service) {
      * Last Update Datetime
      * 最終更新日時
      */
-    var lastUpdate: java.util.Date? = null
+    var lastUpdate: Instant? = null
 
-    //endregion
     /**
      * Description about this thread
      * スレッドの簡単な説明文

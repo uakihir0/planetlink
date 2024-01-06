@@ -2,8 +2,7 @@ package work.socialhub.planetlink.model
 
 import net.socialhub.planetlink.action.CommentAction
 import net.socialhub.planetlink.action.CommentActionImpl
-import net.socialhub.planetlink.model.*
-import net.socialhub.planetlink.model.common.AttributedString
+import work.socialhub.planetlink.model.common.AttributedString
 import net.socialhub.planetlink.model.error.NotImplimentedException
 import net.socialhub.planetlink.model.request.CommentForm
 

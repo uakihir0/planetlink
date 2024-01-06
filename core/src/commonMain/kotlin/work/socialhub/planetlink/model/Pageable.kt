@@ -1,7 +1,5 @@
 package work.socialhub.planetlink.model
 
-import net.socialhub.planetlink.model.Identify
-
 /**
  * ページング可能レスポンス
  * Pageable Response

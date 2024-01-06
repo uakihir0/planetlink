@@ -1,14 +1,13 @@
-package net.socialhub.planetlink.model.common
+package work.socialhub.planetlink.model.common
 
 class AttributedItem : AttributedElement {
-    // region // Getter&Setter
-    override var kind: AttributedKind? = null
 
-    // endregion
+    override var kind: AttributedKind = AttributedKind.OTHER
+
     override var visible: Boolean = true
 
     /** 表示するテキスト  */
-    override var displayText: String? = null
+    override var displayText: String = ""
         get() {
             if (!visible) {
                 return ""

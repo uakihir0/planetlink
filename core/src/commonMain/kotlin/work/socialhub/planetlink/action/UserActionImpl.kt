@@ -1,6 +1,7 @@
 package net.socialhub.planetlink.action
 
-import net.socialhub.planetlink.model.*
+import work.socialhub.planetlink.model.Relationship
+import work.socialhub.planetlink.model.User
 
 class UserActionImpl(action: AccountAction) : UserAction {
     private val action: AccountAction = action

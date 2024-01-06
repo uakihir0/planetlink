@@ -1,7 +1,7 @@
 package net.socialhub.planetlink.action
 
-import net.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.Context
 
 class CommentActionImpl(action: AccountAction) : CommentAction {
     private val action: AccountAction = action

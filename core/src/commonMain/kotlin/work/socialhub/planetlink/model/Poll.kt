@@ -1,16 +1,18 @@
-package net.socialhub.planetlink.model
+package work.socialhub.planetlink.model
 
+import kotlinx.datetime.Instant
 import net.socialhub.planetlink.model.support.PollOption
-import work.socialhub.planetlink.model.Service
 
 /**
  * Poll
  * 投票情報
  */
-class Poll(service: Service) : Identify(service) {
-    // region
+class Poll(
+    service: Service
+) : Identify(service) {
+
     /** 有効期限 (時刻)  */
-    var expireAt: java.util.Date? = null
+    var expireAt: Instant? = null
 
     /** 有効期限切れしたかどうか？  */
     var isExpired: Boolean = false
@@ -29,35 +31,28 @@ class Poll(service: Service) : Identify(service) {
     var isVoted: Boolean = false
 
     /** 投票選択肢  */
-    private var options: List<PollOption>? = null
+    var options: List<PollOption>? = null
 
     /**
      * 投票の反映
      */
-    fun applyVote(choices: List<Int?>?) {
-        if (choices == null || choices.size == 0) {
+    fun applyVote(choices: List<Int>?) {
+        if (choices.isNullOrEmpty()) {
             return
         }
 
         isVoted = true
-        if (votersCount != null) {
-            votersCount = votersCount!! + 1
+        votersCount?.let {
+            votersCount = it + 1
         }
-        if (votesCount != null) {
-            votesCount = votesCount!! + choices.size.toLong()
+        votesCount?.let {
+            votesCount = it + choices.size
         }
-        choices.forEach(java.util.function.Consumer<Int> { i: Int ->
+
+        choices.forEach { i ->
             if (options!!.size > i) {
                 options!![i].applyVote()
             }
-        })
-    }
-
-    fun getOptions(): List<PollOption>? {
-        return options
-    }
-
-    fun setOptions(options: List<PollOption>?) {
-        this.options = options
+        }
     }
 }

@@ -14,16 +14,16 @@ enum class EmojiCategoryType(
     PeopleBody("People & Body"),
     Objects("Objects"),
     SkinTones("Skin Tones"),
-    SmileysEmotion("Smileys & Emotion"),  //endregion
+    SmileysEmotion("Smileys & Emotion"),
 
     /** custom emoji  */
     Custom("Custom"),
+    ;
 
     companion object {
         fun of(code: String): EmojiCategoryType {
-            return java.util.stream.Stream.of(*entries.toTypedArray()) //
-                .filter(java.util.function.Predicate<EmojiCategoryType> { e: EmojiCategoryType -> e.code == code }) //
-                .findFirst().orElse(null)
+            return entries.toTypedArray()
+                .first { it.code == code }
         }
     }
 }
