@@ -1,20 +1,22 @@
 package net.socialhub.planetlink.model.group
 
 import work.socialhub.planetlink.action.group.CommentGroupAction
+import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.model.Instance
 import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.group.CommentGroup
 
 /**
  * Whole Accounts Comments
  */
-class CommentGroupImpl : CommentGroup {
-    //region // Getter&Setter
+class CommentGroupImpl(
     /** Comments Request Group  */
-    override var requestGroup: CommentsRequestGroup? = null
+    var requestGroup: CommentsRequestGroup,
+) : CommentGroup {
 
     /** Entity of Comments related to Request  */
-    override var entities: Map<CommentsRequest, Pageable<Comment>>? = null
+    override var entities = mutableMapOf<CommentsRequest, Pageable<Comment>>()
 
     /** Max Date (include)  */
     override var maxDate: java.util.Date? = null

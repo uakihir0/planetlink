@@ -1,49 +1,52 @@
-package net.socialhub.planetlink.model.group
+package work.socialhub.planetlink.model.group
 
+import kotlinx.datetime.Instant
+import net.socialhub.planetlink.model.group.CommentsRequestGroup
 import work.socialhub.planetlink.action.group.CommentGroupAction
-import work.socialhub.planetlink.model.Pageable
+import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.Pageable
 
 interface CommentGroup {
+
     /**
      * Get Comments Request Groups
      * コメントグループの取得
      */
-    val requestGroup: net.socialhub.planetlink.model.group.CommentsRequestGroup?
+    val requestGroup: CommentsRequestGroup
 
     /**
      * Return Comments related to Comments Requests
      * コメントリクエスト毎に紐づくコメントを取得
      */
-    val entities: Map<Any?, Pageable<Comment?>?>?
+    val entities: Map<CommentsRequest, Pageable<Comment>>
 
     /**
      * Return Order Decided Comments
      * (Return Comments by Created Date DESC)
      * 順序が決定している部分までコメントを取得
      */
-    val comments: Pageable<Comment?>?
+    val comments: Pageable<Comment>
 
     /**
      * Get MaxDate for Paging Request
      */
-    val maxDate: java.util.Date?
+    val maxDate: Instant?
 
     /**
      * Get SinceDate for Paging Request
      */
-    val sinceDate: java.util.Date?
+    val sinceDate: Instant?
 
     /**
      * Set Newest comment. (for streaming)
      */
-    fun setNewestComment(comment: Comment?)
+    fun setNewestComment(comment: Comment)
 
     /**
      * Set Oldest comment.
      */
-    fun setOldestComment(comment: Comment?)
-
+    fun setOldestComment(comment: Comment)
 
     /**
      * Get Actions

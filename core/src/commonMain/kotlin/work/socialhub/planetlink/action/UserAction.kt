@@ -1,14 +1,15 @@
-package net.socialhub.planetlink.action
+package work.socialhub.planetlink.action
 
 import work.socialhub.planetlink.model.Relationship
 import work.socialhub.planetlink.model.User
 
 interface UserAction {
+
     /**
      * Get Account
      * アカウントを再度取得
      */
-    fun refresh(): User?
+    fun userRefresh(): User
 
     /**
      * Follow User
@@ -50,5 +51,5 @@ interface UserAction {
      * Get relationship
      * 認証アカウントとの関係を取得
      */
-    val relationship: Relationship?
+    fun relationship(): Relationship?
 }

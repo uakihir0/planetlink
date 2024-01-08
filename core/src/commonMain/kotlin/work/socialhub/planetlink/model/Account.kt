@@ -1,6 +1,6 @@
 package work.socialhub.planetlink.model
 
-import net.socialhub.planetlink.action.AccountAction
+import work.socialhub.planetlink.action.AccountAction
 
 /**
  * Account Model

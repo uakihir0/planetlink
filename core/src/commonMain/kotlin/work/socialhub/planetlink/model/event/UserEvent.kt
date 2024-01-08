@@ -1,8 +1,7 @@
-package net.socialhub.planetlink.model.event
+package work.socialhub.planetlink.model.event
 
 import work.socialhub.planetlink.model.User
 
-class UserEvent(//endregion
-    //region // Getter&Setter
+class UserEvent(
     var user: User
 )

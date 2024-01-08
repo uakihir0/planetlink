@@ -1,16 +1,21 @@
-package net.socialhub.planetlink.model.group
+package work.socialhub.planetlink.model.group
 
 import work.socialhub.planetlink.action.group.AccountGroupAction
+import work.socialhub.planetlink.action.group.AccountGroupActionImpl
+import work.socialhub.planetlink.model.Account
 
-class AccountGroupImpl(vararg accounts: Account?) : AccountGroup {
-    override var accounts: MutableList<Account> = java.util.ArrayList<Account>()
+class AccountGroupImpl(
+    vararg accounts: Account
+) : AccountGroup {
+
+    override var accounts = mutableListOf<Account>()
 
     /**
      * コンストラクタ
      */
     init {
-        if (accounts != null && accounts.size > 0) {
-            this.accounts.addAll(java.util.Arrays.asList<Account>(*accounts))
+        if (accounts.isNotEmpty()) {
+            this.accounts.addAll(accounts)
         }
     }
 
@@ -21,13 +26,4 @@ class AccountGroupImpl(vararg accounts: Account?) : AccountGroup {
     override fun action(): AccountGroupAction {
         return AccountGroupActionImpl(this)
     }
-
-    //region // Getter&Setter
-    fun getAccounts(): List<Account> {
-        return accounts
-    }
-
-    fun setAccounts(accounts: MutableList<Account>) {
-        this.accounts = accounts
-    } //endregion
 }

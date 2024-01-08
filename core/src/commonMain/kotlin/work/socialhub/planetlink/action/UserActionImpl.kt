@@ -1,22 +1,20 @@
 package net.socialhub.planetlink.action
 
+import work.socialhub.planetlink.action.AccountAction
+import work.socialhub.planetlink.action.UserAction
 import work.socialhub.planetlink.model.Relationship
 import work.socialhub.planetlink.model.User
 
-class UserActionImpl(action: AccountAction) : UserAction {
-    private val action: AccountAction = action
-    private var user: User? = null
-
-    fun user(user: User?): UserAction {
-        this.user = user
-        return this
-    }
+class UserActionImpl(
+    var action: AccountAction,
+    var user: User,
+) : UserAction {
 
     /**
      * {@inheritDoc}
      */
-    override fun refresh(): User {
-        return action.getUser(user)
+    override fun userRefresh(): User {
+        return action.user(user)
     }
 
     /**
@@ -61,10 +59,11 @@ class UserActionImpl(action: AccountAction) : UserAction {
         action.unblockUser(user)
     }
 
-    override val relationship: Relationship?
-        /**
-         * {@inheritDoc}
-         */
-        get() = action.getRelationship(user)
+    /**
+     * {@inheritDoc}
+     */
+    override fun relationship(): Relationship {
+        return action.relationship(user)
+    }
 }
 

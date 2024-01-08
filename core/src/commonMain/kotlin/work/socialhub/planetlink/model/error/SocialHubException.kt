@@ -1,8 +1,6 @@
 package work.socialhub.planetlink.model.error
 
-import net.socialhub.planetlink.model.error.SocialHubError
-
-class SocialHubException : RuntimeException {
+open class SocialHubException : RuntimeException {
 
     /**
      * Error detail

@@ -1,9 +1,9 @@
 package work.socialhub.planetlink.model
 
-import net.socialhub.planetlink.action.UserAction
+import work.socialhub.planetlink.action.UserAction
 import net.socialhub.planetlink.action.UserActionImpl
 import work.socialhub.planetlink.model.common.AttributedString
-import net.socialhub.planetlink.model.error.NotImplimentedException
+import work.socialhub.planetlink.model.error.NotImplementedException
 import net.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.model.common.AttributedFiled
 
@@ -55,19 +55,19 @@ class User(service: Service) : Identify(service) {
      * コメント投稿用のフォームを取得
      */
     val commentForm: CommentForm
-        get() = throw NotImplimentedException()
+        get() = throw NotImplementedException()
 
     /**
      * Get Message Form
      * メッセージ投稿用のフォームを取得
      */
     val messageForm: CommentForm
-        get() = throw NotImplimentedException()
+        get() = throw NotImplementedException()
 
     /**
      * Get Web Url
      * Web のアドレスを取得
      */
     val webUrl: String
-        get() = throw NotImplimentedException()
+        get() = throw NotImplementedException()
 }

@@ -1,26 +1,27 @@
-package net.socialhub.planetlink.action
+package work.socialhub.planetlink.action
 
 import work.socialhub.planetlink.model.Context
 import work.socialhub.planetlink.model.Comment
 
 interface CommentAction {
+
     /**
      * Get Comment
      * コメントを再度取得
      */
-    fun refresh(): Comment?
+    fun commentRefresh(): Comment
 
     /**
      * Add Reaction
      * リアクションをする
      */
-    fun reaction(action: String?)
+    fun reaction(action: String)
 
     /**
      * Remove Reaction
      * リアクションをする
      */
-    fun unreaction(action: String?)
+    fun unreaction(action: String)
 
     /**
      * Like Comment
@@ -53,30 +54,8 @@ interface CommentAction {
     fun delete()
 
     /**
-     * Get Comment Context
+     * Get Comment Contexts
      * 前後のコメントを取得する
      */
-    val context: Context?
-
-    // ============================================================== //
-    // Alias
-    // エイリアス
-    // ============================================================== //
-    /** Like <-> Favorite  */
-    fun favorite() {
-        like()
-    }
-
-    fun unfavorite() {
-        unlike()
-    }
-
-    /** Share <-> Retweet  */
-    fun retweet() {
-        share()
-    }
-
-    fun unretweet() {
-        unshare()
-    }
+    fun commentContexts(): Context
 }

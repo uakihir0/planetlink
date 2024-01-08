@@ -1,6 +1,6 @@
 package work.socialhub.planetlink.action.group
 
-import net.socialhub.planetlink.model.group.CommentGroup
+import work.socialhub.planetlink.model.group.CommentGroup
 
 interface CommentsRequestGroupAction {
 

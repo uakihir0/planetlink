@@ -5,6 +5,6 @@ package work.socialhub.planetlink.define.action
  * SNS Group Actions
  */
 enum class GroupActionType {
-    GetTimeLine,  //
-    GetUserMe,  //
+    GetTimeLine,
+    GetUserMe,
 }

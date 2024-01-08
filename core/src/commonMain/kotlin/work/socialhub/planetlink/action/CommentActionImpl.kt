@@ -1,35 +1,33 @@
-package net.socialhub.planetlink.action
+package work.socialhub.planetlink.action
 
+import work.socialhub.planetlink.action.AccountAction
+import work.socialhub.planetlink.action.CommentAction
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Context
 
-class CommentActionImpl(action: AccountAction) : CommentAction {
-    private val action: AccountAction = action
-    private var comment: Comment? = null
+class CommentActionImpl(
+    var action: AccountAction,
+    var comment: Comment,
+) : CommentAction {
 
-    fun comment(comment: Comment?): CommentAction {
-        this.comment = comment
-        return this
+    /**
+     * {@inheritDoc}
+     */
+    override fun commentRefresh(): Comment {
+        return action.comment(comment)
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun refresh(): Comment {
-        return action.getComment(comment)
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    override fun reaction(action: String?) {
+    override fun reaction(action: String) {
         this.action.reactionComment(comment, action)
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun unreaction(action: String?) {
+    override fun unreaction(action: String) {
         this.action.unreactionComment(comment, action)
     }
 
@@ -68,9 +66,10 @@ class CommentActionImpl(action: AccountAction) : CommentAction {
         action.deleteComment(comment)
     }
 
-    override val context: Context?
-        /**
-         * {@inheritDoc}
-         */
-        get() = action.getCommentContext(comment)
+    /**
+     * {@inheritDoc}
+     */
+    override fun commentContexts(): Context {
+        return action.commentContexts(comment)
+    }
 }

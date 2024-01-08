@@ -1,7 +1,5 @@
 package work.socialhub.planetlink.model
 
-import work.socialhub.planetlink.model.Comment
-
 /**
  * Comment Context
  */

@@ -1,19 +1,19 @@
-package net.socialhub.planetlink.action
+package work.socialhub.planetlink.action
 
-import com.google.gson.Gson
-import work.socialhub.planetlink.model.Pageable
-import work.socialhub.planetlink.model.Request
-import work.socialhub.planetlink.model.User
-import work.socialhub.planetlink.model.Comment
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import work.socialhub.planetlink.action.request.CommentsRequest
+import work.socialhub.planetlink.action.request.CommentsRequestImpl
+import work.socialhub.planetlink.action.request.UsersRequest
+import work.socialhub.planetlink.action.request.UsersRequestImpl
+import work.socialhub.planetlink.define.action.ActionType
+import work.socialhub.planetlink.define.action.TimeLineActionType
+import work.socialhub.planetlink.define.action.UsersActionType
+import work.socialhub.planetlink.model.*
 
-class RequestActionImpl(account: Account?) : RequestAction {
-    private val log: Logger = Logger.getLogger(RequestActionImpl::class.java)
-
-    protected var account: Account?
-
-    init {
-        this.account = account
-    }
+class RequestActionImpl(
+    var account: Account
+) : RequestAction {
 
     // ============================================================== //
     // User API
@@ -21,26 +21,26 @@ class RequestActionImpl(account: Account?) : RequestAction {
     /**
      * {@inheritDoc}
      */
-    override fun getFollowingUsers(id: Identify?): UsersRequest {
+    override fun followingUsers(
+        id: Identify
+    ): UsersRequest {
         return getUsersRequest(
             UsersActionType.GetFollowingUsers,
-            java.util.function.Function<Paging, Pageable<User>> { paging: Paging? ->
-                account.action().getFollowingUsers(id, paging)
-            },
-            SerializeBuilder(UsersActionType.GetFollowingUsers)
+            { paging -> account.action.followingUsers(id, paging) },
+            SerializedRequest(UsersActionType.GetFollowingUsers)
         )
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun getFollowerUsers(id: Identify?): UsersRequest {
+    override fun followerUsers(
+        id: Identify
+    ): UsersRequest {
         return getUsersRequest(
             UsersActionType.GetFollowerUsers,
-            java.util.function.Function<Paging, Pageable<User>> { paging: Paging? ->
-                account.action().getFollowerUsers(id, paging)
-            },
-            SerializeBuilder(UsersActionType.GetFollowerUsers)
+            { paging -> account.action.followerUsers(id, paging) },
+            SerializedRequest(UsersActionType.GetFollowerUsers)
                 .add("id", id.serializedIdString)
         )
     }
@@ -48,13 +48,13 @@ class RequestActionImpl(account: Account?) : RequestAction {
     /**
      * {@inheritDoc}
      */
-    override fun searchUsers(query: String?): UsersRequest {
+    override fun searchUsers(
+        query: String
+    ): UsersRequest {
         return getUsersRequest(
             UsersActionType.SearchUsers,
-            java.util.function.Function<Paging, Pageable<User>> { paging: Paging? ->
-                account.action().searchUsers(query, paging)
-            },
-            SerializeBuilder(UsersActionType.SearchUsers)
+            { paging -> account.action.searchUsers(query, paging) },
+            SerializedRequest(UsersActionType.SearchUsers)
                 .add("query", query)
         )
     }
@@ -62,40 +62,38 @@ class RequestActionImpl(account: Account?) : RequestAction {
     // ============================================================== //
     // TimeLine API
     // ============================================================== //
-    override val homeTimeLine: CommentsRequest
-        /**
-         * {@inheritDoc}
-         */
-        get() = getCommentsRequest(
+    /**
+     * {@inheritDoc}
+     */
+    override fun homeTimeLine(): CommentsRequest {
+        return getCommentsRequest(
             TimeLineActionType.HomeTimeLine,
-            java.util.function.Function<Paging, Pageable<Comment>> { paging: Paging? ->
-                account.action().getHomeTimeLine(paging)
-            },
-            SerializeBuilder(TimeLineActionType.HomeTimeLine)
+            { paging -> account.action.homeTimeLine(paging) },
+            SerializedRequest(TimeLineActionType.HomeTimeLine)
         )
-
-    override val mentionTimeLine: CommentsRequest
-        /**
-         * {@inheritDoc}
-         */
-        get() = getCommentsRequest(
-            TimeLineActionType.MentionTimeLine,
-            java.util.function.Function<Paging, Pageable<Comment>> { paging: Paging? ->
-                account.action().getMentionTimeLine(paging)
-            },
-            SerializeBuilder(TimeLineActionType.MentionTimeLine)
-        )
+    }
 
     /**
      * {@inheritDoc}
      */
-    override fun getUserCommentTimeLine(id: Identify?): CommentsRequest {
+    override fun mentionTimeLine(): CommentsRequest {
+        return getCommentsRequest(
+            TimeLineActionType.MentionTimeLine,
+            { paging -> account.action.mentionTimeLine(paging) },
+            SerializedRequest(TimeLineActionType.MentionTimeLine)
+        )
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override fun userCommentTimeLine(
+        id: Identify
+    ): CommentsRequest {
         return getCommentsRequest(
             TimeLineActionType.UserCommentTimeLine,
-            java.util.function.Function<Paging, Pageable<Comment>> { paging: Paging? ->
-                account.action().getUserCommentTimeLine(id, paging)
-            },
-            SerializeBuilder(TimeLineActionType.UserCommentTimeLine)
+            { paging -> account.action.userCommentTimeLine(id, paging) },
+            SerializedRequest(TimeLineActionType.UserCommentTimeLine)
                 .add("id", id.serializedIdString)
         )
     }
@@ -103,13 +101,13 @@ class RequestActionImpl(account: Account?) : RequestAction {
     /**
      * {@inheritDoc}
      */
-    override fun getUserLikeTimeLine(id: Identify?): CommentsRequest {
+    override fun userLikeTimeLine(
+        id: Identify
+    ): CommentsRequest {
         return getCommentsRequest(
             TimeLineActionType.UserLikeTimeLine,
-            java.util.function.Function<Paging, Pageable<Comment>> { paging: Paging? ->
-                account.action().getUserLikeTimeLine(id, paging)
-            },
-            SerializeBuilder(TimeLineActionType.UserLikeTimeLine)
+            { paging -> account.action.userLikeTimeLine(id, paging) },
+            SerializedRequest(TimeLineActionType.UserLikeTimeLine)
                 .add("id", id.serializedIdString)
         )
     }
@@ -117,13 +115,13 @@ class RequestActionImpl(account: Account?) : RequestAction {
     /**
      * {@inheritDoc}
      */
-    override fun getUserMediaTimeLine(id: Identify?): CommentsRequest {
+    override fun userMediaTimeLine(
+        id: Identify
+    ): CommentsRequest {
         return getCommentsRequest(
             TimeLineActionType.UserMediaTimeLine,
-            java.util.function.Function<Paging, Pageable<Comment>> { paging: Paging? ->
-                account.action().getUserMediaTimeLine(id, paging)
-            },
-            SerializeBuilder(TimeLineActionType.UserMediaTimeLine)
+            { paging -> account.action.userMediaTimeLine(id, paging) },
+            SerializedRequest(TimeLineActionType.UserMediaTimeLine)
                 .add("id", id.serializedIdString)
         )
     }
@@ -131,13 +129,13 @@ class RequestActionImpl(account: Account?) : RequestAction {
     /**
      * {@inheritDoc}
      */
-    override fun getSearchTimeLine(query: String?): CommentsRequest {
+    override fun searchTimeLine(
+        query: String
+    ): CommentsRequest {
         return getCommentsRequest(
             TimeLineActionType.SearchTimeLine,
-            java.util.function.Function<Paging, Pageable<Comment>> { paging: Paging? ->
-                account.action().getSearchTimeLine(query, paging)
-            },
-            SerializeBuilder(TimeLineActionType.SearchTimeLine)
+            { paging -> account.action.searchTimeLine(query, paging) },
+            SerializedRequest(TimeLineActionType.SearchTimeLine)
                 .add("query", query)
         )
     }
@@ -145,13 +143,13 @@ class RequestActionImpl(account: Account?) : RequestAction {
     /**
      * {@inheritDoc}
      */
-    override fun getChannelTimeLine(id: Identify?): CommentsRequest {
+    override fun channelTimeLine(
+        id: Identify
+    ): CommentsRequest {
         return getCommentsRequest(
             TimeLineActionType.ChannelTimeLine,
-            java.util.function.Function<Paging, Pageable<Comment>> { paging: Paging? ->
-                account.action().getChannelTimeLine(id, paging)
-            },
-            SerializeBuilder(TimeLineActionType.ChannelTimeLine)
+            { paging -> account.action.channelTimeLine(id, paging) },
+            SerializedRequest(TimeLineActionType.ChannelTimeLine)
                 .add("id", id.serializedIdString)
         )
     }
@@ -159,20 +157,19 @@ class RequestActionImpl(account: Account?) : RequestAction {
     /**
      * {@inheritDoc}
      */
-    override fun getMessageTimeLine(id: Identify?): CommentsRequest {
-        val request: CommentsRequest = getCommentsRequest(
+    override fun messageTimeLine(
+        id: Identify
+    ): CommentsRequest {
+        return getCommentsRequest(
             TimeLineActionType.MessageTimeLine,
-            java.util.function.Function<Paging, Pageable<Comment>> { paging: Paging? ->
-                account.action().getMessageTimeLine(id, paging)
-            },
-            SerializeBuilder(TimeLineActionType.MessageTimeLine)
+            { paging -> account.action.messageTimeLine(id, paging) },
+            SerializedRequest(TimeLineActionType.MessageTimeLine)
                 .add("id", id.serializedIdString)
-        )
-
-        request.getCommentFrom()
-            .message(true)
-            .replyId(id)
-        return request
+        ).also {
+            it.commentFrom()
+                .message(true)
+                .replyId(id)
+        }
     }
 
     // ============================================================== //
@@ -181,156 +178,112 @@ class RequestActionImpl(account: Account?) : RequestAction {
     /**
      * {@inheritDoc}
      */
-    override fun fromSerializedString(serialize: String?): Request? {
+    override fun fromSerializedString(
+        serialize: String
+    ): Request? {
         try {
-            val params: SerializeParams = Gson().fromJson(serialize, SerializeParams::class.java)
-            val action = params.get("action")
+            val request: SerializedRequest = Json.decodeFromString(serialize)
+            val params = request.params
+            val action = request.action
 
             // Identify
-            var id: Identify? = null
-            if (params.contains("id")) {
-                id = Identify(account.service)
-                id.serializedIdString = params.get("id")
+            val id = params["id"]?.let { pid ->
+                Identify(account.service).also {
+                    it.serializedIdString = pid
+                }
             }
 
             // Query
-            var query: String? = null
-            if (params.contains("query")) {
-                query = params.get("query")
-            }
+            val query = params["query"]
 
-            // ------------------------------------------------------------- //
             // User Actions
-            // ------------------------------------------------------------- //
-            if (isTypeIncluded(UsersActionType.entries.toTypedArray(), action)) {
-                when (UsersActionType.valueOf(action)) {
-                    UsersActionType.GetFollowingUsers -> return getFollowingUsers(id)
-                    UsersActionType.GetFollowerUsers -> return getFollowerUsers(id)
-                    UsersActionType.SearchUsers -> return getSearchTimeLine(query)
-                    UsersActionType.ChannelUsers -> return getChannelTimeLine(id)
-
-                    else -> {
-                        log.debug("invalid user action type: $action")
-                        return null
-                    }
+            if (isTypeIncluded(UsersActionType.entries, action)) {
+                return when (UsersActionType.valueOf(action)) {
+                    UsersActionType.GetFollowingUsers -> followingUsers(checkNotNull(id))
+                    UsersActionType.GetFollowerUsers -> followerUsers(checkNotNull(id))
+                    UsersActionType.SearchUsers -> searchTimeLine(checkNotNull(query))
+                    UsersActionType.ChannelUsers -> channelTimeLine(checkNotNull(id))
                 }
             }
 
-            // ------------------------------------------------------------- //
             // Comment Actions
-            // ------------------------------------------------------------- //
-            if (isTypeIncluded(TimeLineActionType.entries.toTypedArray(), action)) {
-                when (TimeLineActionType.valueOf(action)) {
-                    TimeLineActionType.HomeTimeLine -> return homeTimeLine
-                    TimeLineActionType.MentionTimeLine -> return mentionTimeLine
-                    TimeLineActionType.SearchTimeLine -> return getSearchTimeLine(query)
-                    TimeLineActionType.ChannelTimeLine -> return getChannelTimeLine(id)
-                    TimeLineActionType.MessageTimeLine -> return getMessageTimeLine(id)
-                    TimeLineActionType.UserLikeTimeLine -> return getUserLikeTimeLine(id)
-                    TimeLineActionType.UserMediaTimeLine -> return getUserMediaTimeLine(id)
-                    TimeLineActionType.UserCommentTimeLine -> return getUserCommentTimeLine(id)
-
-                    else -> {
-                        log.debug("invalid comment action type: $action")
-                        return null
-                    }
+            if (isTypeIncluded(TimeLineActionType.entries, action)) {
+                return when (TimeLineActionType.valueOf(action)) {
+                    TimeLineActionType.HomeTimeLine -> homeTimeLine()
+                    TimeLineActionType.MentionTimeLine -> mentionTimeLine()
+                    TimeLineActionType.SearchTimeLine -> searchTimeLine(checkNotNull(query))
+                    TimeLineActionType.ChannelTimeLine -> channelTimeLine(checkNotNull(id))
+                    TimeLineActionType.MessageTimeLine -> messageTimeLine(checkNotNull(id))
+                    TimeLineActionType.UserLikeTimeLine -> userLikeTimeLine(checkNotNull(id))
+                    TimeLineActionType.UserMediaTimeLine -> userMediaTimeLine(checkNotNull(id))
+                    TimeLineActionType.UserCommentTimeLine -> userCommentTimeLine(checkNotNull(id))
                 }
             }
 
-            log.debug("invalid action type: $action")
+            println("invalid action type: $action")
             return null
-        } catch (e: java.lang.Exception) {
-            log.debug("json parse error.", e)
+
+        } catch (e: Exception) {
+            println("json parse error. ${e.message}")
             return null
         }
     }
 
-    protected fun isTypeIncluded(members: Array<Enum<*>?>, action: String?): Boolean {
-        val names: List<String?> = java.util.stream.Stream.of<Enum<*>>(*members)
-            .map<String>(java.util.function.Function<Enum<*>, String> { obj: Enum<*> -> obj.name })
-            .collect<List<String>, Any>(java.util.stream.Collectors.toList<String>())
-        return names.contains(action)
+    private fun isTypeIncluded(
+        members: Collection<Enum<*>>,
+        action: String
+    ): Boolean {
+        return members.map { it.name }.contains(action)
     }
 
     // ============================================================== //
     // Inner Class
     // ============================================================== //
     /**
-     * Serialize Params
-     */
-    class SerializeParams {
-        private val params: MutableMap<String, String?> = java.util.HashMap<String, String>()
-
-        fun get(key: String): String? {
-            return params[key]
-        }
-
-        fun contains(key: String): Boolean {
-            return params.containsKey(key)
-        }
-
-        fun add(key: String, value: String?) {
-            params[key] = value
-        }
-    }
-
-    /**
      * Serialize Builder
      */
-    class SerializeBuilder(action: Enum<T?>) {
-        private val params = SerializeParams()
+    @Serializable
+    class SerializedRequest(
+        var action: String
+    ) {
+        constructor(
+            action: Enum<*>
+        ) : this(action.name)
 
-        init {
-            add("action", action.name)
-        }
+        val params = mutableMapOf<String, String>()
 
-        fun add(key: String, value: String?): SerializeBuilder {
-            params.add(key, value)
+        fun add(key: String, value: String): SerializedRequest {
+            params[key] = value
             return this
-        }
-
-        fun toJson(): String {
-            return Gson().toJson(params)
         }
     }
 
     // ============================================================== //
     // Support
     // ============================================================== //
-    // User
-    protected fun getUsersRequest(
-        type: ActionType?,
-        usersFunction: java.util.function.Function<Paging?, Pageable<User?>?>?,
-        serializeBuilder: SerializeBuilder?
+    private fun getUsersRequest(
+        type: ActionType,
+        usersFunction: (Paging) -> Pageable<User>,
+        serializedRequest: SerializedRequest
     ): UsersRequestImpl {
-        val request: UsersRequestImpl = UsersRequestImpl()
-        request.setSerializeBuilder(serializeBuilder)
-        request.setUsersFunction(usersFunction)
-        request.setActionType(type)
-        request.setAccount(account)
-        return request
+        return UsersRequestImpl().also {
+            it.usersFunction = usersFunction
+            it.serializedRequest = serializedRequest
+            it.actionType = type
+            it.account = account
+        }
     }
 
-    // Comments
-    protected fun getCommentsRequest(
-        type: ActionType?,
-        commentsFunction: java.util.function.Function<Paging?, Pageable<Comment?>?>?,
-        serializeBuilder: SerializeBuilder?
+    private fun getCommentsRequest(
+        type: ActionType,
+        commentsFunction: (Paging) -> Pageable<Comment>,
+        serializedRequest: SerializedRequest
     ): CommentsRequestImpl {
-        val request: CommentsRequestImpl = CommentsRequestImpl()
-        request.setSerializeBuilder(serializeBuilder)
-        request.setCommentsFunction(commentsFunction)
-        request.setActionType(type)
-        request.setAccount(account)
-        return request
+        return CommentsRequestImpl().also {
+            it.commentsFunction = commentsFunction
+            it.serializedRequest = serializedRequest
+            it.actionType = type
+            it.account = account
+        }
     }
-
-    //region // Getter&Setter
-    fun getAccount(): Account? {
-        return account
-    }
-
-    fun setAccount(account: Account?) {
-        this.account = account
-    } //endregion
 }

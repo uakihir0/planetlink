@@ -1,9 +1,9 @@
 package work.socialhub.planetlink.model
 
-import net.socialhub.planetlink.action.CommentAction
-import net.socialhub.planetlink.action.CommentActionImpl
+import work.socialhub.planetlink.action.CommentAction
+import work.socialhub.planetlink.action.CommentActionImpl
 import work.socialhub.planetlink.model.common.AttributedString
-import net.socialhub.planetlink.model.error.NotImplimentedException
+import work.socialhub.planetlink.model.error.NotImplementedException
 import net.socialhub.planetlink.model.request.CommentForm
 
 /**
@@ -87,7 +87,7 @@ class Comment(
      * 返信用のフォームを取得
      */
     val replyForm: CommentForm
-        get() = throw NotImplimentedException()
+        get() = throw NotImplementedException()
 
 
     /**
@@ -95,14 +95,14 @@ class Comment(
      * 引用RT用のフォームを取得
      */
     val quoteForm: CommentForm
-        get() = throw NotImplimentedException()
+        get() = throw NotImplementedException()
 
     /**
      * Get Web Url
      * Web のアドレスを取得
      */
     val webUrl: String
-        get() = throw NotImplimentedException()
+        get() = throw NotImplementedException()
 
 
     /**

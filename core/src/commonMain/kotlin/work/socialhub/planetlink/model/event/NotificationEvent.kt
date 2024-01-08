@@ -1,8 +1,7 @@
-package net.socialhub.planetlink.model.event
+package work.socialhub.planetlink.model.event
 
 import work.socialhub.planetlink.model.Notification
 
-class NotificationEvent(// endregion
-    // region
+class NotificationEvent(
     var notification: Notification
 )

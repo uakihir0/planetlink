@@ -1,11 +1,11 @@
-package net.socialhub.planetlink.action
+package work.socialhub.planetlink.action
 
+import work.socialhub.planetlink.model.Channel
+import work.socialhub.planetlink.model.error.NotImplementedException
+import net.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.define.emoji.EmojiType
 import work.socialhub.planetlink.define.emoji.EmojiVariationType
-import net.socialhub.planetlink.model.*
-import net.socialhub.planetlink.model.error.NotImplimentedException
-import net.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.model.*
 
 /**
@@ -13,89 +13,89 @@ import work.socialhub.planetlink.model.*
  * (全てのアクションを定義)
  */
 interface AccountAction {
+
     // ============================================================== //
     // Account API
     // アカウント関連 API
     // ============================================================== //
-    val userMe: User?
-        /**
-         * Get Authorized My Account
-         * 認証した自身のユーザー情報を取得
-         */
-        get() {
-            throw NotImplimentedException()
-        }
+    /**
+     * Get Authorized My Account
+     * 認証した自身のユーザー情報を取得
+     */
+    fun userMe(): User {
+        throw NotImplementedException()
+    }
 
     /**
      * Get Specific UserInfo
      * 特定のユーザーを取得
      */
-    fun getUser(id: Identify?): User {
-        throw NotImplimentedException()
+    fun user(id: Identify): User {
+        throw NotImplementedException()
     }
 
     /**
      * Get Specific UserInfo from URL
      * URL からユーザーを取得
      */
-    fun getUser(url: String?): User? {
-        throw NotImplimentedException()
+    fun user(url: String): User {
+        throw NotImplementedException()
     }
 
     /**
      * Follow User
      * ユーザーをフォロー
      */
-    fun followUser(id: Identify?) {
-        throw NotImplimentedException()
+    fun followUser(id: Identify) {
+        throw NotImplementedException()
     }
 
     /**
      * Unfollow User
      * ユーザーをフォロー解除
      */
-    fun unfollowUser(id: Identify?) {
-        throw NotImplimentedException()
+    fun unfollowUser(id: Identify) {
+        throw NotImplementedException()
     }
 
     /**
      * Mute User
      * ユーザーをミュート
      */
-    fun muteUser(id: Identify?) {
-        throw NotImplimentedException()
+    fun muteUser(id: Identify) {
+        throw NotImplementedException()
     }
 
     /**
      * Unmute User
      * ユーザーをミュート解除
      */
-    fun unmuteUser(id: Identify?) {
-        throw NotImplimentedException()
+    fun unmuteUser(id: Identify) {
+        throw NotImplementedException()
     }
 
     /**
      * Block User
      * ユーザーをブロック
      */
-    fun blockUser(id: Identify?) {
-        throw NotImplimentedException()
+    fun blockUser(id: Identify) {
+        throw NotImplementedException()
     }
 
     /**
      * Unblock User
      * ユーザーをブロック解除
      */
-    fun unblockUser(id: Identify?) {
-        throw NotImplimentedException()
+    fun unblockUser(id: Identify) {
+        throw NotImplementedException()
     }
 
     /**
      * Get relationship
      * 認証アカウントとの関係を取得
      */
-    fun getRelationship(id: Identify?): Relationship {
-        throw NotImplimentedException()
+    fun relationship(id: Identify): Relationship {
+        throw NotImplementedException()
     }
 
     // ============================================================== //
@@ -106,24 +106,33 @@ interface AccountAction {
      * Get Following Account
      * フォローしているユーザー情報を取得
      */
-    fun getFollowingUsers(id: Identify?, paging: Paging?): Pageable<User?>? {
-        throw NotImplimentedException()
+    fun followingUsers(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<User> {
+        throw NotImplementedException()
     }
 
     /**
      * Get Follower Account
      * フォローされているユーザー情報を取得
      */
-    fun getFollowerUsers(id: Identify?, paging: Paging?): Pageable<User?>? {
-        throw NotImplimentedException()
+    fun followerUsers(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<User> {
+        throw NotImplementedException()
     }
 
     /**
      * Search User Account
      * ユーザーアカウントを検索
      */
-    fun searchUsers(query: String?, paging: Paging?): Pageable<User?>? {
-        throw NotImplimentedException()
+    fun searchUsers(
+        query: String,
+        paging: Paging,
+    ): Pageable<User> {
+        throw NotImplementedException()
     }
 
     // ============================================================== //
@@ -134,48 +143,64 @@ interface AccountAction {
      * Get Home TimeLine
      * ホームタイムラインを取得
      */
-    fun getHomeTimeLine(paging: Paging?): Pageable<Comment?>? {
-        throw NotImplimentedException()
+    fun homeTimeLine(
+        paging: Paging,
+    ): Pageable<Comment> {
+        throw NotImplementedException()
     }
 
     /**
      * Get Mention TimeLine
      * メンションタイムラインを取得
      */
-    fun getMentionTimeLine(paging: Paging?): Pageable<Comment?>? {
-        throw NotImplimentedException()
+    fun mentionTimeLine(
+        paging: Paging,
+    ): Pageable<Comment> {
+        throw NotImplementedException()
     }
 
     /**
      * Get User Comment TimeLine
      * ユーザーの投稿したコメントのタイムラインを取得
      */
-    fun getUserCommentTimeLine(id: Identify?, paging: Paging?): Pageable<Comment?>? {
-        throw NotImplimentedException()
+    fun userCommentTimeLine(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<Comment> {
+        throw NotImplementedException()
     }
 
     /**
      * Get User Like TimeLine
      * ユーザーのイイネしたコメントのタイムラインを取得
      */
-    fun getUserLikeTimeLine(id: Identify?, paging: Paging?): Pageable<Comment?>? {
-        throw NotImplimentedException()
+    fun userLikeTimeLine(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<Comment> {
+        throw NotImplementedException()
     }
 
     /**
      * Get User Media TimeLine
      * ユーザーのメディア一覧を取得
      */
-    fun getUserMediaTimeLine(id: Identify?, paging: Paging?): Pageable<Comment?>? {
-        throw NotImplimentedException()
+    fun userMediaTimeLine(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<Comment> {
+        throw NotImplementedException()
     }
 
     /**
      * Get Search TimeLine
      * 検索タイムラインを取得
      */
-    fun getSearchTimeLine(query: String?, paging: Paging?): Pageable<Comment?>? {
-        throw NotImplimentedException()
+    fun searchTimeLine(
+        query: String,
+        paging: Paging,
+    ): Pageable<Comment> {
+        throw NotImplementedException()
     }
 
     // ============================================================== //
@@ -186,24 +211,30 @@ interface AccountAction {
      * Post Comment
      * コメントを作成
      */
-    fun postComment(req: CommentForm?) {
-        throw NotImplimentedException()
+    fun postComment(
+        req: CommentForm
+    ) {
+        throw NotImplementedException()
     }
 
     /**
      * Get Comment
      * コメントを取得
      */
-    fun getComment(id: Identify?): Comment {
-        throw NotImplimentedException()
+    fun comment(
+        id: Identify
+    ): Comment {
+        throw NotImplementedException()
     }
 
     /**
      * Get Comment from URL
      * URL からコメントを取得
      */
-    fun getComment(url: String?): Comment? {
-        throw NotImplimentedException()
+    fun comment(
+        url: String
+    ): Comment {
+        throw NotImplementedException()
     }
 
     /**
@@ -211,8 +242,10 @@ interface AccountAction {
      * コメントにたいしてイイねする
      * (Twitter Mastodon ではお気に入りをする)
      */
-    fun likeComment(id: Identify?) {
-        throw NotImplimentedException()
+    fun likeComment(
+        id: Identify
+    ) {
+        throw NotImplementedException()
     }
 
     /**
@@ -220,79 +253,90 @@ interface AccountAction {
      * コメントに対してのイイねを取り消す
      * (Twitter Mastodon ではお気に入りを消す)
      */
-    fun unlikeComment(id: Identify?) {
-        throw NotImplimentedException()
+    fun unlikeComment(
+        id: Identify
+    ) {
+        throw NotImplementedException()
     }
 
     /**
      * Share Comment
      * コメントをシェアする
      */
-    fun shareComment(id: Identify?) {
-        throw NotImplimentedException()
+    fun shareComment(
+        id: Identify
+    ) {
+        throw NotImplementedException()
     }
 
     /**
      * Unshare Comment
      * コメントのシェアを取り消す
      */
-    fun unshareComment(id: Identify?) {
-        throw NotImplimentedException()
+    fun unshareComment(
+        id: Identify
+    ) {
+        throw NotImplementedException()
     }
 
     /**
      * Reaction Comment
      * リアクションする
      */
-    fun reactionComment(id: Identify?, reaction: String?) {
-        throw NotImplimentedException()
+    fun reactionComment(
+        id: Identify,
+        reaction: String,
+    ) {
+        throw NotImplementedException()
     }
 
     /**
      * UnReaction Comment
      * リアクションを取り消す
      */
-    fun unreactionComment(id: Identify?, reaction: String?) {
-        throw NotImplimentedException()
+    fun unreactionComment(
+        id: Identify,
+        reaction: String,
+    ) {
+        throw NotImplementedException()
     }
 
     /**
      * Delete Comment
      * 自分のコメントを削除
      */
-    fun deleteComment(id: Identify?) {
-        throw NotImplimentedException()
+    fun deleteComment(
+        id: Identify
+    ) {
+        throw NotImplementedException()
     }
 
     /**
-     * Get Comment Context
+     * Get Comment Contexts
      * コメントについて前後の会話を取得
      */
-    fun getCommentContext(id: Identify?): Context {
-        throw NotImplimentedException()
+    fun commentContexts(
+        id: Identify
+    ): Context {
+        throw NotImplementedException()
     }
 
-    val emojis: List<Emoji?>?
-        /**
-         * Get Emojis
-         * 絵文字一覧を取得
-         */
-        get() {
-            val emojis: MutableList<Emoji> = java.util.ArrayList<Emoji>()
+    /**
+     * Get Emojis
+     * 絵文字一覧を取得
+     */
+    fun emojis(): List<Emoji> {
+        val emojis = mutableListOf<Emoji>()
 
-            for (emoji in EmojiType.entries) {
-                emojis.add(Emoji.fromEmojiType(emoji))
-            }
-            for (emoji in EmojiVariationType.entries) {
-                emojis.add(Emoji.fromEmojiVariationType(emoji))
-            }
-
-            return emojis.stream().sorted(java.util.Comparator<Emoji> { a: Emoji, b: Emoji ->
-                val v1 = (if (a.frequentLevel != null) a.frequentLevel else Int.MAX_VALUE)
-                val v2 = (if (b.frequentLevel != null) b.frequentLevel else Int.MAX_VALUE)
-                v1!!.compareTo(v2!!)
-            }).collect<List<Emoji>, Any>(java.util.stream.Collectors.toList<Emoji>())
+        for (emoji in EmojiType.entries) {
+            emojis.add(Emoji.fromEmojiType(emoji))
         }
+        for (emoji in EmojiVariationType.entries) {
+            emojis.add(Emoji.fromEmojiVariationType(emoji))
+        }
+
+        return emojis.sortedBy { it.frequentLevel ?: Int.MAX_VALUE }
+    }
 
     // ============================================================== //
     // Channel (List) API
@@ -302,24 +346,33 @@ interface AccountAction {
      * Get Channels (or Owned Lists)
      * 自分の閲覧可能なチャンネルを取得
      */
-    fun getChannels(id: Identify?, paging: Paging?): Pageable<Channel?>? {
-        throw NotImplimentedException()
+    fun channels(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<Channel> {
+        throw NotImplementedException()
     }
 
     /**
      * Get Channels Comments
      * チャンネルでの発言を取得
      */
-    fun getChannelTimeLine(id: Identify?, paging: Paging?): Pageable<Comment?>? {
-        throw NotImplimentedException()
+    fun channelTimeLine(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<Comment> {
+        throw NotImplementedException()
     }
 
     /**
      * Get Channels Users
      * チャンネルのユーザーを取得
      */
-    fun getChannelUsers(id: Identify?, paging: Paging?): Pageable<User?>? {
-        throw NotImplimentedException()
+    fun channelUsers(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<User> {
+        throw NotImplementedException()
     }
 
     // ============================================================== //
@@ -330,24 +383,31 @@ interface AccountAction {
      * Get Message Thread
      * メッセージスレッドを取得
      */
-    fun getMessageThread(paging: Paging?): Pageable<Thread?>? {
-        throw NotImplimentedException()
+    fun messageThread(
+        paging: Paging,
+    ): Pageable<Thread> {
+        throw NotImplementedException()
     }
 
     /**
      * Get Message Thread Comments
      * メッセージスレッドの内容を取得
      */
-    fun getMessageTimeLine(id: Identify?, paging: Paging?): Pageable<Comment?>? {
-        throw NotImplimentedException()
+    fun messageTimeLine(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<Comment> {
+        throw NotImplementedException()
     }
 
     /**
      * Post Message to Thread
      * メッセージを送信
      */
-    fun postMessage(req: CommentForm?) {
-        throw NotImplimentedException()
+    fun postMessage(
+        req: CommentForm
+    ) {
+        throw NotImplementedException()
     }
 
     // ============================================================== //
@@ -357,16 +417,20 @@ interface AccountAction {
      * Set Home TimeLine Stream
      * ホームタイムラインのストリームイベントを設定
      */
-    fun setHomeTimeLineStream(callback: EventCallback?): Stream? {
-        throw NotImplimentedException()
+    fun setHomeTimeLineStream(
+        callback: EventCallback
+    ): Stream {
+        throw NotImplementedException()
     }
 
     /**
      * Set Notification Stream
      * 通知のストリームイベントを設定
      */
-    fun setNotificationStream(callback: EventCallback?): Stream? {
-        throw NotImplimentedException()
+    fun setNotificationStream(
+        callback: EventCallback
+    ): Stream {
+        throw NotImplementedException()
     }
 
     // ============================================================== //
@@ -376,40 +440,7 @@ interface AccountAction {
      * Get Request Objects
      * リクエストアクションを取得
      */
-    fun request(): RequestAction? {
-        throw NotImplimentedException()
-    }
-
-    // ============================================================== //
-    // Alias
-    // エイリアス
-    // ============================================================== //
-    /**
-     * Like <-> Favorite
-     */
-    fun favoriteComment(id: Identify?) {
-        likeComment(id)
-    }
-
-    fun unfavoriteComment(id: Identify?) {
-        unlikeComment(id)
-    }
-
-    /**
-     * Share <-> Retweet
-     */
-    fun retweetComment(id: Identify?) {
-        shareComment(id)
-    }
-
-    fun unretweetComment(id: Identify?) {
-        unshareComment(id)
-    }
-
-    /**
-     * Channel <-> List
-     */
-    fun getLists(id: Identify?, paging: Paging?): Pageable<Channel?>? {
-        return getChannels(id, paging)
+    fun request(): RequestAction {
+        throw NotImplementedException()
     }
 }

@@ -1,13 +1,11 @@
 package work.socialhub.planetlink.action.request
 
-import net.socialhub.planetlink.action.RequestActionImpl.SerializeBuilder
-import work.socialhub.planetlink.action.callback.EventCallback
-import work.socialhub.planetlink.model.Pageable
-import work.socialhub.planetlink.model.Paging
-import work.socialhub.planetlink.model.Request
-import work.socialhub.planetlink.model.Stream
+import kotlinx.serialization.encodeToString
 import net.socialhub.planetlink.model.request.CommentForm
-import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.action.RequestActionImpl.SerializedRequest
+import work.socialhub.planetlink.action.callback.EventCallback
+import work.socialhub.planetlink.model.*
+import work.socialhub.planetlink.utils.SerializeUtil
 
 interface CommentsRequest : Request {
 
@@ -39,11 +37,15 @@ interface CommentsRequest : Request {
      * To Serialized String
      * シリアライズ化された文字列を取得
      */
-    fun toSerializedString(): String?
+    fun toSerializedString(): String? {
+        return serializedRequest?.let {
+            SerializeUtil.json.encodeToString(it)
+        }
+    }
 
     /**
-     * Get Serialize Builder
+     * Get Serialized Request
      * シリアライズビルダーの取得
      */
-    val serializeBuilder: SerializeBuilder?
+    val serializedRequest: SerializedRequest?
 }

@@ -1,8 +1,8 @@
 package work.socialhub.planetlink.action.group
 
 import work.socialhub.planetlink.action.request.CommentsRequest
-import net.socialhub.planetlink.model.group.AccountGroup
-import net.socialhub.planetlink.model.group.CommentGroup
+import work.socialhub.planetlink.model.group.AccountGroup
+import work.socialhub.planetlink.model.group.CommentGroup
 import net.socialhub.planetlink.model.group.UserGroup
 import work.socialhub.planetlink.model.group.UserGroupImpl
 import work.socialhub.planetlink.model.User

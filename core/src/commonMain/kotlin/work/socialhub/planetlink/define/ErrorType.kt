@@ -1,6 +1,6 @@
 package work.socialhub.planetlink.define
 
-import net.socialhub.planetlink.model.error.SocialHubError
+import work.socialhub.planetlink.model.error.SocialHubError
 
 /**
  * Special Error for fur

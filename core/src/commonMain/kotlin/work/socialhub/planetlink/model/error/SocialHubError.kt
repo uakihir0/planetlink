@@ -1,4 +1,4 @@
-package net.socialhub.planetlink.model.error
+package work.socialhub.planetlink.model.error
 
 import work.socialhub.planetlink.define.LanguageType
 
