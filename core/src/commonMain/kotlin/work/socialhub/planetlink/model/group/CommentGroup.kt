@@ -26,7 +26,7 @@ interface CommentGroup {
      * (Return Comments by Created Date DESC)
      * 順序が決定している部分までコメントを取得
      */
-    val comments: Pageable<Comment>
+    fun comments(): Pageable<Comment>
 
     /**
      * Get MaxDate for Paging Request

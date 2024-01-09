@@ -1,66 +1,64 @@
-package net.socialhub.planetlink.model.group
+package work.socialhub.planetlink.model.group
 
+import kotlinx.datetime.Instant
+import net.socialhub.planetlink.model.group.CommentsRequestGroup
 import work.socialhub.planetlink.action.group.CommentGroupAction
+import work.socialhub.planetlink.action.group.CommentGroupActionImpl
 import work.socialhub.planetlink.action.request.CommentsRequest
+import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Instance
 import work.socialhub.planetlink.model.Pageable
-import work.socialhub.planetlink.model.Comment
-import work.socialhub.planetlink.model.group.CommentGroup
+import work.socialhub.planetlink.model.Paging
 
 /**
  * Whole Accounts Comments
  */
 class CommentGroupImpl(
     /** Comments Request Group  */
-    var requestGroup: CommentsRequestGroup,
+    override var requestGroup: CommentsRequestGroup,
 ) : CommentGroup {
 
     /** Entity of Comments related to Request  */
     override var entities = mutableMapOf<CommentsRequest, Pageable<Comment>>()
 
     /** Max Date (include)  */
-    override var maxDate: java.util.Date? = null
+    override var maxDate: Instant? = null
 
     /** Since Date (not include)  */
-    override var sinceDate: java.util.Date? = null
+    override var sinceDate: Instant? = null
 
-    override val comments: Pageable<Comment?>?
-        /**
-         * {@inheritDoc}
-         */
-        get() {
-            var stream: java.util.stream.Stream<Comment?> = entities!!.values.stream() //
-                .flatMap<Comment>(java.util.function.Function<Pageable<Comment>, java.util.stream.Stream<out Comment>> { e: Pageable<Comment?> ->
-                    e.getEntities().stream()
-                })
+    /**
+     * {@inheritDoc}
+     */
+    override fun comments(): Pageable<Comment> {
+        var stream = entities!!.values.flatMap { it.entities!! }
 
-            val size: Long = entities!!.values.stream()
-                .filter(java.util.function.Predicate<Pageable<Comment>> { e: Pageable<Comment?> -> (e.getPaging() != null) })
-                .map<Long>(java.util.function.Function<Pageable<Comment>, Long> { e: Pageable<Comment?> -> e.getPaging()!!.count })
-                .min(java.util.Comparator<Long> { obj: Long, anotherLong: Long? ->
-                    obj.compareTo(
-                        anotherLong!!
-                    )
-                }).orElse(0L)
+        val size = entities!!.values
+            .filter { it.paging != null }
+            .map { it.paging!!.count }
+            .minBy { it!! }
 
-            if (maxDate != null) {
-                stream =
-                    stream.filter(java.util.function.Predicate<Comment> { e: Comment -> e.createAt.getTime() <= maxDate.getTime() })
+        if (maxDate != null) {
+            stream = stream.filter {
+                it.createAt!!.toEpochMilliseconds() <= maxDate!!.toEpochMilliseconds()
             }
-            if (sinceDate != null) {
-                stream =
-                    stream.filter(java.util.function.Predicate<Comment> { e: Comment -> e.createAt.getTime() > sinceDate.getTime() })
-            }
-
-            stream = stream.sorted(java.util.Comparator.comparing(Comment::createAt).reversed())
-            val comments: List<Comment> =
-                stream.collect<List<Comment>, Any>(java.util.stream.Collectors.toList<Comment>())
-            val result = Pageable<Comment>()
-
-            result.setEntities(comments)
-            result.setPaging(Paging(size))
-            return result
         }
+        if (sinceDate != null) {
+            stream = stream.filter {
+                it.createAt!!.toEpochMilliseconds() > sinceDate!!.toEpochMilliseconds()
+            }
+        }
+
+        stream = stream
+            .sortedBy { it.createAt!!.toEpochMilliseconds() }
+            .reversed()
+
+        val result = Pageable<Comment>()
+
+        result.setEntities(stream)
+        result.setPaging(Paging(size))
+        return result
+    }
 
     /**
      * Marge Prev Comments when New Request
@@ -146,26 +144,19 @@ class CommentGroupImpl(
      * SinceDate の計算
      */
     fun setSinceDateFromEntities() {
-        sinceDate = entities!!.values.stream() //
-            .filter(java.util.function.Predicate<Pageable<Comment>> { e: Pageable<Comment?> -> e.getEntities() != null }) //
-            .filter(java.util.function.Predicate<Pageable<Comment>> { e: Pageable<Comment?> ->
-                !e.getEntities()!!
-                    .isEmpty()
-            }) //
-            .map<Comment>(java.util.function.Function<Pageable<Comment>, Comment> { e: Pageable<Comment?> -> e.getEntities()!![e.getEntities()!!.size - 1] }) //
-            .map<Instance>(Comment::createAt) //
-            // 各リクエストの中で最も SinceDate が過去ものを取得
 
-            .max(java.util.Comparator<Instance> { obj: java.util.Date, anotherDate: java.util.Date? ->
-                obj.compareTo(
-                    anotherDate
-                )
-            }) //
-            .orElse(null) //
+        // 各リクエストの中で最も SinceDate が過去ものを取得
+        sinceDate = entities!!.values
+            .filter { it.entities != null }
+            .filter { it.entities!!.isNotEmpty() } //
+            .map { it.entities!![it.entities!!.size - 1] } //
+            .map { it.createAt }
+            .maxBy { it!!.toEpochMilliseconds() }
 
         // -1ms (for not include)
         if (sinceDate != null) {
-            sinceDate = java.util.Date(sinceDate.getTime() - 1)
+            val mSec = sinceDate.toEpochMilliseconds() - 1
+            sinceDate = Instant.fromEpochMilliseconds(mSec)
         }
     }
 
@@ -174,7 +165,7 @@ class CommentGroupImpl(
     }
 
     fun setNewestComment(comment: Comment) {
-        setMaxDate(comment.createAt)
+        maxDate = comment.createAt
 
         // リクエストが単数の場合
         // -> ページネーションにも通知
@@ -185,7 +176,7 @@ class CommentGroupImpl(
     }
 
     fun setOldestComment(comment: Comment) {
-        setSinceDate(comment.createAt)
+        sinceDate = comment.createAt
 
         // リクエストが単数の場合
         // -> ページネーションにも通知
@@ -194,28 +185,4 @@ class CommentGroupImpl(
             entity.setOldestIdentify(comment)
         }
     }
-
-    fun getEntities(): Map<CommentsRequest, Pageable<Comment>>? {
-        return entities
-    }
-
-    fun setEntities(entities: Map<CommentsRequest, Pageable<Comment>>?) {
-        this.entities = entities
-    }
-
-    fun getMaxDate(): java.util.Date? {
-        return maxDate
-    }
-
-    fun setMaxDate(maxDate: java.util.Date?) {
-        this.maxDate = maxDate
-    }
-
-    fun getSinceDate(): java.util.Date? {
-        return sinceDate
-    }
-
-    fun setSinceDate(sinceDate: java.util.Date?) {
-        this.sinceDate = sinceDate
-    } //endregion
 }

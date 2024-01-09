@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.model
 
+import kotlinx.datetime.Instant
 import work.socialhub.planetlink.action.CommentAction
 import work.socialhub.planetlink.action.CommentActionImpl
 import work.socialhub.planetlink.model.common.AttributedString
@@ -17,7 +18,7 @@ class Comment(
     var text: AttributedString? = null
 
     /** Date of text created  */
-    var createAt: Instance? = null
+    var createAt: Instant? = null
 
     /** User who create this text  */
     var user: User? = null
