@@ -1,7 +1,7 @@
 package work.socialhub.planetlink.action.group
 
 import work.socialhub.planetlink.model.group.CommentGroup
-import net.socialhub.planetlink.model.group.UserGroup
+import work.socialhub.planetlink.model.group.UserGroup
 
 interface AccountGroupAction {
 

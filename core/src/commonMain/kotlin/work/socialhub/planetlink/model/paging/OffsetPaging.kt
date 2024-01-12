@@ -1,19 +1,18 @@
-package net.socialhub.planetlink.model.paging
+package work.socialhub.planetlink.model.paging
 
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
-import work.socialhub.planetlink.model.Paging.copyTo
-import work.socialhub.planetlink.model.Paging.count
 
 class OffsetPaging : Paging() {
-    //endregion
-    //region // Getter&Setter
+
     var offset: Long? = null
 
     /**
      * {@inheritDoc}
      */
-    override fun <T : Identify?> newPage(entities: List<T>?): Paging {
+    override fun <T : Identify> newPage(
+        entities: List<T>
+    ): Paging {
         val pg = copy()
         pg.offset = 0L
         return pg
@@ -22,10 +21,12 @@ class OffsetPaging : Paging() {
     /**
      * {@inheritDoc}
      */
-    fun <T : Identify?> pastPage(entities: List<T>): Paging {
+    override fun <T : Identify> pastPage(
+        entities: List<T>
+    ): Paging {
         val pg = copy()
 
-        if (entities.size > 0) {
+        if (entities.isNotEmpty()) {
             val count = entities.size.toLong()
             if (pg.offset == null) {
                 pg.offset = 0L
@@ -53,7 +54,7 @@ class OffsetPaging : Paging() {
          */
         fun fromPaging(paging: Paging?): OffsetPaging {
             if (paging is OffsetPaging) {
-                return (paging as OffsetPaging).copy()
+                return paging.copy()
             }
 
             // Count の取得

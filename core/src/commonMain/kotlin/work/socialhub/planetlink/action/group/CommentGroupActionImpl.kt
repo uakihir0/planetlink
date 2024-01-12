@@ -1,10 +1,13 @@
 package work.socialhub.planetlink.action.group
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
 import work.socialhub.planetlink.action.request.CommentsRequest
-import work.socialhub.planetlink.model.group.CommentGroup
-import work.socialhub.planetlink.model.group.CommentGroupImpl
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Pageable
+import work.socialhub.planetlink.model.group.CommentGroup
+import work.socialhub.planetlink.model.group.CommentGroupImpl
 
 /**
  * Actions for Comment Group
@@ -18,75 +21,41 @@ class CommentGroupActionImpl(
      * {@inheritDoc}
      */
     override fun newComments(): CommentGroup {
-        val model: CommentGroupImpl = CommentGroupImpl()
-        val pool: ExecutorService = Executors.newCachedThreadPool()
+        val entities = mutableMapOf<CommentsRequest, Pageable<Comment>>()
 
-        val futures: Map<CommentsRequest, java.util.concurrent.Future<Pageable<Comment>>> =
-            commentGroup.getEntities().entries.stream()
-                .collect<Map<CommentsRequest, java.util.concurrent.Future<Pageable<Comment>>>, Any>(
-                    java.util.stream.Collectors.toMap<Any, Any, Any>(
-                        java.util.function.Function<Any, Any> { java.util.Map.Entry.key },
-                        java.util.function.Function<Any, Any> { entry: Map.Entry<error.NonExistentClass, Pageable<Comment?>> ->
-                            pool.submit(
-                                java.util.concurrent.Callable<T> {
-                                    val paging: Paging? = entry.value.newPage()
-                                    entry.key.getComments(paging)
-                                })
-                        })
-                )
+        runBlocking {
+            commentGroup.entities.entries.map { (k, v) ->
+                async { entities[k] = k.comments(v.newPage()) }
+            }.awaitAll()
+        }
 
-        val entities: Map<CommentsRequest, Pageable<Comment>> = futures
-            .entries.stream().collect<Map<CommentsRequest, Pageable<Comment>>, Any>(
-                java.util.stream.Collectors.toMap<Any, Any, Any>(
-                    java.util.function.Function<Any, Any> { java.util.Map.Entry.key },
-                    java.util.function.Function<Any, Any> { entry: Map.Entry<CommentsRequest?, java.util.concurrent.Future<Pageable<Comment?>?>> ->
-                        HandlingUtil.runtime(
-                            kotlin.jvm.functions.Function0<out T?> { entry.value.get() })
-                    })
-            )
-
-        model.setEntities(entities)
-        model.setMaxDateFromEntities()
-        model.margeWhenNewPageRequest(commentGroup)
-        model.requestGroup = commentGroup.requestGroup
-        return model
+        return CommentGroupImpl(
+            commentGroup.requestGroup
+        ).also {
+            it.entities.putAll(entities)
+            it.setMaxDateFromEntities()
+            it.margeWhenNewPageRequest(commentGroup)
+        }
     }
 
     /**
      * {@inheritDoc}
      */
     override fun pastComments(): CommentGroup {
-        val model: CommentGroupImpl = CommentGroupImpl()
-        val pool: ExecutorService = Executors.newCachedThreadPool()
+        val entities = mutableMapOf<CommentsRequest, Pageable<Comment>>()
 
-        val futures: Map<CommentsRequest, java.util.concurrent.Future<Pageable<Comment>>> =
-            commentGroup.getEntities().entries.stream()
-                .collect<Map<CommentsRequest, java.util.concurrent.Future<Pageable<Comment>>>, Any>(
-                    java.util.stream.Collectors.toMap<Any, Any, Any>(
-                        java.util.function.Function<Any, Any> { java.util.Map.Entry.key },
-                        java.util.function.Function<Any, Any> { entry: Map.Entry<error.NonExistentClass, Pageable<Comment?>> ->
-                            pool.submit(
-                                java.util.concurrent.Callable<T> {
-                                    val paging: Paging? = entry.value.pastPage()
-                                    entry.key.getComments(paging)
-                                })
-                        })
-                )
+        runBlocking {
+            commentGroup.entities.entries.map { (k, v) ->
+                async { entities[k] = k.comments(v.pastPage()) }
+            }.awaitAll()
+        }
 
-        val entities: Map<CommentsRequest, Pageable<Comment>> = futures
-            .entries.stream().collect<Map<CommentsRequest, Pageable<Comment>>, Any>(
-                java.util.stream.Collectors.toMap<Any, Any, Any>(
-                    java.util.function.Function<Any, Any> { java.util.Map.Entry.key },
-                    java.util.function.Function<Any, Any> { entry: Map.Entry<CommentsRequest?, java.util.concurrent.Future<Pageable<Comment?>?>> ->
-                        HandlingUtil.runtime(
-                            kotlin.jvm.functions.Function0<out T?> { entry.value.get() })
-                    })
-            )
-
-        model.setEntities(entities)
-        model.setSinceDateFromEntities()
-        model.margeWhenPastPageRequest(commentGroup)
-        model.requestGroup = commentGroup.requestGroup
-        return model
+        return CommentGroupImpl(
+            commentGroup.requestGroup
+        ).also {
+            it.entities.putAll(entities)
+            it.setSinceDateFromEntities()
+            it.margeWhenPastPageRequest(commentGroup)
+        }
     }
 }

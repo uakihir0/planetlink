@@ -5,7 +5,7 @@ import work.socialhub.planetlink.action.CommentAction
 import work.socialhub.planetlink.action.CommentActionImpl
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.model.error.NotImplementedException
-import net.socialhub.planetlink.model.request.CommentForm
+import work.socialhub.planetlink.model.request.CommentForm
 
 /**
  * SNS コメント情報
@@ -64,8 +64,9 @@ class Comment(
      * Apply reaction to comment
      * (like, share, :+1:, and so on)
      */
-    fun applyReaction(reaction: Reaction?) {
-        // TODO: implement
+    @Suppress("UNUSED_PARAMETER")
+    fun applyReaction(reaction: Reaction) {
+        throw NotImplementedException()
     }
 
     /**
@@ -73,7 +74,7 @@ class Comment(
      */
     fun action(): CommentAction {
         val action = service.account.action
-        return CommentActionImpl(action).comment(this)
+        return CommentActionImpl(action, this)
     }
 
     /**

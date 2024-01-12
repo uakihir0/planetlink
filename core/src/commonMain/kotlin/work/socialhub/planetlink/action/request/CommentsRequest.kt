@@ -1,7 +1,7 @@
 package work.socialhub.planetlink.action.request
 
 import kotlinx.serialization.encodeToString
-import net.socialhub.planetlink.model.request.CommentForm
+import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.action.RequestActionImpl.SerializedRequest
 import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.model.*

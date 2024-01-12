@@ -1,40 +1,41 @@
-package net.socialhub.planetlink.model.paging
+package work.socialhub.planetlink.model.paging
 
+import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
-import work.socialhub.planetlink.model.Paging.copyTo
-import work.socialhub.planetlink.model.Paging.count
 
 /**
  * ID の開始と終了を指定するページング
  * (start,end の片方のみを指定する)
  */
-class RangePaging<T> : Paging() {
-    // region
+class RangePaging(
+    count: Int? = null,
+) : Paging(count) {
+
     /** 開始 ID  */
-    var start: T? = null
-    var startHint: T? = null
+    var start: ID? = null
+    var startHint: ID? = null
 
     /** 終了 ID  */
-    var end: T? = null
-
-    // endregion
-    var endHint: T? = null
+    var end: ID? = null
+    var endHint: ID? = null
 
     /**
      * {@inheritDoc}
      */
-    fun <J : Identify?> newPage(entities: List<J>): Paging {
+    override fun <J : Identify> newPage(
+        entities: List<J>
+    ): Paging {
         val pg = copy()
 
-        if (entities.size > 0) {
+        if (entities.isNotEmpty()) {
             if (endHint != null) {
                 pg.end = endHint
                 pg.start = null
                 return pg.clearHint()
             }
 
-            pg.end = entities[0]!!.id as T?
+            pg.end = entities[0].id
             pg.start = null
             return pg.clearHint()
         }
@@ -45,10 +46,12 @@ class RangePaging<T> : Paging() {
     /**
      * {@inheritDoc}
      */
-    fun <J : Identify?> pastPage(entities: List<J>): Paging {
+    override fun <J : Identify> pastPage(
+        entities: List<J>
+    ): Paging {
         val pg = copy()
 
-        if (entities.size > 0) {
+        if (entities.isNotEmpty()) {
             if (startHint != null) {
                 pg.start = startHint
                 pg.end = null
@@ -56,7 +59,7 @@ class RangePaging<T> : Paging() {
             }
 
             val len = entities.size
-            pg.start = entities[len - 1]!!.id as T?
+            pg.start = entities[len - 1].id
             pg.end = null
             return pg.clearHint()
         }
@@ -67,33 +70,34 @@ class RangePaging<T> : Paging() {
     /**
      * オブジェクトコピー
      */
-    override fun copy(): RangePaging<T?> {
-        val pg: RangePaging<T?> = RangePaging<Any?>()
-        pg.start = start
-        pg.startHint = startHint
-        pg.end = end
-        pg.endHint = endHint
-        copyTo(pg)
-        return pg
+    override fun copy(): RangePaging {
+        return RangePaging().also {
+            it.start = start
+            it.startHint = startHint
+            it.end = end
+            it.endHint = endHint
+            copyTo(it)
+        }
     }
 
-    fun clearHint(): RangePaging<T> {
+    private fun clearHint(): RangePaging {
         startHint = null
         endHint = null
         return this
     }
 
+
     companion object {
         /**
          * From Paging instance
          */
-        fun <T> fromPaging(paging: Paging?): RangePaging<T> {
-            if (paging is RangePaging<*>) {
-                return (paging as RangePaging<T>).copy()
+        fun <T> fromPaging(paging: Paging?): RangePaging {
+            if (paging is RangePaging) {
+                return paging.copy()
             }
 
             // Count の取得
-            val pg: RangePaging<T> = RangePaging<Any>()
+            val pg = RangePaging()
             if ((paging != null) && (paging.count != null)) {
                 pg.count = paging.count
             }

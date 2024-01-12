@@ -1,34 +1,34 @@
-package net.socialhub.planetlink.model.group
+package work.socialhub.planetlink.model.group
 
 import work.socialhub.planetlink.action.group.UsersRequestGroupAction
+import work.socialhub.planetlink.action.request.UsersRequest
 
 interface UsersRequestGroup {
+
+    val requests: MutableList<UsersRequest>
+
     /**
      * Add Users Request
      */
-    fun addUsersRequests(request: UsersRequest?)
+    fun addUsersRequests(request: UsersRequest)
 
     /**
      * Add Users Requests
      */
-    fun addUsersRequests(vararg requests: UsersRequest?)
-
-    @get:Nonnull
-    val requests: List<Any?>?
+    fun addUsersRequests(vararg requests: UsersRequest)
 
     /**
      * Get Action
      */
-    @Nonnull
-    fun action(): UsersRequestGroupAction?
+    fun action(): UsersRequestGroupAction
 
     companion object {
-        fun of(): UsersRequestGroup? {
+        fun of(): UsersRequestGroup {
             return UsersRequestGroupImpl()
         }
 
-        fun of(vararg requests: UsersRequest?): UsersRequestGroup? {
-            return UsersRequestGroupImpl(requests)
+        fun of(vararg requests: UsersRequest): UsersRequestGroup {
+            return UsersRequestGroupImpl(*requests)
         }
     }
 }

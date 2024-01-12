@@ -1,6 +1,6 @@
 package work.socialhub.planetlink.model
 
-import net.socialhub.planetlink.model.paging.*
+import work.socialhub.planetlink.model.paging.*
 
 /**
  * Paging
@@ -13,13 +13,13 @@ import net.socialhub.planetlink.model.paging.*
  * @see IndexPaging
  * @see OffsetPaging
  */
-class Paging(
+open class Paging(
     var count: Int? = null,
 ) {
     var isHasNew: Boolean = true
     var isHasPast: Boolean = true
 
-    fun copy() =
+    open fun copy() =
         Paging().also {
             it.count = count
             it.isHasNew = isHasNew
@@ -39,10 +39,10 @@ class Paging(
      * @param entities DataList it's ordered by created date time for desc.
      * 算出するデータリスト、先頭から最新の ID になっている想定
      */
-    fun <T : Identify?> newPage(
-        entities: List<T>?
-    ): Paging? {
-        return null
+    open fun <T : Identify> newPage(
+        entities: List<T>
+    ): Paging {
+        throw NotImplementedError()
     }
 
     /**
@@ -52,19 +52,19 @@ class Paging(
      * @param entities DataList it's ordered by created date time for desc.
      * 算出するデータリスト、先頭から最新の ID になっている想定
      */
-    fun <T : Identify?> pastPage(
-        entities: List<T>?
-    ): Paging? {
-        return null
+    open fun <T : Identify> pastPage(
+        entities: List<T>
+    ): Paging {
+        throw NotImplementedError()
     }
 
     /**
      * Alias
      * New <-> Prev
      */
-    fun <T : Identify?> prevPage(
-        entities: List<T>?
-    ): Paging? {
+    fun <T : Identify> prevPage(
+        entities: List<T>
+    ): Paging {
         return newPage(entities)
     }
 
@@ -72,9 +72,9 @@ class Paging(
      * Alias
      * Past <-> Next
      */
-    fun <T : Identify?> nextPage(
-        entities: List<T>?
-    ): Paging? {
+    fun <T : Identify> nextPage(
+        entities: List<T>
+    ): Paging {
         return pastPage(entities)
     }
 
@@ -82,11 +82,11 @@ class Paging(
      * Set mark as paging end
      * ページの終端をマークする
      */
-    fun setMarkPagingEnd(
-        entities: List<*>?
+    open fun setMarkPagingEnd(
+        entities: List<*>
     ) {
         if (isHasPast
-            && entities!!.isEmpty()
+            && entities.isEmpty()
             && (count!! > 0)
         ) {
             isHasPast = false

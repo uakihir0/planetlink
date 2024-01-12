@@ -1,18 +1,17 @@
-package net.socialhub.planetlink.model.paging
+package work.socialhub.planetlink.model.paging
 
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
-import work.socialhub.planetlink.model.Paging.copyTo
-import work.socialhub.planetlink.model.Paging.count
-import work.socialhub.planetlink.model.Paging.isHasPast
 
 /**
  * Paging with max and since
  * Max Since 管理のページング
- * (Twitter, Mastodon etc)
+ * (Twitter, Mastodon etc.)
  */
-class BorderPaging : Paging() {
-    //region // Getter&Setter
+class BorderPaging(
+    count: Int? = null,
+) : Paging(count) {
+
     /** Max Id  */
     var maxId: Long? = null
     var maxInclude: Boolean = true
@@ -21,7 +20,6 @@ class BorderPaging : Paging() {
     var sinceId: Long? = null
     var sinceInclude: Boolean = false
 
-    //endregion
     /** Hint to next paging  */
     var hintNewer: Boolean = false
 
@@ -36,7 +34,9 @@ class BorderPaging : Paging() {
     /**
      * {@inheritDoc}
      */
-    override fun <T : Identify?> newPage(entities: List<T>?): Paging {
+    override fun <T : Identify> newPage(
+        entities: List<T>
+    ): Paging {
         val newPage = BorderPaging()
         newPage.sinceInclude = sinceInclude
         newPage.maxInclude = maxInclude
@@ -44,9 +44,9 @@ class BorderPaging : Paging() {
         newPage.count = count
         newPage.hintNewer = true
 
-        if (entities != null && !entities.isEmpty()) {
+        if (entities.isNotEmpty()) {
             val offset = if (sinceInclude) 1L else 0L
-            val id = parseNumber(entities[0]!!.id)
+            val id = parseNumber(entities[0].id)
             newPage.sinceId = id + (offset * idUnit)
             return newPage
 
@@ -76,17 +76,19 @@ class BorderPaging : Paging() {
     /**
      * {@inheritDoc}
      */
-    override fun <T : Identify?> pastPage(entities: List<T>?): Paging {
+    override fun <T : Identify> pastPage(
+        entities: List<T>
+    ): Paging {
         val newPage = BorderPaging()
         newPage.sinceInclude = sinceInclude
         newPage.maxInclude = maxInclude
         newPage.idUnit = idUnit
         newPage.count = count
 
-        if (entities != null && !entities.isEmpty()) {
+        if (entities.isNotEmpty()) {
             val offset = if (maxInclude) -1L else 0L
             val last = entities[entities.size - 1]
-            val id = parseNumber(last!!.id)
+            val id = parseNumber(last.id)
             newPage.maxId = id + (offset * idUnit)
             return newPage
 
@@ -116,11 +118,13 @@ class BorderPaging : Paging() {
     /**
      * {@inheritDoc}
      */
-    override fun setMarkPagingEnd(entities: List<*>) {
+    override fun setMarkPagingEnd(
+        entities: List<*>
+    ) {
         if (isHasPast
             && entities.isEmpty()
             && (sinceId == null)
-            && (count > 0)
+            && (count!! > 0)
         ) {
             isHasPast = false
         }
@@ -134,9 +138,9 @@ class BorderPaging : Paging() {
             if (id is String) {
                 return id.toLong()
             }
-            throw java.lang.IllegalStateException("invalid format id: $id")
-        } catch (e: java.lang.Exception) {
-            throw java.lang.IllegalStateException("invalid format id: $id", e)
+            throw IllegalStateException("invalid format id: $id")
+        } catch (e: Exception) {
+            throw IllegalStateException("invalid format id: $id", e)
         }
     }
 
@@ -144,15 +148,15 @@ class BorderPaging : Paging() {
      * オブジェクトコピー
      */
     override fun copy(): BorderPaging {
-        val pg = BorderPaging()
-        pg.maxId = maxId
-        pg.sinceId = sinceId
-        pg.maxInclude = maxInclude
-        pg.sinceInclude = sinceInclude
-        pg.idUnit = idUnit
-        pg.hintNewer = hintNewer
-        copyTo(pg)
-        return pg
+        return BorderPaging().also {
+            it.maxId = maxId
+            it.sinceId = sinceId
+            it.maxInclude = maxInclude
+            it.sinceInclude = sinceInclude
+            it.hintNewer = hintNewer
+            it.idUnit = idUnit
+            copyTo(it)
+        }
     }
 
     companion object {
@@ -161,7 +165,7 @@ class BorderPaging : Paging() {
          */
         fun fromPaging(paging: Paging?): BorderPaging {
             if (paging is BorderPaging) {
-                return (paging as BorderPaging).copy()
+                return paging.copy()
             }
 
             // Count の取得

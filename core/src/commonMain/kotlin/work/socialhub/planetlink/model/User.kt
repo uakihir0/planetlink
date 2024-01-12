@@ -1,11 +1,11 @@
 package work.socialhub.planetlink.model
 
 import work.socialhub.planetlink.action.UserAction
-import net.socialhub.planetlink.action.UserActionImpl
+import work.socialhub.planetlink.action.UserActionImpl
+import work.socialhub.planetlink.model.common.AttributedFiled
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.model.error.NotImplementedException
-import net.socialhub.planetlink.model.request.CommentForm
-import work.socialhub.planetlink.model.common.AttributedFiled
+import work.socialhub.planetlink.model.request.CommentForm
 
 /**
  * SNS ユーザーモデル
@@ -39,7 +39,7 @@ class User(service: Service) : Identify(service) {
      */
     fun action(): UserAction {
         val action = service.account.action
-        return UserActionImpl(action).user(this)
+        return UserActionImpl(action, this)
     }
 
     /**

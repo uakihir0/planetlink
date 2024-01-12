@@ -12,15 +12,4 @@ object HandlingUtil {
             null
         }
     }
-
-    /**
-     * To Runtime Error
-     */
-    fun <T> runtime(supplier: () -> T): T {
-        try {
-            return supplier()
-        } catch (e: Exception) {
-            throw RuntimeException(e)
-        }
-    }
 }

@@ -1,7 +1,7 @@
 package work.socialhub.planetlink.action.request
 
 import work.socialhub.planetlink.model.error.NotSupportedException
-import net.socialhub.planetlink.model.request.CommentForm
+import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.action.RequestActionImpl.*
 import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.define.action.ActionType

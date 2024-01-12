@@ -1,77 +1,57 @@
-package net.socialhub.planetlink.model.request
+package work.socialhub.planetlink.model.request
 
 class CommentForm {
-    // ============================================================== //
-    // Fields
-    // ============================================================== //
-    // ============================================================== //
-    // Getters
-    // ============================================================== //
-    //region // Getter&Setter
+
     /** Text  */
     var text: String? = null
-        private set
 
     /** Warning  */
     var warning: String? = null
-        private set
 
     /** Reply or Thread ID  */
     var replyId: Any? = null
-        private set
 
     /** QuoteID  */
     var quoteId: Any? = null
-        private set
-
-    /** Images  */
-    private var images: MutableList<MediaForm>? = null
-
-    /** Is Sensitive Content?  */
-    var isSensitive: Boolean = false
-        private set
-
-    /** Is Message?  */
-    var isMessage: Boolean = false
-        private set
 
     /** Visibility  */
     var visibility: String? = null
-        private set
 
-    /** Poll  */
+    /** Is Sensitive Content?  */
+    var isSensitive: Boolean = false
+
+    /** Is Message?  */
+    var isMessage: Boolean = false
+
+    /** Poll */
     private var poll: PollForm? = null
 
-    /** Other params  */
-    private var params: MutableMap<String, Any?>? = null
+    /** Images */
+    private var images = mutableListOf<MediaForm>()
 
-    /** Copy this object  */
+    /** Other params */
+    private var params = mutableMapOf<String, Any>()
+
+    /** Copy this object */
     fun copy(): CommentForm {
-        val form = CommentForm()
-        form.text(text)
-        form.warning(warning)
-        form.replyId(replyId)
-        form.quoteId(quoteId)
-        form.sensitive(isSensitive)
-        form.message(isMessage)
-        form.visibility(visibility)
+        return CommentForm().also {
+            it.text(text)
+            it.warning(warning)
+            it.replyId(replyId)
+            it.quoteId(quoteId)
+            it.visibility(visibility)
+            it.isSensitive(isSensitive)
+            it.isMessage(isMessage)
 
-        if (images != null) {
-            for (image in images) {
-                form.addImage(image.copy())
+            images.forEach { img ->
+                it.addImage(img.copy())
+            }
+            params.forEach { (k, v) ->
+                it.addParam(k, v)
             }
         }
-        if (params != null) {
-            for (key in params!!.keys) {
-                form.param(key, params!![key])
-            }
-        }
-        return form
     }
 
-    // ============================================================== //
-    // Functions
-    // ============================================================== //
     /**
      * Set Text
      */
@@ -105,40 +85,32 @@ class CommentForm {
     }
 
     /**
-     * Add One Image
+     * Add One File
      */
-    fun addImage(image: ByteArray?, name: String?): CommentForm {
-        val req: MediaForm = MediaForm()
-        req.setData(image)
-        req.setName(name)
-        return addImage(req)
+    fun addImage(data: ByteArray, name: String): CommentForm {
+        return addImage(MediaForm(data, name))
     }
 
     /**
      * Add One Image
      */
     fun addImage(req: MediaForm): CommentForm {
-        if (this.images == null) {
-            this.images = java.util.ArrayList<MediaForm>()
-        }
-
-        images!!.add(req)
+        images.add(req)
         return this
     }
 
     /**
-     * s
      * Remove One Image
      */
     fun removeImage(index: Int): CommentForm {
-        images!!.removeAt(index)
+        images.removeAt(index)
         return this
     }
 
     /**
      * Set Sensitive
      */
-    fun sensitive(isSensitive: Boolean): CommentForm {
+    fun isSensitive(isSensitive: Boolean): CommentForm {
         this.isSensitive = isSensitive
         return this
     }
@@ -146,7 +118,7 @@ class CommentForm {
     /**
      * Set Message
      */
-    fun message(isMessage: Boolean): CommentForm {
+    fun isMessage(isMessage: Boolean): CommentForm {
         this.isMessage = isMessage
         return this
     }
@@ -170,26 +142,8 @@ class CommentForm {
     /**
      * Set addition params
      */
-    fun param(key: String, value: Any?): CommentForm {
-        if (this.params == null) {
-            this.params = java.util.HashMap<String, Any>()
-        }
-        params!![key] = value
+    fun addParam(key: String, value: Any): CommentForm {
+        params[key] = value
         return this
     }
-
-    fun getImages(): List<MediaForm>? {
-        return images
-    }
-
-    fun getPoll(): PollForm? {
-        return poll
-    }
-
-    fun getParams(): Map<String, Any?> {
-        if (params == null) {
-            return emptyMap<String, Any>()
-        }
-        return params
-    } //endregion
 }

@@ -1,33 +1,33 @@
-package net.socialhub.planetlink.model.paging
+package work.socialhub.planetlink.model.paging
 
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
-import work.socialhub.planetlink.model.Paging.copyTo
-import work.socialhub.planetlink.model.Paging.count
-import work.socialhub.planetlink.model.Paging.isHasNew
-import work.socialhub.planetlink.model.Paging.isHasPast
 
 /**
  * Paging with cursor
  * カーソル付きページング
- * (Twitter, Slack etc)
+ * (Twitter, Slack etc.)
  */
-class CursorPaging<Type> : Paging() {
-    /** prev cursor  */
-    private var prevCursor: Type? = null
+class CursorPaging<Type>(
+    count: Int? = null,
+) : Paging(count) {
 
-    //region // Getter&Setter
+    /** prev cursor  */
+    var prevCursor: Type? = null
+
     /** current cursor  */
     var currentCursor: Type? = null
 
     /** next cursor  */
-    private var nextCursor: Type? = null
+    var nextCursor: Type? = null
 
     /**
      * {@inheritDoc}
      */
-    override fun <T : Identify?> newPage(entities: List<T>?): Paging {
-        val newPage: CursorPaging<Type> = CursorPaging<Any>()
+    override fun <T : Identify> newPage(
+        entities: List<T>
+    ): Paging {
+        val newPage = CursorPaging<Type>()
 
         if (prevCursor != null) {
             newPage.currentCursor = prevCursor
@@ -41,8 +41,10 @@ class CursorPaging<Type> : Paging() {
     /**
      * {@inheritDoc}
      */
-    override fun <T : Identify?> pastPage(entities: List<T>?): Paging {
-        val pastPage: CursorPaging<Type> = CursorPaging<Any>()
+    override fun <T : Identify> pastPage(
+        entities: List<T>
+    ): Paging {
+        val pastPage = CursorPaging<Type>()
 
         if (nextCursor != null) {
             pastPage.currentCursor = nextCursor
@@ -56,11 +58,13 @@ class CursorPaging<Type> : Paging() {
     /**
      * {@inheritDoc}
      */
-    override fun setMarkPagingEnd(entities: List<*>?) {
-        if (isHasNew && (getPrevCursor() == null)) {
+    override fun setMarkPagingEnd(
+        entities: List<*>
+    ) {
+        if (isHasNew && (prevCursor == null)) {
             isHasNew = false
         }
-        if (isHasPast && (getNextCursor() == null)) {
+        if (isHasPast && (nextCursor == null)) {
             isHasPast = false
         }
     }
@@ -68,42 +72,27 @@ class CursorPaging<Type> : Paging() {
     /**
      * オプジェクトコピー
      */
-    override fun copy(): CursorPaging<Type?> {
-        val pg: CursorPaging<Type?> = CursorPaging<Any?>()
-        pg.currentCursor = currentCursor
-        pg.setNextCursor(getNextCursor())
-        pg.setPrevCursor(getPrevCursor())
-        copyTo(pg)
-        return pg
+    override fun copy(): CursorPaging<Type> {
+        return CursorPaging<Type>().also {
+            it.currentCursor = currentCursor
+            it.nextCursor = nextCursor
+            it.prevCursor = prevCursor
+            copyTo(it)
+        }
     }
-
-    fun getPrevCursor(): Type? {
-        return prevCursor
-    }
-
-    fun setPrevCursor(prevCursor: Type) {
-        this.prevCursor = prevCursor
-    }
-
-    fun getNextCursor(): Type? {
-        return nextCursor
-    }
-
-    fun setNextCursor(nextCursor: Type) {
-        this.nextCursor = nextCursor
-    } //endregion
 
     companion object {
         /**
          * From Paging instance
          */
+        @Suppress("UNCHECKED_CAST")
         fun <T> fromPaging(paging: Paging?): CursorPaging<T> {
             if (paging is CursorPaging<*>) {
                 return (paging as CursorPaging<T>).copy()
             }
 
             // Count の取得
-            val pg: CursorPaging<T> = CursorPaging<Any>()
+            val pg = CursorPaging<T>()
             if ((paging != null) && (paging.count != null)) {
                 pg.count = paging.count
             }

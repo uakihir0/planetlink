@@ -2,7 +2,7 @@ package work.socialhub.planetlink.action
 
 import work.socialhub.planetlink.model.Channel
 import work.socialhub.planetlink.model.error.NotImplementedException
-import net.socialhub.planetlink.model.request.CommentForm
+import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.define.emoji.EmojiType
 import work.socialhub.planetlink.define.emoji.EmojiVariationType

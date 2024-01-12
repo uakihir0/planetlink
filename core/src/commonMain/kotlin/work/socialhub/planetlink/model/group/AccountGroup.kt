@@ -29,7 +29,7 @@ interface AccountGroup {
 
     companion object {
         fun of(vararg accounts: Account): AccountGroup {
-            return AccountGroupImpl(accounts)
+            return AccountGroupImpl(*accounts)
         }
     }
 }

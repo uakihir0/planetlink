@@ -1,7 +1,7 @@
 package work.socialhub.planetlink.model
 
 import kotlinx.datetime.Instant
-import net.socialhub.planetlink.model.support.PollOption
+import work.socialhub.planetlink.model.support.PollOption
 
 /**
  * Poll

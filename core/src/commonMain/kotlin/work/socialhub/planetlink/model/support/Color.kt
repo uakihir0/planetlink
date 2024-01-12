@@ -1,36 +1,32 @@
-package net.socialhub.planetlink.model.support
+package work.socialhub.planetlink.model.support
 
-class Color {
-    // region
-    var r: Int = 0
-    var g: Int = 0
-    var b: Int = 0
+/**
+ * Color Model
+ * Initialize with white color.
+ */
+class Color(
+    var r: Int = 255,
+    var g: Int = 255,
+    var b: Int = 255,
+    var a: Int = 255,
+) {
 
-    // endregion
-    var a: Int = 0
-
-    /**
-     * Initialize with white color.
-     */
-    constructor() {
-        r = 255
-        g = 255
-        b = 255
-        a = 255
-    }
-
-    /**
-     * Initialize with JavaScript expression.
-     */
-    constructor(javaScriptColorExpression: String?) {
-        val p: java.util.regex.Pattern = java.util.regex.Pattern.compile("rgb\\(([0-9]+),([0-9]+),([0-9]+)\\)")
-        val m: java.util.regex.Matcher = p.matcher(javaScriptColorExpression)
-
-        if (m.find()) {
-            r = m.group(1).toInt()
-            g = m.group(2).toInt()
-            b = m.group(3).toInt()
-            a = 255
+    companion object {
+        /**
+         * Initialize with JavaScript expression.
+         */
+        fun fromJavaScriptFormat(
+            expression: String
+        ): Color {
+            val regex = "rgb\\(([0-9]+),([0-9]+),([0-9]+)\\)".toRegex()
+            regex.find(expression)?.let {
+                return Color(
+                    it.groupValues[1].toInt(),
+                    it.groupValues[2].toInt(),
+                    it.groupValues[3].toInt(),
+                )
+            }
+            throw IllegalArgumentException("Invalid color expression.")
         }
     }
 

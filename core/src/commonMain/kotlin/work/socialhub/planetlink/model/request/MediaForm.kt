@@ -1,24 +1,14 @@
-package net.socialhub.planetlink.model.request
+package work.socialhub.planetlink.model.request
 
 
-class MediaForm {
-    // ============================================================== //
-    // Fields
-    // ============================================================== //
-    // ============================================================== //
-    // Getters
-    // ============================================================== //
+class MediaForm(
     /** Media Data  */
-    var data: ByteArray?
-
+    var data: ByteArray,
     /** Media File Name  */
-    var name: String? = null
-
+    var name: String,
+) {
     /** Copy this object  */
     fun copy(): MediaForm {
-        val model = MediaForm()
-        model.data = data
-        model.name = name
-        return model
+        return MediaForm(data, name)
     }
 }
