@@ -1,4 +1,4 @@
-package net.socialhub.planetlink.utils
+package work.socialhub.planetlink.utils
 
 import io.ktor.http.*
 

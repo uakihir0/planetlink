@@ -1,32 +1,18 @@
-package net.socialhub.planetlink.action
+package work.socialhub.planetlink.action
 
-import net.socialhub.planetlink.model.*
-import work.socialhub.planetlink.action.AccountAction
-import work.socialhub.planetlink.action.RequestAction
-import work.socialhub.planetlink.action.RequestActionImpl
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.User
 
-abstract class AccountActionImpl : AccountAction {
-    //endregion
-    //region // Getter&Setter
-    var account: Account? = null
+abstract class AccountActionImpl(
+    var account: Account
+) : AccountAction {
 
-    protected var me: User? = null
-
-    fun <T : AccountActionImpl?> account(account: Account?): T {
+    @Suppress("UNCHECKED_CAST")
+    fun <T : AccountActionImpl> account(
+        account: Account
+    ): T {
         this.account = account
         return this as T
-    }
-
-    interface ActionCaller<T, E : Throwable?> {
-        @Throws(E::class)
-        fun proceed(): T
-    }
-
-    interface ActionRunner<E : Throwable?> {
-        @Throws(E::class)
-        fun proceed()
     }
 
     /**
@@ -36,10 +22,19 @@ abstract class AccountActionImpl : AccountAction {
         return RequestActionImpl(account)
     }
 
-    val userMeWithCache: User
-        /**
-         * Get User me with cache.
-         * キャッシュ付きで自分のユーザーを取得
-         */
-        get() = if ((me != null)) me!! else getUserMe()
+    /**
+     * Cached User me.
+     * キャッシュユーザー情報
+     */
+    private var me: User? = null
+
+    /**
+     * Get User me with cache.
+     * キャッシュ付きで自分のユーザーを取得
+     */
+    fun userMeWithCache(): User {
+        return me ?: run {
+            userMe().also { me = it }
+        }
+    }
 }

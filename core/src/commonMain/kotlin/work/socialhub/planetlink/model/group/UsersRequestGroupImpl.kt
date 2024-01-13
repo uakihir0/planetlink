@@ -1,10 +1,15 @@
-package net.socialhub.planetlink.model.group
+package work.socialhub.planetlink.model.group
 
 import work.socialhub.planetlink.action.group.UsersRequestGroupAction
+import work.socialhub.planetlink.action.group.UsersRequestGroupActionImpl
+import work.socialhub.planetlink.action.request.UsersRequest
 
-class UsersRequestGroupImpl(vararg requests: UsersRequest?) : UsersRequestGroup {
+class UsersRequestGroupImpl(
+    vararg requests: UsersRequest
+) : UsersRequestGroup {
+
     /** List of Request Actions  */
-    override var requests: MutableList<UsersRequest> = java.util.ArrayList<UsersRequest>()
+    override var requests = mutableListOf<UsersRequest>()
 
     init {
         addUsersRequests(*requests)
@@ -13,18 +18,16 @@ class UsersRequestGroupImpl(vararg requests: UsersRequest?) : UsersRequestGroup 
     /**
      * {@inheritDoc}
      */
-    override fun addUsersRequests(request: UsersRequest?) {
-        if (request != null) {
-            requests.add(request)
-        }
+    override fun addUsersRequests(request: UsersRequest) {
+        requests.add(request)
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun addUsersRequests(vararg requests: UsersRequest?) {
-        if (requests != null && requests.size > 0) {
-            this.requests.addAll(java.util.Arrays.asList<Array<UsersRequest>>(*requests))
+    override fun addUsersRequests(vararg requests: UsersRequest) {
+        if (requests.isNotEmpty()) {
+            this.requests.addAll(requests)
         }
     }
 
@@ -34,13 +37,4 @@ class UsersRequestGroupImpl(vararg requests: UsersRequest?) : UsersRequestGroup 
     override fun action(): UsersRequestGroupAction {
         return UsersRequestGroupActionImpl(this)
     }
-
-    //region // Getter&Setter
-    fun getRequests(): List<UsersRequest> {
-        return requests
-    }
-
-    fun setRequests(requests: MutableList<UsersRequest>) {
-        this.requests = requests
-    } //endregion
 }

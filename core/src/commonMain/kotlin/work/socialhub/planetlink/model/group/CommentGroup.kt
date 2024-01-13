@@ -1,7 +1,6 @@
 package work.socialhub.planetlink.model.group
 
 import kotlinx.datetime.Instant
-import net.socialhub.planetlink.model.group.CommentsRequestGroup
 import work.socialhub.planetlink.action.group.CommentGroupAction
 import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.model.Comment

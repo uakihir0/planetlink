@@ -8,9 +8,17 @@ class Pageable<T : Identify> {
 
     /** Paging Information  */
     var paging: Paging? = null
+        set(value) {
+            field = value
+            setMarkPagingEnd()
+        }
 
     /** Entities  */
-    var entities: List<T>? = null
+    var entities: List<T> = listOf()
+        set(value) {
+            field = value
+            setMarkPagingEnd()
+        }
 
     /** Displayable predicate  */
     var predicate: ((T) -> Boolean)? = null
@@ -19,7 +27,7 @@ class Pageable<T : Identify> {
      * Get New Page
      * 最新のページを取得
      */
-    fun newPage(): Paging? {
+    fun newPage(): Paging {
         return paging!!.newPage(entities)
     }
 
@@ -27,7 +35,7 @@ class Pageable<T : Identify> {
      * Get Past Page
      * 過去のページを取得
      */
-    fun pastPage(): Paging? {
+    fun pastPage(): Paging {
         return paging!!.pastPage(entities)
     }
 
@@ -35,7 +43,7 @@ class Pageable<T : Identify> {
      * Get Prev Page
      * 前のページを取得
      */
-    fun prevPage(): Paging? {
+    fun prevPage(): Paging {
         return paging!!.prevPage(entities)
     }
 
@@ -43,7 +51,7 @@ class Pageable<T : Identify> {
      * Get Next Page
      * 次のページを取得
      */
-    fun nextPage(): Paging? {
+    fun nextPage(): Paging {
         return paging!!.nextPage(entities)
     }
 
@@ -52,9 +60,9 @@ class Pageable<T : Identify> {
      */
     fun setNewestIdentify(identify: T) {
         val model = mutableListOf<T>()
-        model.addAll(entities!!)
+        model.addAll(entities)
         model.add(0, identify)
-        setEntities(model)
+        entities = model
     }
 
     /**
@@ -62,43 +70,28 @@ class Pageable<T : Identify> {
      */
     fun setOldestIdentify(identify: T) {
         val model = mutableListOf<T>()
-        model.addAll(entities!!)
+        model.addAll(entities)
         model.add(identify)
-        setEntities(model)
+        entities = model
     }
 
-    val displayableEntities: List<T>?
-        /**
-         * Get Displayable Entities
-         * 表示条件を満たしたアイテムを取得
-         */
+    /**
+     * Get Displayable Entities
+     * 表示条件を満たしたアイテムを取得
+     */
+    val displayableEntities: List<T>
         get() {
-            if (predicate == null) {
-                return entities
-            }
-            return entities!!
-                .filter { predicate!!(it) }
+            return predicate?.let { f ->
+                entities.filter { f(it) }
+            } ?: entities
         }
 
-    fun getPaging(): Paging? {
-        return paging
-    }
 
-    fun setPaging(paging: Paging?) {
-        this.paging = paging
-        if (this.paging != null && this.entities != null) {
-            this.paging!!.setMarkPagingEnd(this.entities)
-        }
-    }
-
-    fun getEntities(): List<T>? {
-        return entities
-    }
-
-    fun setEntities(entities: List<T>?) {
-        this.entities = entities
-        if (this.paging != null && this.entities != null) {
-            this.paging!!.setMarkPagingEnd(this.entities)
-        }
+    /**
+     * Set mark as paging end
+     * ページの終端をマークする
+     */
+    fun setMarkPagingEnd() {
+        paging?.setMarkPagingEnd(entities)
     }
 }

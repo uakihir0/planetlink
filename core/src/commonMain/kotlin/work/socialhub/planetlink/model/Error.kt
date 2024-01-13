@@ -4,11 +4,7 @@ import work.socialhub.planetlink.define.LanguageType
 import work.socialhub.planetlink.model.error.SocialHubError
 
 class Error(
-    /**
-     * Default message.
-     * デフォルトメッセージ
-     */
-    override val messageForUser: String
+    private val messageForUser: String
 ) : SocialHubError {
 
     /**
@@ -28,10 +24,15 @@ class Error(
         messages[language] = message
     }
 
-    override fun getMessageForUser(
-        language: LanguageType
-    ): String {
-        return messages[language]
-            ?: messageForUser
-    }
+    /**
+     * {@inheritDoc}
+     */
+    override fun messageForUser() =
+        messageForUser
+
+    /**
+     * {@inheritDoc}
+     */
+    override fun messageForUser(language: LanguageType) =
+        messages[language] ?: messageForUser
 }

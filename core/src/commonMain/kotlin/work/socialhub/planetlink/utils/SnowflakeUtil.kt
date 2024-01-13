@@ -1,4 +1,4 @@
-package net.socialhub.planetlink.utils
+package work.socialhub.planetlink.utils
 
 import kotlinx.datetime.Instant
 

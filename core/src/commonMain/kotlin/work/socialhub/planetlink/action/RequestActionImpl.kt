@@ -41,7 +41,7 @@ class RequestActionImpl(
             UsersActionType.GetFollowerUsers,
             { paging -> account.action.followerUsers(id, paging) },
             SerializedRequest(UsersActionType.GetFollowerUsers)
-                .add("id", id.serializedIdString)
+                .add("id", id.id!!.toSerializedString())
         )
     }
 
@@ -94,7 +94,7 @@ class RequestActionImpl(
             TimeLineActionType.UserCommentTimeLine,
             { paging -> account.action.userCommentTimeLine(id, paging) },
             SerializedRequest(TimeLineActionType.UserCommentTimeLine)
-                .add("id", id.serializedIdString)
+                .add("id", id.id!!.toSerializedString())
         )
     }
 
@@ -108,7 +108,7 @@ class RequestActionImpl(
             TimeLineActionType.UserLikeTimeLine,
             { paging -> account.action.userLikeTimeLine(id, paging) },
             SerializedRequest(TimeLineActionType.UserLikeTimeLine)
-                .add("id", id.serializedIdString)
+                .add("id", id.id!!.toSerializedString())
         )
     }
 
@@ -122,7 +122,7 @@ class RequestActionImpl(
             TimeLineActionType.UserMediaTimeLine,
             { paging -> account.action.userMediaTimeLine(id, paging) },
             SerializedRequest(TimeLineActionType.UserMediaTimeLine)
-                .add("id", id.serializedIdString)
+                .add("id", id.id!!.toSerializedString())
         )
     }
 
@@ -150,7 +150,7 @@ class RequestActionImpl(
             TimeLineActionType.ChannelTimeLine,
             { paging -> account.action.channelTimeLine(id, paging) },
             SerializedRequest(TimeLineActionType.ChannelTimeLine)
-                .add("id", id.serializedIdString)
+                .add("id", id.id!!.toSerializedString())
         )
     }
 
@@ -164,10 +164,10 @@ class RequestActionImpl(
             TimeLineActionType.MessageTimeLine,
             { paging -> account.action.messageTimeLine(id, paging) },
             SerializedRequest(TimeLineActionType.MessageTimeLine)
-                .add("id", id.serializedIdString)
+                .add("id", id.id!!.toSerializedString())
         ).also {
             it.commentFrom()
-                .message(true)
+                .isMessage(true)
                 .replyId(id)
         }
     }
@@ -189,7 +189,7 @@ class RequestActionImpl(
             // Identify
             val id = params["id"]?.let { pid ->
                 Identify(account.service).also {
-                    it.serializedIdString = pid
+                    it.id = ID.fromSerializedString(pid)
                 }
             }
 

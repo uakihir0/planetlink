@@ -1,7 +1,5 @@
-package net.socialhub.planetlink.action
+package work.socialhub.planetlink.action
 
-import work.socialhub.planetlink.action.AccountAction
-import work.socialhub.planetlink.action.UserAction
 import work.socialhub.planetlink.model.Relationship
 import work.socialhub.planetlink.model.User
 

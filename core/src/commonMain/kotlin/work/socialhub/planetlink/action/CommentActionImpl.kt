@@ -1,7 +1,5 @@
 package work.socialhub.planetlink.action
 
-import work.socialhub.planetlink.action.AccountAction
-import work.socialhub.planetlink.action.CommentAction
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Context
 

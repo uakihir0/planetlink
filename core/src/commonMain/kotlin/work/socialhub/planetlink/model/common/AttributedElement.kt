@@ -6,14 +6,15 @@ package work.socialhub.planetlink.model.common
  */
 interface AttributedElement {
 
-    /** Get type of element.  */
+    /** Type of element */
     val kind: AttributedKind
 
-    /** Get text that user see.  */
+    /** Text that user see */
     val displayText: String
 
-    /** Get text that user action.  */
+    /** Text that user action */
     val expandedText: String?
 
+    /** Visibility */
     var visible: Boolean
 }

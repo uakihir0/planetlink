@@ -1,10 +1,7 @@
-package net.socialhub.planetlink.model.paging
+package work.socialhub.planetlink.model.paging
 
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
-import work.socialhub.planetlink.model.Paging.copyTo
-import work.socialhub.planetlink.model.Paging.count
-import work.socialhub.planetlink.model.Paging.isHasPast
 
 /**
  * Paging with date range
@@ -12,30 +9,28 @@ import work.socialhub.planetlink.model.Paging.isHasPast
  * (Slack)
  */
 class DatePaging : Paging() {
-    //region // Getter&Setter
+
     var latest: String? = null
 
     var oldest: String? = null
 
-    //endregion
     var inclusive: Boolean? = null
 
     /**
      * {@inheritDoc}
      */
-    override fun <K : Identify?> newPage(entities: List<K>?): Paging {
+    override fun <K : Identify> newPage(entities: List<K>): Paging {
         val newPage = DatePaging()
         newPage.count = count
 
-        if (entities != null && !entities.isEmpty()) {
-            val first = entities[0]!!.id as String?
-
+        if (entities.isNotEmpty()) {
+            val first = entities[0].id as String?
             newPage.inclusive = false
             newPage.oldest = first
             return newPage
+
         } else {
             // デフォルト動作
-
             if (latest != null && inclusive != null) {
                 newPage.inclusive = !inclusive!!
                 newPage.oldest = latest
@@ -50,20 +45,20 @@ class DatePaging : Paging() {
     /**
      * {@inheritDoc}
      */
-    override fun <K : Identify?> pastPage(entities: List<K>?): Paging {
+    override fun <K : Identify> pastPage(entities: List<K>): Paging {
         val newPage = DatePaging()
         newPage.count = count
 
-        if (entities != null && !entities.isEmpty()) {
+        if (entities.isNotEmpty()) {
             val index = (entities.size - 1)
-            val last = entities[index]!!.id as String?
+            val last = entities[index].id as String?
 
             newPage.inclusive = false
             newPage.latest = last
             return newPage
         } else {
-            // デフォルト動作
 
+            // デフォルト動作
             if (oldest != null && inclusive != null) {
                 newPage.inclusive = !inclusive!!
                 newPage.latest = oldest
@@ -82,7 +77,7 @@ class DatePaging : Paging() {
         if (isHasPast
             && entities.isEmpty()
             && (oldest == null)
-            && (count > 0)
+            && (count!! > 0)
         ) {
             isHasPast = false
         }
@@ -92,21 +87,22 @@ class DatePaging : Paging() {
      * オプジェクトコピー
      */
     override fun copy(): DatePaging {
-        val pg = DatePaging()
-        pg.latest = latest
-        pg.oldest = oldest
-        pg.inclusive = inclusive
-        copyTo(pg)
-        return pg
+        return DatePaging().also {
+            it.latest = latest
+            it.oldest = oldest
+            it.inclusive = inclusive
+            copyTo(it)
+        }
     }
 
     companion object {
+
         /**
          * From Paging instance
          */
         fun fromPaging(paging: Paging?): DatePaging {
             if (paging is DatePaging) {
-                return (paging as DatePaging).copy()
+                return paging.copy()
             }
 
             // Count の取得

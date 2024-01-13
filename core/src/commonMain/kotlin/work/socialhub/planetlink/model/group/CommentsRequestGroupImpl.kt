@@ -1,10 +1,15 @@
-package net.socialhub.planetlink.model.group
+package work.socialhub.planetlink.model.group
 
 import work.socialhub.planetlink.action.group.CommentsRequestGroupAction
+import work.socialhub.planetlink.action.group.CommentsRequestGroupActionImpl
+import work.socialhub.planetlink.action.request.CommentsRequest
 
-class CommentsRequestGroupImpl(vararg requests: CommentsRequest?) : CommentsRequestGroup {
+class CommentsRequestGroupImpl(
+    vararg requests: CommentsRequest
+) : CommentsRequestGroup {
+
     /** List of Request Actions  */
-    override var requests: MutableList<CommentsRequest> = java.util.ArrayList<CommentsRequest>()
+    override var requests = mutableListOf<CommentsRequest>()
 
     init {
         addCommentsRequests(*requests)
@@ -13,18 +18,16 @@ class CommentsRequestGroupImpl(vararg requests: CommentsRequest?) : CommentsRequ
     /**
      * {@inheritDoc}
      */
-    override fun addCommentsRequests(request: CommentsRequest?) {
-        if (request != null) {
-            requests.add(request)
-        }
+    override fun addCommentsRequests(request: CommentsRequest) {
+        this.requests.add(request)
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun addCommentsRequests(vararg requests: CommentsRequest?) {
-        if (requests != null && requests.size > 0) {
-            this.requests.addAll(java.util.Arrays.asList<Array<CommentsRequest>>(*requests))
+    override fun addCommentsRequests(vararg requests: CommentsRequest) {
+        if (requests.isNotEmpty()) {
+            this.requests.addAll(requests)
         }
     }
 
@@ -34,13 +37,4 @@ class CommentsRequestGroupImpl(vararg requests: CommentsRequest?) : CommentsRequ
     override fun action(): CommentsRequestGroupAction {
         return CommentsRequestGroupActionImpl(this)
     }
-
-    //region // Getter&Setter
-    fun getRequests(): List<CommentsRequest> {
-        return requests
-    }
-
-    fun setRequests(requests: MutableList<CommentsRequest>) {
-        this.requests = requests
-    } //endregion
 }
