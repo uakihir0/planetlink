@@ -3,14 +3,10 @@ package work.socialhub.planetlink.action.group
 import kotlinx.coroutines.async
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.runBlocking
-import work.socialhub.planetlink.model.group.UserGroup
 import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.User
-import work.socialhub.planetlink.model.group.AccountGroup
-import work.socialhub.planetlink.model.group.CommentGroup
-import work.socialhub.planetlink.model.group.CommentsRequestGroupImpl
-import work.socialhub.planetlink.model.group.UserGroupImpl
+import work.socialhub.planetlink.model.group.*
 
 /**
  * グループアクション
