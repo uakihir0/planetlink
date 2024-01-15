@@ -11,7 +11,7 @@ import work.socialhub.planetlink.define.action.TimeLineActionType
 import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.model.*
 
-class RequestActionImpl(
+open class RequestActionImpl(
     var account: Account
 ) : RequestAction {
 

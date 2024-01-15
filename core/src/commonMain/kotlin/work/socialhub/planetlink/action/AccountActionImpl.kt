@@ -26,7 +26,7 @@ abstract class AccountActionImpl(
      * Cached User me.
      * キャッシュユーザー情報
      */
-    private var me: User? = null
+    protected var me: User? = null
 
     /**
      * Get User me with cache.

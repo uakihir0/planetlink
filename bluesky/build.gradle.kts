@@ -18,8 +18,10 @@ kotlin {
 
         commonMain.dependencies {
             implementation(project(":core"))
+            implementation("io.ktor:ktor-client-core:2.3.7")
             implementation("work.socialhub.kbsky:core:0.0.1-SNAPSHOT")
             implementation("work.socialhub.kbsky:stream:0.0.1-SNAPSHOT")
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
         }
 
         // for test (kotlin/jvm)

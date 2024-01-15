@@ -4,7 +4,7 @@ package work.socialhub.planetlink.model
  * SNS チャンネル (リスト) 情報
  * SNS Channel (List) Model
  */
-class Channel(
+open class Channel(
     service: Service
 ) : Identify(service) {
 

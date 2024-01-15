@@ -9,6 +9,13 @@ open class Identify(
 ) {
     var id: ID? = null
 
+    constructor(
+        service: Service,
+        id: ID,
+    ) : this(service) {
+        this.id = id
+    }
+
     /**
      * Is same identify?
      * 同じ識別子か？

@@ -1,5 +1,7 @@
 package work.socialhub.planetlink.model.request
 
+import work.socialhub.planetlink.model.ID
+
 class CommentForm {
 
     /** Text  */
@@ -9,10 +11,10 @@ class CommentForm {
     var warning: String? = null
 
     /** Reply or Thread ID  */
-    var replyId: Any? = null
+    var replyId: ID? = null
 
     /** QuoteID  */
-    var quoteId: Any? = null
+    var quoteId: ID? = null
 
     /** Visibility  */
     var visibility: String? = null
@@ -24,13 +26,13 @@ class CommentForm {
     var isMessage: Boolean = false
 
     /** Poll */
-    private var poll: PollForm? = null
+    var poll: PollForm? = null
 
     /** Images */
-    private var images = mutableListOf<MediaForm>()
+    var images = mutableListOf<MediaForm>()
 
     /** Other params */
-    private var params = mutableMapOf<String, Any>()
+    var params = mutableMapOf<String, Any>()
 
     /** Copy this object */
     fun copy(): CommentForm {
@@ -71,7 +73,7 @@ class CommentForm {
     /**
      * Set Reply (Thread) ID
      */
-    fun replyId(replyId: Any?): CommentForm {
+    fun replyId(replyId: ID?): CommentForm {
         this.replyId = replyId
         return this
     }
@@ -79,7 +81,7 @@ class CommentForm {
     /**
      * Set Quote ID
      */
-    fun quoteId(quoteId: Any?): CommentForm {
+    fun quoteId(quoteId: ID?): CommentForm {
         this.quoteId = quoteId
         return this
     }
