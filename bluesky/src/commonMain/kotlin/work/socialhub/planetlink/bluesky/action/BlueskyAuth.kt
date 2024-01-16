@@ -9,24 +9,35 @@ import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Service
 
 class BlueskyAuth(
-    host: String
+    var apiHost: String,
+    var streamHost: String? = null,
 ) : ServiceAuth<Bluesky> {
 
     /** Client Objects */
     var bluesky: Bluesky? = null
 
-    var host: String
     var identifier: String? = null
     var password: String? = null
 
     init {
-        var uri = host
-        if (!host.startsWith("http")) {
-            uri = "https://$host"
+        apiHost = toUrl(apiHost, "https")
+        streamHost?.let {
+            streamHost = toUrl(it, "wss")
+        }
+    }
+
+    private fun toUrl(
+        host: String,
+        protocol: String,
+    ): String {
+
+        var url = host
+        if (!host.startsWith(protocol)) {
+            url = "${protocol}://$host"
         }
         try {
-            val obj = Url(uri)
-            this.host = "${obj.protocol}://${obj.host}/"
+            val obj = Url(url)
+            return "${obj.protocol}://${obj.host}/"
         } catch (e: Exception) {
             throw IllegalArgumentException(
                 "invalid host: $host"
@@ -38,24 +49,23 @@ class BlueskyAuth(
      * Get Access Token for Bluesky
      * Bluesky のアクセストークンの取得
      */
-    fun getAccountWithIdentifyAndPassword(
+    fun accountWithIdentifyAndPassword(
         identifier: String,
         password: String,
     ): Account {
 
         this.identifier = identifier
         this.password = password
-        this.bluesky = BlueskyFactory.instance(this.host)
+        this.bluesky = BlueskyFactory.instance(apiHost)
 
-        val account = Account()
-        val type = ServiceType.Bluesky
-        val service = Service(type, account)
-        service.apiHost = this.host
-        // TODO: SetStreamHost
-
-        account.setAction(BlueskyAction(account, this))
-        account.setService(service)
-        return account
+        return Account().also { acc ->
+            acc.action = BlueskyAction(acc, this)
+            acc.service = Service(ServiceType.Bluesky, acc)
+                .also {
+                    it.apiHost = apiHost
+                    it.streamHost = streamHost
+                }
+        }
     }
 
 

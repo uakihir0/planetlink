@@ -3,6 +3,7 @@ package work.socialhub.planetlink.bluesky.action
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Clock
 import kotlinx.datetime.toInstant
 import work.socialhub.kbsky.BlueskyException
 import work.socialhub.kbsky.BlueskyTypes
@@ -127,7 +128,8 @@ class BlueskyAction(
         id: Identify
     ) {
         proceedUnit {
-            getUserUri(id)?.let { uri ->
+            // TODO: uri の取得について確認
+            userUri(id).let { uri ->
                 auth.accessor.graph().deleteFollow(
                     GraphDeleteFollowRequest(accessJwt())
                         .also { it.uri = uri }
@@ -185,7 +187,8 @@ class BlueskyAction(
         id: Identify
     ) {
         proceedUnit {
-            getUserUri(id)?.let { uri ->
+            // TODO: uri の取得について確認
+            userUri(id).let { uri ->
                 auth.accessor.graph().deleteBlock(
                     GraphDeleteBlockRequest(accessJwt())
                         .also { it.uri = uri }
@@ -326,7 +329,7 @@ class BlueskyAction(
             // 取得する通知の種類を指定
             val types = listOf("reply", "quote")
 
-            val pg = getCountLimitPaging(paging, 20)
+            val pg = countLimitPaging(paging, 20)
             val model = notifications(pg, types)
 
             // 空の場合
@@ -999,7 +1002,9 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    fun trends(limit: Int): List<Trend> {
+    fun trends(
+        limit: Int
+    ): List<Trend> {
         throw NotImplementedError()
     }
 
@@ -1055,7 +1060,7 @@ class BlueskyAction(
         paging: Paging,
         types: List<String>
     ): NotificationStructure {
-        runBlocking {
+        return runBlocking {
 
             // 既読処理を別スレッドで実行
             val seen = async {
@@ -1300,20 +1305,19 @@ class BlueskyAction(
         }
     }
 
-    private fun getCountLimitPaging(
-        paging: Paging,
-        limit: Long,
+    private fun countLimitPaging(
+        paging: Paging?,
+        limit: Int,
     ): Paging {
         if (paging != null) {
-            if (paging.getCount() != null) {
-                paging.setCount(limit)
+            if (paging.count != null) {
+                paging.count = limit
                 return paging
             }
 
-            paging.setCount(java.lang.Math.min(paging.getCount(), limit))
+            paging.count = min(paging.count!!, limit)
             return paging
         }
-
         return Paging(limit)
     }
 
@@ -1330,6 +1334,7 @@ class BlueskyAction(
 
         this.did = response.data.did
         this.accessJwt = response.data.accessJwt
+
         val jwt = Utils.jwt(this.accessJwt!!)
         this.expireAt = jwt.exp.toLong()
     }
@@ -1337,28 +1342,24 @@ class BlueskyAction(
     private fun accessJwt(): String {
 
         // 初回アクセスの場合
-        accessJwt?.let { return it }
-
         if (accessJwt == null) {
             createSession()
-            return accessJwt
+            return accessJwt!!
         }
 
         // 有効期限が切れている場合
-        val now: Long = java.lang.System.currentTimeMillis() / 1000
-        if (now > (expireAt!! + 30)) {
+        val now = Clock.System.now().toEpochMilliseconds() / 1000
+        if (now > (expireAt!! + 60)) {
             createSession()
-            return accessJwt
+            return accessJwt!!
         }
 
-        return accessJwt
+        return accessJwt!!
     }
 
     private fun did(): String {
-        if (did == null) {
-            createSession()
-        }
-        return did
+        if (did == null) createSession()
+        return did!!
     }
 
     private fun service(): Service {

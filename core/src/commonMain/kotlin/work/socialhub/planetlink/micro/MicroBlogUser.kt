@@ -8,4 +8,10 @@ open class MicroBlogUser(
 ) : User(service) {
 
     var screenName: String? = null
+
+    var protected: Boolean? = null
+
+    var statusesCount: Long? = null
+    var followingCount: Long? = null
+    var followersCount: Long? = null
 }

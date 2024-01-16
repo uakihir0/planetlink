@@ -2,6 +2,7 @@ package work.socialhub.planetlink.bluesky.model
 
 import work.socialhub.kbsky.model.atproto.repo.RepoStrongRef
 import work.socialhub.kbsky.util.ATUriParser
+import work.socialhub.planetlink.micro.MicroBlogComment
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Reaction
@@ -14,7 +15,7 @@ import work.socialhub.planetlink.model.request.CommentForm
  */
 class BlueskyComment(
     service: Service
-) : Comment(service) {
+) : MicroBlogComment(service) {
 
     var cid: String? = null
 

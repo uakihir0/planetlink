@@ -1,12 +1,20 @@
 package work.socialhub.planetlink.bluesky.action
 
 import kotlinx.datetime.Instant
-import work.socialhub.kbsky.internal.share._InternalUtility
+import kotlinx.datetime.toInstant
+import work.socialhub.kbsky.model.bsky.actor.ActorDefsProfileView
+import work.socialhub.kbsky.model.bsky.actor.ActorDefsProfileViewBasic
 import work.socialhub.kbsky.model.bsky.actor.ActorDefsProfileViewDetailed
+import work.socialhub.kbsky.model.bsky.actor.ActorDefsViewerState
+import work.socialhub.kbsky.model.bsky.feed.FeedDefsFeedViewPost
 import work.socialhub.kbsky.model.bsky.feed.FeedDefsPostView
+import work.socialhub.kbsky.model.bsky.feed.FeedDefsReasonRepost
+import work.socialhub.kbsky.model.bsky.feed.FeedDefsReplyRef
 import work.socialhub.kbsky.model.bsky.notification.NotificationListNotificationsNotification
+import work.socialhub.planetlink.bluesky.model.BlueskyComment
 import work.socialhub.planetlink.bluesky.model.BlueskyUser
 import work.socialhub.planetlink.model.*
+import work.socialhub.planetlink.model.common.AttributedString
 import kotlin.math.max
 import kotlin.reflect.KClass
 
@@ -17,9 +25,6 @@ object BlueskyMapper {
     /** ダイナミックロードできない為に使用を明示するために使用  */
     private val ClassLoader: List<KClass<*>> = listOf()
 
-    /** 時間のパーサーオブジェクト  */
-    private var dateParser: SimpleDateFormat? = null
-
     // ============================================================== //
     // Single Object Mapper
     // ============================================================== //
@@ -28,41 +33,26 @@ object BlueskyMapper {
      */
     fun user(
         account: ActorDefsProfileViewDetailed,
-        service: Service?
+        service: Service
     ): User {
-        val user = BlueskyUser(service)
-        user.setSimple(false)
+        return BlueskyUser(service).apply {
+            isSimple = false
+            protected = false
 
-        user.setId(account.getDid())
-        user.setScreenName(account.getHandle())
+            id = ID(account.did)
+            name = account.displayName
+            screenName = account.handle
+            iconImageUrl = account.avatar
+            coverImageUrl = account.banner
 
-        user.setName(account.getDisplayName())
-        user.setIconImageUrl(account.getAvatar())
-        user.setCoverImageUrl(account.getBanner())
+            description = AttributedString.plain(account.description)
 
-        if (account.getPostsCount() != null) {
-            user.setStatusesCount(account.getPostsCount().longValue())
+            statusesCount = account.postsCount?.toLong()
+            followingCount = account.followsCount?.toLong()
+            followersCount = account.followersCount?.toLong()
+
+            userViewer(this, account.viewer)
         }
-        if (account.getFollowersCount() != null) {
-            user.setFollowersCount(account.getFollowersCount().longValue())
-        }
-        if (account.getFollowsCount() != null) {
-            user.setFollowingsCount(account.getFollowsCount().longValue())
-        }
-
-        if (account.getViewer() != null) {
-            val state: ActorDefsViewerState = account.getViewer()
-            user.setFollowRecordUri(state.getFollowing())
-            user.setFollowedRecordUri(state.getFollowedBy())
-            user.setMuted(state.getMuted())
-            user.setBlockedBy(state.getBlockedBy())
-            user.setBlockingRecordUri(state.getBlocking())
-        }
-
-        user.setDescription(AttributedString.plain(account.getDescription()))
-        user.setProtected(false)
-
-        return user
     }
 
     /**
@@ -72,27 +62,19 @@ object BlueskyMapper {
         account: ActorDefsProfileView,
         service: Service
     ): User {
-        val user: BlueskyUser = BlueskyUser(service)
-        user.setSimple(true)
+        return BlueskyUser(service).apply {
+            isSimple = true
+            protected = false
 
-        user.setId(account.getDid())
-        user.setScreenName(account.getHandle())
+            id = ID(account.did)
+            name = account.displayName
+            screenName = account.handle
+            iconImageUrl = account.avatar
 
-        user.setName(account.getDisplayName())
-        user.setIconImageUrl(account.getAvatar())
+            description = AttributedString.plain(account.description)
 
-        if (account.getViewer() != null) {
-            val state: ActorDefsViewerState = account.getViewer()
-            user.setFollowRecordUri(state.getFollowing())
-            user.setFollowedRecordUri(state.getFollowedBy())
-            user.setMuted(state.getMuted())
-            user.setBlockedBy(state.getBlockedBy())
-            user.setBlockingRecordUri(state.getBlocking())
+            userViewer(this, account.viewer)
         }
-
-        user.setDescription(AttributedString.plain(account.getDescription()))
-        user.setProtected(false)
-        return user
     }
 
     /**
@@ -102,26 +84,31 @@ object BlueskyMapper {
         account: ActorDefsProfileViewBasic,
         service: Service
     ): User {
-        val user: BlueskyUser = BlueskyUser(service)
-        user.setSimple(true)
+        return BlueskyUser(service).apply {
+            isSimple = true
+            protected = false
 
-        user.setId(account.getDid())
-        user.setScreenName(account.getHandle())
+            id = ID(account.did)
+            name = account.displayName
+            screenName = account.handle
+            iconImageUrl = account.avatar
 
-        user.setName(account.getDisplayName())
-        user.setIconImageUrl(account.getAvatar())
-
-        if (account.getViewer() != null) {
-            val state: ActorDefsViewerState = account.getViewer()
-            user.setFollowRecordUri(state.getFollowing())
-            user.setFollowedRecordUri(state.getFollowedBy())
-            user.setMuted(state.getMuted())
-            user.setBlockedBy(state.getBlockedBy())
-            user.setBlockingRecordUri(state.getBlocking())
+            userViewer(this, account.viewer)
         }
+    }
 
-        user.setProtected(false)
-        return user
+    private fun userViewer(
+        user: BlueskyUser,
+        viewer: ActorDefsViewerState?,
+    ) {
+        viewer?.let {
+            user.followRecordUri = it.following
+            user.followedRecordUri = it.followedBy
+
+            user.muted = it.muted
+            user.blockedBy = it.blockedBy
+            user.blockingRecordUri = it.blocking
+        }
     }
 
     /**
@@ -129,12 +116,14 @@ object BlueskyMapper {
      */
     fun comment(
         feed: FeedDefsFeedViewPost,
-        service: Service?
+        service: Service
     ): Comment {
-        val post: FeedDefsPostView = feed.getPost()
-        val reply: FeedDefsReplyRef = feed.getReply()
-        val repost: FeedDefsReasonRepost = feed.getReason()
-        return comment(post, reply, repost, service)
+        return comment(
+            post = feed.post,
+            reply = feed.reply,
+            repost = feed.reason,
+            service = service,
+        )
     }
 
     /**
@@ -144,89 +133,89 @@ object BlueskyMapper {
         post: FeedDefsPostView,
         reply: FeedDefsReplyRef?,
         repost: FeedDefsReasonRepost?,
-        service: Service?
+        service: Service
     ): Comment {
-        val model: BlueskyComment = BlueskyComment(service)
+        return BlueskyComment(service).apply {
 
-        // Repost
-        if (repost != null) {
+            // Repost
+            if (repost != null) {
+
+                id = ID(post.uri!!)
+                cid = post.cid
+                user = user(repost.by!!, service)
+                createAt = repost.indexedAt!!.toInstant()
+
+                medias = mutableListOf()
+                sharedComment = comment(
+                    post = post,
+                    reply = reply,
+                    repost = null,
+                    service = service,
+                )
+
+                liked = false
+                shared = false
+                possiblySensitive = false
+
+                likeCount = 0L
+                shareCount = 0L
+                replyCount = 0L
+                return@apply
+            }
+
+
             model.setId(post.getUri())
             model.setCid(post.getCid())
-            model.setUser(user(repost.getBy(), service))
-            model.setCreateAt(parseDate(repost.getIndexedAt()))
+            model.setUser(user(post.getAuthor(), service))
+            model.setCreateAt(parseDate(post.getIndexedAt()))
 
-            model.setMedias(java.util.ArrayList<E>())
-            model.setSharedComment(
-                comment(
-                    post, reply, null, service
-                )
-            )
-
-            model.setLiked(false)
-            model.setShared(false)
+            // TODO: Labels
             model.setPossiblySensitive(false)
 
-            model.setLikeCount(0L)
-            model.setShareCount(0L)
-            model.setReplyCount(0L)
+            model.setLikeCount(
+                if ((post.getLikeCount() != null)
+                ) post.getLikeCount().longValue() else 0
+            )
+            model.setShareCount(
+                if ((post.getRepostCount() != null)
+                ) post.getRepostCount().longValue() else 0
+            )
+            model.setReplyCount(
+                if ((post.getReplyCount() != null)
+                ) post.getReplyCount().longValue() else 0
+            )
 
-            return model
+            val state: FeedDefsViewerState = post.getViewer()
+            model.setLiked(state.getLike() != null)
+            model.setLikeRecordUri(state.getLike())
+            model.setShared(state.getRepost() != null)
+            model.setRepostRecordUri(state.getRepost())
+
+            val union: RecordUnion = post.getRecord()
+            if (union is FeedPost) {
+                val record: FeedPost = union as FeedPost
+                model.setText(getAttributedText(record))
+            }
+
+            // Media + Quote
+            val embed: EmbedViewUnion = post.getEmbed()
+            model.setMedias(java.util.ArrayList<E>())
+            embed(model, embed, service)
+
+            // Reply
+            if (reply != null) {
+                // リプライ設定
+
+                val parent: FeedDefsPostView = reply.getParent()
+                val parentComment: BlueskyComment = simpleComment(parent, service) as BlueskyComment
+                model.setReplyTo(parentComment)
+
+                // 会話スレッドのルート設定
+                val root: FeedDefsPostView = reply.getRoot()
+                val rootComment: BlueskyComment = simpleComment(root, service) as BlueskyComment
+                model.setReplayRootTo(rootComment)
+            }
         }
-
-
-        model.setId(post.getUri())
-        model.setCid(post.getCid())
-        model.setUser(user(post.getAuthor(), service))
-        model.setCreateAt(parseDate(post.getIndexedAt()))
-
-        // TODO: Labels
-        model.setPossiblySensitive(false)
-
-        model.setLikeCount(
-            if ((post.getLikeCount() != null)
-            ) post.getLikeCount().longValue() else 0
-        )
-        model.setShareCount(
-            if ((post.getRepostCount() != null)
-            ) post.getRepostCount().longValue() else 0
-        )
-        model.setReplyCount(
-            if ((post.getReplyCount() != null)
-            ) post.getReplyCount().longValue() else 0
-        )
-
-        val state: FeedDefsViewerState = post.getViewer()
-        model.setLiked(state.getLike() != null)
-        model.setLikeRecordUri(state.getLike())
-        model.setShared(state.getRepost() != null)
-        model.setRepostRecordUri(state.getRepost())
-
-        val union: RecordUnion = post.getRecord()
-        if (union is FeedPost) {
-            val record: FeedPost = union as FeedPost
-            model.setText(getAttributedText(record))
-        }
-
-        // Media + Quote
-        val embed: EmbedViewUnion = post.getEmbed()
-        model.setMedias(java.util.ArrayList<E>())
-        embed(model, embed, service)
-
-        // Reply
-        if (reply != null) {
-            // リプライ設定
-
-            val parent: FeedDefsPostView = reply.getParent()
-            val parentComment: BlueskyComment = simpleComment(parent, service) as BlueskyComment
-            model.setReplyTo(parentComment)
-
-            // 会話スレッドのルート設定
-            val root: FeedDefsPostView = reply.getRoot()
-            val rootComment: BlueskyComment = simpleComment(root, service) as BlueskyComment
-            model.setReplayRootTo(rootComment)
-        }
-
-        return model
     }
 
     /**

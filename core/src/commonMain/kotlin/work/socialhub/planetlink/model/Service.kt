@@ -12,6 +12,6 @@ class Service(
 ) {
     var rateLimit = RateLimit()
 
-    /** Use Only Mastodon  */
     var apiHost: String? = null
+    var streamHost: String? = null
 }
