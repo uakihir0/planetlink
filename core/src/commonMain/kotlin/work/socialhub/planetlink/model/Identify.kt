@@ -9,6 +9,12 @@ open class Identify(
 ) {
     var id: ID? = null
 
+    inline fun <reified T> id(): T {
+        return checkNotNull(id) {
+            "id is null."
+        }.value<T>()
+    }
+
     constructor(
         service: Service,
         id: ID,

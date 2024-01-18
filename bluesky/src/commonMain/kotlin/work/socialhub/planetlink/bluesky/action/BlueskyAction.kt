@@ -46,7 +46,7 @@ import work.socialhub.planetlink.bluesky.action.BlueskyMapper as Mapper
 
 class BlueskyAction(
     account: Account,
-    var auth: BlueskyAuth,
+    val auth: BlueskyAuth,
 ) : AccountActionImpl(account) {
 
     private var accessJwt: String? = null
@@ -1095,7 +1095,7 @@ class BlueskyAction(
                 if (paging is BlueskyPaging) {
 
                     if (paging.latestRecord != null) {
-                        val uri = paging.latestRecord!!.id!!.value<String>()
+                        val uri = paging.latestRecord!!.id<String>()
                         list = list.takeUntil { it.uri == uri }
 
                         // 処理を停止

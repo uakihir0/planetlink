@@ -489,7 +489,7 @@ object BlueskyMapper {
         if (paging is BlueskyPaging) {
             userList = userList.takeUntil {
                 val id = paging.latestRecord
-                id != null && it.did == id.id!!.value<String>()
+                id != null && it.did == id.id<String>()
             }
         }
 
@@ -520,7 +520,7 @@ object BlueskyMapper {
         if (paging is BlueskyPaging) {
             feedList = feedList.takeUntil {
                 val id = paging.latestRecord
-                id != null && it.post.uri == id.id!!.value<String>()
+                id != null && it.post.uri == id.id<String>()
             }
         }
 
@@ -550,7 +550,7 @@ object BlueskyMapper {
         if (paging is BlueskyPaging) {
             postList = postList.takeUntil {
                 val id = paging.latestRecord
-                id != null && it.uri == id.id!!.value<String>()
+                id != null && it.uri == id.id<String>()
             }
         }
 
@@ -581,7 +581,7 @@ object BlueskyMapper {
         if (paging is BlueskyPaging) {
             notificationList = notificationList.takeUntil {
                 val id = paging.latestRecord
-                id != null && it.uri == id.id!!.value<String>()
+                id != null && it.uri == id.id<String>()
             }
         }
 
@@ -614,7 +614,7 @@ object BlueskyMapper {
         if (paging is BlueskyPaging) {
             channelList = channelList.takeUntil {
                 val id = paging.latestRecord
-                id != null && it.uri == id.id!!.value<String>()
+                id != null && it.uri == id.id<String>()
             }
         }
 
