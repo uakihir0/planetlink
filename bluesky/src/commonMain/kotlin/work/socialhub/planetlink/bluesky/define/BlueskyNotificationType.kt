@@ -10,7 +10,7 @@ enum class BlueskyNotificationType(
     val code: String
 ) {
     MENTION(NotificationActionType.MENTION, "mention"),
-    REPLY(NotificationActionType.MENTION, "replay"),
+    REPLY(NotificationActionType.MENTION, "reply"),
     FOLLOW(NotificationActionType.FOLLOW, "follow"),
     REPOST(NotificationActionType.SHARE, "repost"),
     LIKE(NotificationActionType.LIKE, "like"),
