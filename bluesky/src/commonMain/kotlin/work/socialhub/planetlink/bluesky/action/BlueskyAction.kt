@@ -487,9 +487,7 @@ class BlueskyAction(
                 cursor = response.data.cursor
 
                 // 十分な数の画像を取得できた場合は終了
-                if (feeds.size >= limit) {
-                    break
-                }
+                if (feeds.size >= limit) break
             }
             Mapper.timelineByFeeds(
                 feeds,
