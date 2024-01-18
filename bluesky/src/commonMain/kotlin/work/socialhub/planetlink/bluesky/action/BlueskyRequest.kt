@@ -3,8 +3,12 @@ package work.socialhub.planetlink.bluesky.action
 import work.socialhub.planetlink.action.RequestActionImpl
 import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.action.request.CommentsRequestImpl
+import work.socialhub.planetlink.define.action.TimeLineActionType
+import work.socialhub.planetlink.define.action.TimeLineActionType.*
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Identify
+import work.socialhub.planetlink.model.Request
+import work.socialhub.planetlink.model.User
 
 class BlueskyRequest(
     account: Account,
@@ -43,55 +47,51 @@ class BlueskyRequest(
     override fun userCommentTimeLine(
         id: Identify
     ): CommentsRequest {
-        (super.userCommentTimeLine(id) as CommentsRequestImpl).also {
-            it.streamFunction = account.action::setUserCommentTimeLineStream
+        return (super.userCommentTimeLine(id) as CommentsRequestImpl).also {
+            if (id is User) setCommentIdentify(it, id.accountIdentify)
         }
-        val request: CommentsRequestImpl = super.getUserCommentTimeLine(id) as CommentsRequestImpl
-
-        if (id is User) {
-            setCommentIdentify(request, (id as User).getAccountIdentify())
-        }
-        return request
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getUserLikeTimeLine(id: Identify): CommentsRequest {
-        val request: CommentsRequestImpl = super.getUserLikeTimeLine(id) as CommentsRequestImpl
-
-        if (id is User) {
-            setCommentIdentify(request, (id as User).getAccountIdentify())
+    override fun userLikeTimeLine(
+        id: Identify
+    ): CommentsRequest {
+        return (super.userLikeTimeLine(id) as CommentsRequestImpl).also {
+            if (id is User) setCommentIdentify(it, id.accountIdentify)
         }
-        return request
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getUserMediaTimeLine(id: Identify): CommentsRequest {
-        val request: CommentsRequestImpl = super.getUserMediaTimeLine(id) as CommentsRequestImpl
-
-        if (id is User) {
-            setCommentIdentify(request, (id as User).getAccountIdentify())
+    override fun userMediaTimeLine(
+        id: Identify
+    ): CommentsRequest {
+        return (super.userMediaTimeLine(id) as CommentsRequestImpl).also {
+            if (id is User) setCommentIdentify(it, id.accountIdentify)
         }
-        return request
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getSearchTimeLine(query: String): CommentsRequest {
-        val request: CommentsRequestImpl = super.getSearchTimeLine(query) as CommentsRequestImpl
-        request.getCommentFrom().text("$query ")
-        return request
+    override fun searchTimeLine(
+        query: String
+    ): CommentsRequest {
+        return (super.searchTimeLine(query) as CommentsRequestImpl).also {
+            it.commentFrom().text("$query ")
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getMessageTimeLine(id: Identify?): CommentsRequest {
-        throw NotImplimentedException()
+    override fun messageTimeLine(
+        id: Identify
+    ): CommentsRequest {
+        throw NotImplementedError()
     }
 
     // ============================================================== //
@@ -100,29 +100,29 @@ class BlueskyRequest(
     /**
      * {@inheritDoc}
      */
-    fun fromSerializedString(serialize: String?): Request? {
+    override fun fromRawString(
+        raw: String
+    ): Request? {
         try {
-            val params: SerializeParams = Gson().fromJson(serialize, SerializeParams::class.java)
-            val action: String = params.get("action")
-
-            val result: Request = super.fromSerializedString(serialize)
+            val result = super.fromRawString(raw) ?: return null
+            val request = checkNotNull(result.raw)
+            val params = request.params
 
             // Comment Mentions
             if (result is CommentsRequest) {
-                val req: CommentsRequest = result as CommentsRequest
-                when (TimeLineActionType.valueOf(action)) {
-                    UserCommentTimeLine, UserLikeTimeLine, UserMediaTimeLine -> setCommentIdentify(
-                        req,
-                        params.get("to")
-                    )
+                when (TimeLineActionType.valueOf(request.action)) {
+                    UserCommentTimeLine,
+                    UserLikeTimeLine,
+                    UserMediaTimeLine,
+                    -> setCommentIdentify(result, params["to"]!!)
 
                     else -> {}
                 }
             }
 
             return result
-        } catch (e: java.lang.Exception) {
-            log.debug("json parse error (mastodon).", e)
+        } catch (e: Exception) {
+            println("json parse error (bluesky): ${e.message}.")
             return null
         }
     }
@@ -131,7 +131,7 @@ class BlueskyRequest(
     // Support
     // ============================================================== //
     private fun setCommentIdentify(request: CommentsRequest, identify: String) {
-        request.getSerializeBuilder().add("to", identify)
-        request.getCommentFrom().text("$identify ")
+        request.commentFrom().text("$identify ")
+        request.raw!!.add("to", identify)
     }
 }

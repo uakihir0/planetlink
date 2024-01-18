@@ -1,7 +1,7 @@
 package work.socialhub.planetlink.bluesky.define
 
 /**
- * Mastodon Reaction Type
+ * Bluesky Reaction Type
  * (Action code with alias)
  */
 enum class BlueskyReactionType(
