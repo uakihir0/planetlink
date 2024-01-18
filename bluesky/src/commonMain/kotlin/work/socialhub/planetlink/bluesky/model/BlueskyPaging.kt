@@ -100,7 +100,7 @@ class BlueskyPaging(
          * From Paging instance
          */
         fun fromPaging(
-            paging: Paging,
+            paging: Paging?,
         ): BlueskyPaging {
 
             if (paging is BlueskyPaging) {
@@ -109,7 +109,7 @@ class BlueskyPaging(
 
             // Count の取得
             val pg = BlueskyPaging()
-            if (paging.count != null) {
+            if (paging?.count != null) {
                 pg.count = paging.count
             }
             return pg

@@ -1,6 +1,6 @@
 package work.socialhub.planetlink.action.request
 
-import work.socialhub.planetlink.action.RequestActionImpl.SerializedRequest
+import work.socialhub.planetlink.action.SerializedRequest
 import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.define.action.ActionType
 import work.socialhub.planetlink.model.*
@@ -23,6 +23,11 @@ class CommentsRequestImpl : CommentsRequest {
      * {@inheritDoc}
      */
     override var account: Account? = null
+
+    /**
+     * {@inheritDoc}
+     */
+    override var raw: SerializedRequest? = null
 
     /**
      * {@inheritDoc}
@@ -58,9 +63,4 @@ class CommentsRequestImpl : CommentsRequest {
         return commentForm ?: CommentForm()
             .also { this.commentForm = it }
     }
-
-    /**
-     * {@inheritDoc}
-     */
-    override var serializedRequest: SerializedRequest? = null
 }

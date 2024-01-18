@@ -31,8 +31,6 @@ import work.socialhub.kbsky.util.ATUriParser
 import work.socialhub.kbsky.util.facet.FacetType
 import work.socialhub.kbsky.util.facet.FacetUtil
 import work.socialhub.planetlink.action.AccountActionImpl
-import work.socialhub.planetlink.action.callback.EventCallback
-import work.socialhub.planetlink.bluesky.action.BlueskyMapper.notifications
 import work.socialhub.planetlink.bluesky.define.BlueskyReactionType
 import work.socialhub.planetlink.bluesky.model.BlueskyComment
 import work.socialhub.planetlink.bluesky.model.BlueskyPaging
@@ -42,6 +40,7 @@ import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.model.request.CommentForm
+import work.socialhub.planetlink.utils.CollectionUtil.takeUntil
 import kotlin.math.min
 import work.socialhub.planetlink.bluesky.action.BlueskyMapper as Mapper
 
@@ -412,7 +411,7 @@ class BlueskyAction(
 
                 if (paging.latestRecord != null) {
                     val uri = paging.latestRecord!!.id!!.value as String
-                    records = Mapper.takeUntil(records) { it.uri == uri }
+                    records = records.takeUntil { it.uri == uri }
                 }
             }
 
@@ -515,7 +514,7 @@ class BlueskyAction(
                 }
             )
 
-            Mapper.timelineByFeeds(
+            Mapper.timelineByPosts(
                 response.data.posts,
                 paging,
                 service()
@@ -1002,6 +1001,7 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
+    @Suppress("unused", "UNUSED_PARAMETER")
     fun trends(
         limit: Int
     ): List<Trend> {
@@ -1011,6 +1011,7 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
+    @Suppress("unused")
     fun notification(
         paging: Paging
     ): Pageable<Notification> {
@@ -1037,7 +1038,7 @@ class BlueskyAction(
                 .distinct()
 
             val results = Mapper.notifications(
-                model.notifications,
+                model.notifications!!,
                 postViews(subjects),
                 null,
                 service(),
@@ -1095,7 +1096,7 @@ class BlueskyAction(
 
                     if (paging.latestRecord != null) {
                         val uri = paging.latestRecord!!.id!!.value<String>()
-                        list = Mapper.takeUntil(list) { it.uri == uri }
+                        list = list.takeUntil { it.uri == uri }
 
                         // 処理を停止
                         stop = true
@@ -1139,52 +1140,6 @@ class BlueskyAction(
                 it.first = first
             }
         }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    fun votePoll(
-        id: Identify,
-        choices: List<Int>,
-    ) {
-        throw NotImplementedError()
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    fun localTimeLine(
-        paging: Paging,
-    ): Pageable<Comment> {
-        throw NotImplementedError()
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    fun federationTimeLine(
-        paging: Paging,
-    ): Pageable<Comment> {
-        throw NotImplementedError()
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    fun setLocalLineStream(
-        callback: EventCallback
-    ): Stream {
-        throw NotImplementedError()
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    fun setFederationLineStream(
-        callback: EventCallback,
-    ): Stream {
-        throw NotImplementedError()
     }
 
     // ============================================================== //

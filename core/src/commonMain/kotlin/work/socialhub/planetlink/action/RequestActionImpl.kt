@@ -241,26 +241,26 @@ open class RequestActionImpl(
     private fun getUsersRequest(
         type: ActionType,
         usersFunction: (Paging) -> Pageable<User>,
-        serializedRequest: SerializedRequest
+        raw: SerializedRequest
     ): UsersRequestImpl {
         return UsersRequestImpl().also {
             it.usersFunction = usersFunction
-            it.serializedRequest = serializedRequest
             it.actionType = type
             it.account = account
+            it.raw = raw
         }
     }
 
     private fun getCommentsRequest(
         type: ActionType,
         commentsFunction: (Paging) -> Pageable<Comment>,
-        serializedRequest: SerializedRequest
+        raw: SerializedRequest
     ): CommentsRequestImpl {
         return CommentsRequestImpl().also {
             it.commentsFunction = commentsFunction
-            it.serializedRequest = serializedRequest
             it.actionType = type
             it.account = account
+            it.raw = raw
         }
     }
 }

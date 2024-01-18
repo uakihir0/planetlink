@@ -16,4 +16,20 @@ object CollectionUtil {
         }
         return results
     }
+
+    /**
+     * 特定の条件でない場合までのリストを取得
+     */
+    fun <T> List<T>.takeUntil(
+        predicate: (T) -> Boolean
+    ): List<T> {
+        val result = mutableListOf<T>()
+        for (item in this) {
+            if (predicate(item)) {
+                break
+            }
+            result.add(item)
+        }
+        return result
+    }
 }

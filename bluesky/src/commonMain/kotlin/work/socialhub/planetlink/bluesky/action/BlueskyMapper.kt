@@ -23,6 +23,7 @@ import work.socialhub.planetlink.model.common.AttributedElement
 import work.socialhub.planetlink.model.common.AttributedItem
 import work.socialhub.planetlink.model.common.AttributedKind
 import work.socialhub.planetlink.model.common.AttributedString
+import work.socialhub.planetlink.utils.CollectionUtil.takeUntil
 import kotlin.math.max
 
 object BlueskyMapper {
@@ -541,7 +542,7 @@ object BlueskyMapper {
      */
     fun timelineByPosts(
         posts: List<FeedDefsPostView>,
-        paging: Paging,
+        paging: Paging?,
         service: Service
     ): Pageable<Comment> {
 
@@ -572,7 +573,7 @@ object BlueskyMapper {
     fun notifications(
         notifications: List<NotificationListNotificationsNotification>,
         posts: List<FeedDefsPostView>,
-        paging: Paging,
+        paging: Paging?,
         service: Service
     ): Pageable<Notification> {
 
@@ -628,18 +629,5 @@ object BlueskyMapper {
         model.entities = channelList.map { channel(it, service) }
         model.paging = BlueskyPaging.fromPaging(paging)
         return model
-    }
-
-    fun <T> List<T>.takeUntil(
-        predicate: (T) -> Boolean
-    ): List<T> {
-        val result = mutableListOf<T>()
-        for (item in this) {
-            if (predicate(item)) {
-                break
-            }
-            result.add(item)
-        }
-        return result
     }
 }
