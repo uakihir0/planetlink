@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.model
 
+import kotlinx.datetime.Instant
 import work.socialhub.planetlink.define.NotificationActionType
 
 /**
@@ -25,7 +26,7 @@ class Notification(
     var action: String? = null
 
     /** Date of created  */
-    var createAt: Instance? = null
+    var createAt: Instant? = null
 
     /** Associated users  */
     var users: List<User>? = null

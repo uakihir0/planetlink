@@ -1,6 +1,7 @@
 package work.socialhub.planetlink.micro
 
 import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Service
 
 open class MicroBlogComment(
@@ -12,4 +13,6 @@ open class MicroBlogComment(
 
     var likeCount: Long? = null
     var shareCount: Long? = null
+
+    var replyTo: Identify? = null
 }

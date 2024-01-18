@@ -29,7 +29,7 @@ class BlueskyComment(
 
     var repostRecordUri: String? = null
 
-    var replayRootTo: Identify? = null
+    var replyRootTo: Identify? = null
 
     override val webUrl: String
         get() {

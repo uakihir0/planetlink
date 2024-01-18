@@ -1,5 +1,7 @@
 package work.socialhub.planetlink.model
 
+import kotlinx.datetime.Instant
+
 /**
  * SNS チャンネル (リスト) 情報
  * SNS Channel (List) Model
@@ -10,7 +12,7 @@ open class Channel(
 
     var name: String? = null
     var description: String? = null
-    var createAt: Instance? = null
+    var createAt: Instant? = null
     var public: Boolean? = null
 }
 

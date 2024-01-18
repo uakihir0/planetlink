@@ -1,29 +1,31 @@
 package work.socialhub.planetlink.bluesky.action
 
-import kotlinx.datetime.Instant
+import io.ktor.utils.io.charsets.*
+import io.ktor.utils.io.core.*
 import kotlinx.datetime.toInstant
 import work.socialhub.kbsky.model.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.bsky.actor.ActorDefsProfileViewBasic
 import work.socialhub.kbsky.model.bsky.actor.ActorDefsProfileViewDetailed
 import work.socialhub.kbsky.model.bsky.actor.ActorDefsViewerState
-import work.socialhub.kbsky.model.bsky.feed.FeedDefsFeedViewPost
-import work.socialhub.kbsky.model.bsky.feed.FeedDefsPostView
-import work.socialhub.kbsky.model.bsky.feed.FeedDefsReasonRepost
-import work.socialhub.kbsky.model.bsky.feed.FeedDefsReplyRef
+import work.socialhub.kbsky.model.bsky.embed.*
+import work.socialhub.kbsky.model.bsky.feed.*
 import work.socialhub.kbsky.model.bsky.notification.NotificationListNotificationsNotification
+import work.socialhub.kbsky.model.bsky.richtext.RichtextFacetLink
+import work.socialhub.kbsky.model.bsky.richtext.RichtextFacetMention
+import work.socialhub.planetlink.bluesky.define.BlueskyNotificationType
+import work.socialhub.planetlink.bluesky.model.BlueskyChannel
 import work.socialhub.planetlink.bluesky.model.BlueskyComment
+import work.socialhub.planetlink.bluesky.model.BlueskyPaging
 import work.socialhub.planetlink.bluesky.model.BlueskyUser
+import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.*
+import work.socialhub.planetlink.model.common.AttributedElement
+import work.socialhub.planetlink.model.common.AttributedItem
+import work.socialhub.planetlink.model.common.AttributedKind
 import work.socialhub.planetlink.model.common.AttributedString
 import kotlin.math.max
-import kotlin.reflect.KClass
 
 object BlueskyMapper {
-
-    private const val dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
-
-    /** ダイナミックロードできない為に使用を明示するために使用  */
-    private val ClassLoader: List<KClass<*>> = listOf()
 
     // ============================================================== //
     // Single Object Mapper
@@ -163,57 +165,36 @@ object BlueskyMapper {
                 return@apply
             }
 
-
-            model.setId(post.getUri())
-            model.setCid(post.getCid())
-            model.setUser(user(post.getAuthor(), service))
-            model.setCreateAt(parseDate(post.getIndexedAt()))
+            id = ID(post.uri!!)
+            cid = post.cid
+            user = user(post.author!!, service)
+            createAt = post.indexedAt!!.toInstant()
 
             // TODO: Labels
-            model.setPossiblySensitive(false)
+            possiblySensitive = false
 
-            model.setLikeCount(
-                if ((post.getLikeCount() != null)
-                ) post.getLikeCount().longValue() else 0
-            )
-            model.setShareCount(
-                if ((post.getRepostCount() != null)
-                ) post.getRepostCount().longValue() else 0
-            )
-            model.setReplyCount(
-                if ((post.getReplyCount() != null)
-                ) post.getReplyCount().longValue() else 0
-            )
+            likeCount = post.likeCount?.toLong() ?: 0L
+            shareCount = post.repostCount?.toLong() ?: 0L
+            replyCount = post.replyCount?.toLong() ?: 0L
 
-            val state: FeedDefsViewerState = post.getViewer()
-            model.setLiked(state.getLike() != null)
-            model.setLikeRecordUri(state.getLike())
-            model.setShared(state.getRepost() != null)
-            model.setRepostRecordUri(state.getRepost())
+            commentViewer(this, post.viewer)
 
-            val union: RecordUnion = post.getRecord()
+
+            val union = post.record
             if (union is FeedPost) {
-                val record: FeedPost = union as FeedPost
-                model.setText(getAttributedText(record))
+                text = attributedText(union)
             }
 
             // Media + Quote
-            val embed: EmbedViewUnion = post.getEmbed()
-            model.setMedias(java.util.ArrayList<E>())
-            embed(model, embed, service)
+            medias = mutableListOf()
+            post.embed?.let { embed(this, it, service) }
 
             // Reply
             if (reply != null) {
-                // リプライ設定
-
-                val parent: FeedDefsPostView = reply.getParent()
-                val parentComment: BlueskyComment = simpleComment(parent, service) as BlueskyComment
-                model.setReplyTo(parentComment)
-
+                // 直接の会話の設定
+                replyTo = simpleComment(reply.parent!!, service)
                 // 会話スレッドのルート設定
-                val root: FeedDefsPostView = reply.getRoot()
-                val rootComment: BlueskyComment = simpleComment(root, service) as BlueskyComment
-                model.setReplayRootTo(rootComment)
+                replyRootTo = simpleComment(reply.root!!, service)
             }
         }
     }
@@ -223,184 +204,169 @@ object BlueskyMapper {
      */
     fun simpleComment(
         post: FeedDefsPostView,
-        service: Service?
+        service: Service
     ): Comment {
         return comment(
             post,
             null,
             null,
-            service
+            service,
         )
     }
 
     private fun embed(
         model: BlueskyComment,
         embed: EmbedViewUnion,
-        service: Service?
+        service: Service
     ) {
         // Media
         if (embed is EmbedImagesView) {
-            model.getMedias().clear()
-            (embed as EmbedImagesView).getImages().forEach { img -> model.getMedias().add(media(img)) }
+            val medias = embed.images!!.map { media(it) }
+            model.medias = model.medias!!.plus(medias)
         }
 
         // Quote
         if (embed is EmbedRecordView) {
-            embedRecord(model, embed as EmbedRecordView, service)
+            embedRecord(model, embed, service)
         }
 
         // Quote With Media
         if (embed is EmbedRecordWithMediaView) {
-            embed(model, (embed as EmbedRecordWithMediaView).getMedia(), service)
-            embedRecord(model, (embed as EmbedRecordWithMediaView).getRecord(), service)
+            embed(model, embed.media!!, service)
+            embedRecord(model, embed.record!!, service)
         }
     }
 
     private fun embedRecord(
         model: BlueskyComment,
         record: EmbedRecordView,
-        service: Service?
+        service: Service
     ) {
-        val union: EmbedRecordViewUnion = record.getRecord()
+        val union = record.record
         if (union is EmbedRecordViewRecord) {
-            val v: EmbedRecordViewRecord = union as EmbedRecordViewRecord
-            model.setSharedComment(quote(v, service))
-        }
-
-        if (union is EmbedRecordWithMediaView) {
-            val mv: EmbedRecordWithMediaView = union as EmbedRecordWithMediaView
-            embedRecord(model, mv.getRecord(), service)
-            embed(model, mv.getMedia(), service)
+            model.sharedComment = quote(union, service)
         }
     }
 
     private fun quote(
         post: EmbedRecordViewRecord,
-        service: Service?
+        service: Service
     ): BlueskyComment {
-        val model: BlueskyComment = BlueskyComment(service)
+        return BlueskyComment(service).apply {
 
-        model.setId(post.getUri())
-        model.setCid(post.getCid())
-        model.setUser(user(post.getAuthor(), service))
-        model.setCreateAt(parseDate(post.getIndexedAt()))
+            id = ID(post.uri!!)
+            cid = post.cid
+            user = user(post.author!!, service)
+            createAt = post.indexedAt!!.toInstant()
 
-        model.setLiked(false)
-        model.setShared(false)
-        model.setPossiblySensitive(false)
+            liked = false
+            shared = false
+            possiblySensitive = false
 
-        model.setLikeCount(0L)
-        model.setShareCount(0L)
-        model.setReplyCount(0L)
+            likeCount = 0L
+            shareCount = 0L
+            replyCount = 0L
 
-        // Text
-        val union: RecordUnion = post.getValue()
-        if (union is FeedPost) {
-            val record: FeedPost = union as FeedPost
-            model.setText(getAttributedText(record))
+            // Text
+            val union = post.value
+            if (union is FeedPost) {
+                text = attributedText(union)
+            }
+
+            // Media
+            medias = mutableListOf()
+            if (post.embeds != null) {
+                post.embeds!!.forEach {
+                    embed(this, it, service)
+                }
+            }
         }
-
-        // Media
-        model.setMedias(java.util.ArrayList<E>())
-        if (post.getEmbeds() != null) {
-            post.getEmbeds().forEach { embed -> embed(model, embed, service) }
-        }
-
-        return model
     }
 
-    private fun getAttributedText(post: FeedPost): AttributedString {
-        val elements: MutableList<AttributedElement> = java.util.ArrayList<AttributedElement>()
-        var bytes: ByteArray = post.getText().getBytes(java.nio.charset.StandardCharsets.UTF_8)
+    private fun attributedText(
+        post: FeedPost
+    ): AttributedString {
+        val elements = mutableListOf<AttributedElement>()
+        var bytes = post.text!!.toByteArray(Charsets.UTF_8)
 
         // 読み進めたバイト数
         var readIndex = 0
 
-        if (post.getFacets() != null) {
-            val facets: List<RichtextFacet> = post.getFacets().stream()
-                .sorted(java.util.Comparator.comparing(java.util.function.Function<T, U> { i: T ->
-                    i.getIndex().getByteStart()
-                }))
-                .collect(java.util.stream.Collectors.toList())
+        if (post.facets != null) {
+            val facets = post.facets!!.sortedBy { it.index!!.byteStart }
 
             for (facet in facets) {
-                if (facet.getFeatures() != null && !facet.getFeatures().isEmpty()) {
-                    val union: RichtextFacetFeatureUnion = facet.getFeatures().get(0)
-                    val index: RichtextFacetByteSlice = facet.getIndex()
-
-                    // 処理しない Union の場合は次
-                    if (union == null) {
-                        continue
-                    }
+                if (facet.features != null && facet.features!!.isNotEmpty()) {
+                    val union = facet.features!![0]
+                    val index = facet.index!!
 
                     // Facet の前を Text として取得
-                    if (readIndex < index.getByteStart()) {
-                        val len: Int = (index.getByteStart() - readIndex)
-                        val beforeBytes: ByteArray = java.util.Arrays.copyOfRange(bytes, 0, len)
+                    if (readIndex < index.byteStart!!) {
+                        val len: Int = (index.byteStart!! - readIndex)
+                        val beforeBytes = bytes.copyOfRange(0, len)
 
-                        readIndex = index.getByteStart()
-                        val afterLen = max(0.0, (bytes.size - len).toDouble()).toInt()
-                        bytes = java.util.Arrays.copyOfRange(bytes, len, len + afterLen)
+                        // readIndex = index.byteStart!!
+                        val afterLen = max(0, (bytes.size - len))
+                        bytes = bytes.copyOfRange(len, len + afterLen)
 
-                        val str: String = String(beforeBytes, java.nio.charset.StandardCharsets.UTF_8)
-                        val element: AttributedItem = AttributedItem()
-                        element.setKind(AttributedKind.PLAIN)
-                        element.setExpandedText(str)
-                        element.setDisplayText(str)
+                        val str = String(beforeBytes)
+                        val element = AttributedItem()
+                        element.kind = AttributedKind.PLAIN
+                        element.expandedText = str
+                        element.displayText = str
                         elements.add(element)
 
-                        if (bytes.size == 0) {
+                        if (bytes.isEmpty()) {
                             break
                         }
                     }
 
                     // Facet の部分を切り出して作成
-                    val len: Int = (index.getByteEnd() - index.getByteStart())
-                    val targetByte: ByteArray = java.util.Arrays.copyOfRange(bytes, 0, len)
+                    val len = (index.byteEnd!! - index.byteStart!!)
+                    val targetByte = bytes.copyOfRange(0, len)
 
-                    readIndex = index.getByteEnd()
-                    val afterLen = max(0.0, (bytes.size - len).toDouble()).toInt()
-                    bytes = java.util.Arrays.copyOfRange(bytes, len, len + afterLen)
+                    readIndex = index.byteEnd!!
+                    val afterLen = max(0, (bytes.size - len))
+                    bytes = bytes.copyOfRange(len, len + afterLen)
 
                     if (union is RichtextFacetMention) {
-                        val mention: RichtextFacetMention = union as RichtextFacetMention
-                        val str: String = String(targetByte, java.nio.charset.StandardCharsets.UTF_8)
-                        val element: AttributedItem = AttributedItem()
-                        element.setKind(AttributedKind.ACCOUNT)
-                        element.setExpandedText(mention.getDid())
-                        element.setDisplayText(str)
+                        val str = String(targetByte)
+                        val element = AttributedItem()
+                        element.kind = AttributedKind.ACCOUNT
+                        element.expandedText = union.did
+                        element.displayText = str
                         elements.add(element)
+
                     } else if (union is RichtextFacetLink) {
-                        val link: RichtextFacetLink = union as RichtextFacetLink
-                        val str: String = String(targetByte, java.nio.charset.StandardCharsets.UTF_8)
-                        val element: AttributedItem = AttributedItem()
-                        element.setKind(AttributedKind.LINK)
-                        element.setExpandedText(link.getUri())
-                        element.setDisplayText(str)
+                        val str = String(targetByte)
+                        val element = AttributedItem()
+                        element.kind = AttributedKind.LINK
+                        element.expandedText = union.uri
+                        element.displayText = str
                         elements.add(element)
                     } else {
                         // その他の場合はプレーンテキストとして取得
-                        val str: String = String(targetByte, java.nio.charset.StandardCharsets.UTF_8)
-                        val element: AttributedItem = AttributedItem()
-                        element.setKind(AttributedKind.PLAIN)
-                        element.setExpandedText(str)
-                        element.setDisplayText(str)
+                        val str = String(targetByte)
+                        val element = AttributedItem()
+                        element.kind = AttributedKind.PLAIN
+                        element.expandedText = str
+                        element.displayText = str
                         elements.add(element)
                     }
 
-                    if (bytes.size == 0) {
+                    if (bytes.isEmpty()) {
                         break
                     }
                 }
             }
         }
 
-        if (bytes.size > 0) {
-            val str: String = String(bytes, java.nio.charset.StandardCharsets.UTF_8)
-            val element: AttributedItem = AttributedItem()
-            element.setKind(AttributedKind.PLAIN)
-            element.setExpandedText(str)
-            element.setDisplayText(str)
+        if (bytes.isNotEmpty()) {
+            val str = String(bytes)
+            val element = AttributedItem()
+            element.kind = AttributedKind.PLAIN
+            element.expandedText = str
+            element.displayText = str
             elements.add(element)
         }
 
@@ -410,12 +376,26 @@ object BlueskyMapper {
     /**
      * メディアマッピング
      */
-    private fun media(img: EmbedImagesViewImage): Media {
-        val media: Media = Media()
-        media.setType(MediaType.Image)
-        media.setPreviewUrl(img.getThumb())
-        media.setSourceUrl(img.getFullsize())
-        return media
+    private fun media(
+        img: EmbedImagesViewImage
+    ): Media {
+        return Media().apply {
+            type = MediaType.Image
+            previewUrl = img.thumb
+            sourceUrl = img.fullsize
+        }
+    }
+
+    private fun commentViewer(
+        comment: BlueskyComment,
+        viewer: FeedDefsViewerState?,
+    ) {
+        viewer?.let {
+            comment.liked = it.like != null
+            comment.likeRecordUri = it.like
+            comment.shared = it.repost != null
+            comment.repostRecordUri = it.repost
+        }
     }
 
     /**
@@ -424,12 +404,13 @@ object BlueskyMapper {
     fun relationship(
         user: BlueskyUser
     ): Relationship {
-        val relationship: Relationship = Relationship()
-        relationship.setFollowing(user.getFollowRecordUri() != null)
-        relationship.setFollowed(user.getFollowedRecordUri() != null)
-        relationship.setMuting(if ((user.getMuted() != null)) user.getMuted() else false)
-        relationship.setBlocking((user.getBlockingRecordUri() != null))
-        return relationship
+        return Relationship().apply {
+            following = user.followRecordUri != null
+            followed = user.followedRecordUri != null
+
+            muting = user.muted ?: false
+            blocking = user.blockingRecordUri != null
+        }
     }
 
     /**
@@ -437,47 +418,35 @@ object BlueskyMapper {
      */
     fun notification(
         notification: NotificationListNotificationsNotification,
-        posts: Map<String?, FeedDefsPostView?>,
-        service: Service?
+        posts: Map<String, FeedDefsPostView>,
+        service: Service
     ): Notification {
-        val model: Notification = Notification(service)
-        model.setId(notification.getUri())
-        model.setCreateAt(parseDate(notification.getIndexedAt()))
+        return Notification(service).apply {
+            id = ID(notification.uri)
+            createAt = notification.indexedAt.toInstant()
 
-        val type: BlueskyNotificationType =
-            BlueskyNotificationType
-                .of(notification.getReason())
-
-        if (type != null) {
-            model.setType(type.getCode())
-            if (type.getAction() != null) {
-                model.setAction(type.getAction().getCode())
+            val type = BlueskyNotificationType.of(notification.reason)
+            if (type != null) {
+                this.type = type.code
+                this.action = type.action.code
             }
-        }
 
-        if (notification.getAuthor() != null) {
-            model.setUsers(java.util.ArrayList<E>())
-            model.getUsers().add(user(notification.getAuthor(), service))
-        }
+            users = mutableListOf<User>().apply {
+                add(user(notification.author, service))
+            }
 
-
-        if (notification.getRecord() != null) {
-            val union: RecordUnion = notification.getRecord()
-
-            if (union is FeedLike ||
-                union is FeedRepost
-            ) {
-                val subject: String = notification.getReasonSubject()
-                val post: FeedDefsPostView? = posts[subject]
+            val union = notification.record
+            if (union is FeedLike || union is FeedRepost) {
+                val subject = notification.reasonSubject
+                val post = posts[subject]
 
                 if (post != null) {
-                    model.setComments(java.util.ArrayList<E>())
-                    model.getComments().add(simpleComment(post, service))
+                    comments = mutableListOf<Comment>().apply {
+                        add(simpleComment(post, service))
+                    }
                 }
             }
         }
-
-        return model
     }
 
     /**
@@ -485,23 +454,21 @@ object BlueskyMapper {
      */
     fun channel(
         generator: FeedDefsGeneratorView,
-        service: Service?
+        service: Service
     ): Channel {
-        val model: BlueskyChannel = BlueskyChannel(service)
+        return BlueskyChannel(service).apply {
+            id = ID(generator.uri!!)
+            cid = generator.cid
+            public = true
 
-        model.setId(generator.getUri())
-        model.setCid(generator.getCid())
-        model.setPublic(true)
+            name = generator.displayName
+            description = generator.description
+            createAt = generator.indexedAt!!.toInstant()
 
-        model.setName(generator.getDisplayName())
-        model.setDescription(generator.getDescription())
-        model.setCreateAt(parseDate(generator.getIndexedAt()))
-
-        model.setOwner(user(generator.getCreator(), service))
-        model.setLikeCount(generator.getLikeCount())
-        model.setIconUrl(generator.getAvatar())
-
-        return model
+            owner = user(generator.creator!!, service)
+            likeCount = generator.likeCount ?: 0
+            iconUrl = generator.avatar
+        }
     }
 
     // ============================================================== //
@@ -514,40 +481,28 @@ object BlueskyMapper {
         users: List<ActorDefsProfileView>,
         cursor: String?,
         paging: Paging,
-        service: Service?
+        service: Service
     ): Pageable<User> {
-        var users: List<ActorDefsProfileView> = users
+
+        var userList = users
         if (paging is BlueskyPaging) {
-            val p: BlueskyPaging = paging as BlueskyPaging
-            users = takeUntil(users, java.util.function.Predicate<T> { f: T ->
-                val id: Identify = p.getLatestRecord()
-                id != null && f.getDid().equals(id.getId())
-            })
+            userList = userList.takeUntil {
+                val id = paging.latestRecord
+                id != null && it.did == id.id!!.value<String>()
+            }
         }
 
         // 空の場合
-        if (users.isEmpty()) {
-            val model: Pageable<User> = Pageable()
-            model.setEntities(java.util.ArrayList<E>())
-            model.setPaging(paging)
+        if (userList.isEmpty()) {
+            val model = Pageable<User>()
+            model.paging = paging
             return model
         }
 
-        val model: Pageable<User> = Pageable()
-        model.setEntities(
-            users.stream()
-                .map<Any>(java.util.function.Function<ActorDefsProfileView, Any> { a: ActorDefsProfileView? ->
-                    user(
-                        a,
-                        service
-                    )
-                })
-                .collect(java.util.stream.Collectors.toList())
-        )
-
-        val pg: BlueskyPaging = BlueskyPaging.fromPaging(paging)
-        pg.setCursorHint(cursor)
-        model.setPaging(pg)
+        val model = Pageable<User>()
+        model.entities = userList.map { user(it, service) }
+        model.paging = BlueskyPaging.fromPaging(paging)
+            .also { it.cursorHint = cursor }
         return model
     }
 
@@ -557,39 +512,27 @@ object BlueskyMapper {
     fun timelineByFeeds(
         feed: List<FeedDefsFeedViewPost>,
         paging: Paging,
-        service: Service?
+        service: Service,
     ): Pageable<Comment> {
-        var feed: List<FeedDefsFeedViewPost> = feed
+
+        var feedList = feed
         if (paging is BlueskyPaging) {
-            val p: BlueskyPaging = paging as BlueskyPaging
-            feed = takeUntil(feed, java.util.function.Predicate<T> { f: T ->
-                val id: Identify = p.getLatestRecord()
-                id != null && f.getPost()
-                    .getUri().equals(id.getId())
-            })
+            feedList = feedList.takeUntil {
+                val id = paging.latestRecord
+                id != null && it.post.uri == id.id!!.value<String>()
+            }
         }
 
         // 空の場合
-        if (feed.isEmpty()) {
-            val model: Pageable<Comment> = Pageable()
-            model.setEntities(java.util.ArrayList<E>())
-            model.setPaging(paging)
+        if (feedList.isEmpty()) {
+            val model = Pageable<Comment>()
+            model.paging = paging
             return model
         }
 
-        val model: Pageable<Comment> = Pageable()
-        model.setEntities(
-            feed.stream()
-                .map<Any>(java.util.function.Function<FeedDefsFeedViewPost, Any> { a: FeedDefsFeedViewPost ->
-                    comment(
-                        a,
-                        service
-                    )
-                })
-                .collect(java.util.stream.Collectors.toList())
-        )
-
-        model.setPaging(BlueskyPaging.fromPaging(paging))
+        val model = Pageable<Comment>()
+        model.entities = feedList.map { comment(it, service) }
+        model.paging = BlueskyPaging.fromPaging(paging)
         return model
     }
 
@@ -598,39 +541,28 @@ object BlueskyMapper {
      */
     fun timelineByPosts(
         posts: List<FeedDefsPostView>,
-        paging: Paging?,
-        service: Service?
+        paging: Paging,
+        service: Service
     ): Pageable<Comment> {
-        var posts: List<FeedDefsPostView> = posts
+
+        var postList = posts
         if (paging is BlueskyPaging) {
-            val p: BlueskyPaging? = paging as BlueskyPaging?
-            posts = takeUntil(posts, java.util.function.Predicate<T> { f: T ->
-                val id: Identify = p.getLatestRecord()
-                id != null && f.getUri().equals(id.getId())
-            })
+            postList = postList.takeUntil {
+                val id = paging.latestRecord
+                id != null && it.uri == id.id!!.value<String>()
+            }
         }
 
         // 空の場合
-        if (posts.isEmpty()) {
-            val model: Pageable<Comment> = Pageable()
-            model.setEntities(java.util.ArrayList<E>())
-            model.setPaging(paging)
+        if (postList.isEmpty()) {
+            val model = Pageable<Comment>()
+            model.paging = paging
             return model
         }
 
-        val model: Pageable<Comment> = Pageable()
-        model.setEntities(
-            posts.stream()
-                .map<Any>(java.util.function.Function<FeedDefsPostView, Any> { a: FeedDefsPostView ->
-                    simpleComment(
-                        a,
-                        service
-                    )
-                })
-                .collect(java.util.stream.Collectors.toList())
-        )
-
-        model.setPaging(BlueskyPaging.fromPaging(paging))
+        val model = Pageable<Comment>()
+        model.entities = postList.map { simpleComment(it, service) }
+        model.paging = BlueskyPaging.fromPaging(paging)
         return model
     }
 
@@ -638,50 +570,33 @@ object BlueskyMapper {
      * 通知マッピング
      */
     fun notifications(
-        notifications: List<NotificationListNotificationsNotification>?,
+        notifications: List<NotificationListNotificationsNotification>,
         posts: List<FeedDefsPostView>,
-        paging: Paging?,
-        service: Service?
+        paging: Paging,
+        service: Service
     ): Pageable<Notification> {
-        var notifications: List<NotificationListNotificationsNotification>? = notifications
+
+        var notificationList = notifications
         if (paging is BlueskyPaging) {
-            val p: BlueskyPaging? = paging as BlueskyPaging?
-            notifications = takeUntil(notifications, java.util.function.Predicate<T> { f: T ->
-                val id: Identify = p.getLatestRecord()
-                id != null && f.getUri().equals(id.getId())
-            })
+            notificationList = notificationList.takeUntil {
+                val id = paging.latestRecord
+                id != null && it.uri == id.id!!.value<String>()
+            }
         }
 
         // 空の場合
-        if (notifications!!.isEmpty()) {
-            val model: Pageable<Notification> = Pageable()
-            model.setEntities(java.util.ArrayList<E>())
-            model.setPaging(paging)
+        if (notificationList.isEmpty()) {
+            val model = Pageable<Notification>()
+            model.paging = paging
             return model
         }
 
-        val postMap: MutableMap<String?, FeedDefsPostView?> = java.util.HashMap<String, FeedDefsPostView>()
-        posts.forEach(java.util.function.Consumer<FeedDefsPostView> { a: FeedDefsPostView ->
-            postMap.put(
-                a.getUri(),
-                a
-            )
-        })
+        val postMap = mutableMapOf<String, FeedDefsPostView>()
+        posts.forEach { postMap[it.uri!!] = it }
 
-        val model: Pageable<Notification> = Pageable()
-        model.setEntities(
-            notifications.stream()
-                .map<Any>(java.util.function.Function<NotificationListNotificationsNotification, Any> { n: NotificationListNotificationsNotification ->
-                    notification(
-                        n,
-                        postMap,
-                        service
-                    )
-                })
-                .collect(java.util.stream.Collectors.toList())
-        )
-
-        model.setPaging(BlueskyPaging.fromPaging(paging))
+        val model = Pageable<Notification>()
+        model.entities = notificationList.map { notification(it, postMap, service) }
+        model.paging = BlueskyPaging.fromPaging(paging)
         return model
     }
 
@@ -691,60 +606,40 @@ object BlueskyMapper {
     fun channels(
         channels: List<FeedDefsGeneratorView>,
         paging: Paging,
-        service: Service?
+        service: Service
     ): Pageable<Channel> {
-        var channels: List<FeedDefsGeneratorView> = channels
+
+        var channelList = channels
         if (paging is BlueskyPaging) {
-            val p: BlueskyPaging = paging as BlueskyPaging
-            channels = takeUntil(channels, java.util.function.Predicate<T> { c: T ->
-                val id: Identify = p.getLatestRecord()
-                id != null && c.getUri().equals(id.getId())
-            })
+            channelList = channelList.takeUntil {
+                val id = paging.latestRecord
+                id != null && it.uri == id.id!!.value<String>()
+            }
         }
 
         // 空の場合
-        if (channels.isEmpty()) {
-            val model: Pageable<Channel> = Pageable()
-            model.setEntities(java.util.ArrayList<E>())
-            model.setPaging(paging)
+        if (channelList.isEmpty()) {
+            val model = Pageable<Channel>()
+            model.paging = paging
             return model
         }
 
-        val model: Pageable<Channel> = Pageable()
-        model.setEntities(
-            channels.stream()
-                .map<Any>(java.util.function.Function<FeedDefsGeneratorView, Any> { c: FeedDefsGeneratorView ->
-                    channel(
-                        c,
-                        service
-                    )
-                })
-                .collect(java.util.stream.Collectors.toList())
-        )
-
-        model.setPaging(BlueskyPaging.fromPaging(paging))
+        val model = Pageable<Channel>()
+        model.entities = channelList.map { channel(it, service) }
+        model.paging = BlueskyPaging.fromPaging(paging)
         return model
     }
 
-    fun <T> takeUntil(
-        list: List<T>,
+    fun <T> List<T>.takeUntil(
         predicate: (T) -> Boolean
     ): List<T> {
         val result = mutableListOf<T>()
-        for (item in list) {
+        for (item in this) {
             if (predicate(item)) {
                 break
             }
             result.add(item)
         }
         return result
-    }
-
-    fun formatDate(date: Instant): String {
-        if (dateParser == null) {
-            dateParser = SimpleDateFormat(dateFormat)
-            dateParser.setTimeZone(java.util.TimeZone.getTimeZone("UTC"))
-        }
-        return dateParser.format(date)
     }
 }

@@ -2,7 +2,9 @@ package work.socialhub.planetlink.bluesky.action
 
 import work.socialhub.planetlink.action.RequestActionImpl
 import work.socialhub.planetlink.action.request.CommentsRequest
+import work.socialhub.planetlink.action.request.CommentsRequestImpl
 import work.socialhub.planetlink.model.Account
+import work.socialhub.planetlink.model.Identify
 
 class BlueskyRequest(
     account: Account,
@@ -26,21 +28,24 @@ class BlueskyRequest(
     // ============================================================== //
     // TimeLine API
     // ============================================================== //
-    val homeTimeLine: CommentsRequest
-        /**
-         * {@inheritDoc}
-         */
-        get() {
-            val request: CommentsRequestImpl = super.getHomeTimeLine() as CommentsRequestImpl
-
-            request.setStreamFunction(account.action()::setHomeTimeLineStream)
-            return request
+    /**
+     * {@inheritDoc}
+     */
+    override fun homeTimeLine(): CommentsRequest {
+        return (super.homeTimeLine() as CommentsRequestImpl).also {
+            it.streamFunction = account.action::setHomeTimeLineStream
         }
+    }
 
     /**
      * {@inheritDoc}
      */
-    fun getUserCommentTimeLine(id: Identify): CommentsRequest {
+    override fun userCommentTimeLine(
+        id: Identify
+    ): CommentsRequest {
+        (super.userCommentTimeLine(id) as CommentsRequestImpl).also {
+            it.streamFunction = account.action::setUserCommentTimeLineStream
+        }
         val request: CommentsRequestImpl = super.getUserCommentTimeLine(id) as CommentsRequestImpl
 
         if (id is User) {
