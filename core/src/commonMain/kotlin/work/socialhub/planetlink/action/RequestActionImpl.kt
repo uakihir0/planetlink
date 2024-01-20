@@ -1,7 +1,5 @@
 package work.socialhub.planetlink.action
 
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.action.request.CommentsRequestImpl
 import work.socialhub.planetlink.action.request.UsersRequest
@@ -10,8 +8,9 @@ import work.socialhub.planetlink.define.action.ActionType
 import work.socialhub.planetlink.define.action.TimeLineActionType
 import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.model.*
+import work.socialhub.planetlink.utils.SerializeUtil
 
-class RequestActionImpl(
+open class RequestActionImpl(
     var account: Account
 ) : RequestAction {
 
@@ -168,7 +167,7 @@ class RequestActionImpl(
         ).also {
             it.commentFrom()
                 .isMessage(true)
-                .replyId(id)
+                .replyId(id.id)
         }
     }
 
@@ -178,11 +177,11 @@ class RequestActionImpl(
     /**
      * {@inheritDoc}
      */
-    override fun fromSerializedString(
-        serialize: String
+    override fun fromRawString(
+        raw: String
     ): Request? {
         try {
-            val request: SerializedRequest = Json.decodeFromString(serialize)
+            val request = SerializeUtil.json.decodeFromString<SerializedRequest>(raw)
             val params = request.params
             val action = request.action
 
@@ -203,7 +202,7 @@ class RequestActionImpl(
                     UsersActionType.GetFollowerUsers -> followerUsers(checkNotNull(id))
                     UsersActionType.SearchUsers -> searchTimeLine(checkNotNull(query))
                     UsersActionType.ChannelUsers -> channelTimeLine(checkNotNull(id))
-                }
+                }.also { it.raw = request }
             }
 
             // Comment Actions
@@ -217,7 +216,7 @@ class RequestActionImpl(
                     TimeLineActionType.UserLikeTimeLine -> userLikeTimeLine(checkNotNull(id))
                     TimeLineActionType.UserMediaTimeLine -> userMediaTimeLine(checkNotNull(id))
                     TimeLineActionType.UserCommentTimeLine -> userCommentTimeLine(checkNotNull(id))
-                }
+                }.also { it.raw = request }
             }
 
             println("invalid action type: $action")
@@ -237,53 +236,31 @@ class RequestActionImpl(
     }
 
     // ============================================================== //
-    // Inner Class
-    // ============================================================== //
-    /**
-     * Serialize Builder
-     */
-    @Serializable
-    class SerializedRequest(
-        var action: String
-    ) {
-        constructor(
-            action: Enum<*>
-        ) : this(action.name)
-
-        val params = mutableMapOf<String, String>()
-
-        fun add(key: String, value: String): SerializedRequest {
-            params[key] = value
-            return this
-        }
-    }
-
-    // ============================================================== //
     // Support
     // ============================================================== //
     private fun getUsersRequest(
         type: ActionType,
         usersFunction: (Paging) -> Pageable<User>,
-        serializedRequest: SerializedRequest
+        raw: SerializedRequest
     ): UsersRequestImpl {
         return UsersRequestImpl().also {
             it.usersFunction = usersFunction
-            it.serializedRequest = serializedRequest
             it.actionType = type
             it.account = account
+            it.raw = raw
         }
     }
 
     private fun getCommentsRequest(
         type: ActionType,
         commentsFunction: (Paging) -> Pageable<Comment>,
-        serializedRequest: SerializedRequest
+        raw: SerializedRequest
     ): CommentsRequestImpl {
         return CommentsRequestImpl().also {
             it.commentsFunction = commentsFunction
-            it.serializedRequest = serializedRequest
             it.actionType = type
             it.account = account
+            it.raw = raw
         }
     }
 }

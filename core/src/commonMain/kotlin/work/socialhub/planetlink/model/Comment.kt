@@ -11,7 +11,7 @@ import work.socialhub.planetlink.model.request.CommentForm
  * SNS コメント情報
  * SNS Comment Model
  */
-class Comment(
+open class Comment(
     service: Service
 ) : Identify(service) {
 
@@ -58,7 +58,7 @@ class Comment(
      * Get many kind of reactions
      * (like, share, :+1:, and so on)
      */
-    val reactions: List<Reaction>? = null
+    open val reactions: List<Reaction>? = null
 
     /**
      * Apply reaction to comment
@@ -88,7 +88,7 @@ class Comment(
      * Get Reply Form
      * 返信用のフォームを取得
      */
-    val replyForm: CommentForm
+    open val replyForm: CommentForm
         get() = throw NotImplementedException()
 
 
@@ -96,14 +96,14 @@ class Comment(
      * Get Quote Form
      * 引用RT用のフォームを取得
      */
-    val quoteForm: CommentForm
+    open val quoteForm: CommentForm
         get() = throw NotImplementedException()
 
     /**
      * Get Web Url
      * Web のアドレスを取得
      */
-    val webUrl: String
+    open val webUrl: String
         get() = throw NotImplementedException()
 
 
@@ -115,4 +115,11 @@ class Comment(
         get() = ((sharedComment != null)
                 && ((text == null) || (text!!.displayText.isEmpty()))
                 && ((medias == null) || (medias!!.isEmpty())))
+
+
+    override fun equals(other: Any?): Boolean {
+        return (other as? Identify?)?.let {
+            isSameIdentify(it)
+        } ?: false
+    }
 }

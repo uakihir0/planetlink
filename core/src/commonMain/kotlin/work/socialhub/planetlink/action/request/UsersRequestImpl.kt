@@ -1,6 +1,6 @@
 package work.socialhub.planetlink.action.request
 
-import work.socialhub.planetlink.action.RequestActionImpl.SerializedRequest
+import work.socialhub.planetlink.action.SerializedRequest
 import work.socialhub.planetlink.define.action.ActionType
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Pageable
@@ -25,15 +25,15 @@ class UsersRequestImpl : UsersRequest {
     /**
      * {@inheritDoc}
      */
+    override var raw: SerializedRequest? = null
+
+    /**
+     * {@inheritDoc}
+     */
     override fun users(
         paging: Paging
     ): Pageable<User> {
         return usersFunction?.invoke(paging)
             ?: throw NotSupportedException()
     }
-
-    /**
-     * {@inheritDoc}
-     */
-    override var serializedRequest: SerializedRequest? = null
 }

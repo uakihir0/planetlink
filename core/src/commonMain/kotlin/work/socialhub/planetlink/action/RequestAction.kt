@@ -88,5 +88,5 @@ interface RequestAction {
      * Get Deserialize Request (Comment or User)
      * 文字列からリクエストオブジェクトをリストアする
      */
-    fun fromSerializedString(serialize: String): Request?
+    fun fromRawString(raw: String): Request?
 }

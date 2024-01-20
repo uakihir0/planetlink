@@ -1,6 +1,5 @@
 package work.socialhub.planetlink.model
 
-import work.socialhub.planetlink.action.UserAction
 import work.socialhub.planetlink.action.UserActionImpl
 import work.socialhub.planetlink.model.common.AttributedFiled
 import work.socialhub.planetlink.model.common.AttributedString
@@ -11,18 +10,20 @@ import work.socialhub.planetlink.model.request.CommentForm
  * SNS ユーザーモデル
  * SNS User Model
  */
-class User(service: Service) : Identify(service) {
+open class User(
+    service: Service
+) : Identify(service) {
 
     /** User's display name  */
-    var name: String? = null
+    open var name: String? = null
 
     /**
      * SNS アカウント ID 表現を取得
      * Get SNS Account Identify
      * Need each SNS implementation
      */
-    /** User's identified name  */
-    var accountIdentify: String? = null
+    open val accountIdentify: String
+        get() = throw NotImplementedException()
 
     /** User's description  */
     var description: AttributedString? = null
@@ -30,16 +31,13 @@ class User(service: Service) : Identify(service) {
     /** Icon image url  */
     var iconImageUrl: String? = null
 
-    //endregion
     /** Cover image url  */
     var coverImageUrl: String? = null
 
-    /**
-     * Get Action
-     */
-    fun action(): UserAction {
+    /** Get Action */
+    val action by lazy {
         val action = service.account.action
-        return UserActionImpl(action, this)
+        UserActionImpl(action, this)
     }
 
     /**
@@ -68,6 +66,6 @@ class User(service: Service) : Identify(service) {
      * Get Web Url
      * Web のアドレスを取得
      */
-    val webUrl: String
+    open val webUrl: String
         get() = throw NotImplementedException()
 }

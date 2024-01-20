@@ -9,6 +9,19 @@ open class Identify(
 ) {
     var id: ID? = null
 
+    inline fun <reified T> id(): T {
+        return checkNotNull(id) {
+            "id is null."
+        }.value<T>()
+    }
+
+    constructor(
+        service: Service,
+        id: ID,
+    ) : this(service) {
+        this.id = id
+    }
+
     /**
      * Is same identify?
      * 同じ識別子か？

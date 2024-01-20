@@ -16,4 +16,13 @@ class Context {
      * 特定のコメントより後のコンテキストを取得
      */
     var descendants: List<Comment>? = null
+
+    fun sort() {
+        descendants = descendants!!.sortedBy {
+            it.createAt!!.toEpochMilliseconds()
+        }.reversed()
+        ancestors = ancestors!!.sortedBy {
+            it.createAt!!.toEpochMilliseconds()
+        }.reversed()
+    }
 }
