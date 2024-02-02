@@ -37,9 +37,21 @@ kotlin {
     }
 
     sourceSets {
+        val kotestVersion = "5.8.0"
+
         commonMain.dependencies {
             api(project(":core"))
             api(project(":bluesky"))
+            implementation("work.socialhub.kbsky:core:0.0.1-SNAPSHOT")
+            implementation("work.socialhub.kbsky:stream:0.0.1-SNAPSHOT")
+        }
+
+        // for test (kotlin/jvm)
+        jvmTest.dependencies {
+            implementation(kotlin("test"))
+            implementation("io.kotest:kotest-runner-junit5-jvm:$kotestVersion")
+            implementation("io.kotest:kotest-assertions-core-jvm:$kotestVersion")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
         }
     }
 }

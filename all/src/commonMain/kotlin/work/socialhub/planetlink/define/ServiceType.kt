@@ -14,8 +14,4 @@ enum class ServiceType {
     Pleroma,
     PixelFed,
     Bluesky,
-    /* Future Work */
-    // Discord,
-    // Instagram,
-    // LinkedIn,
 }
