@@ -1,6 +1,7 @@
 plugins {
     kotlin("multiplatform") version "1.9.22"
     kotlin("plugin.serialization") version "1.9.22"
+    id("maven-publish")
 }
 
 kotlin {
@@ -14,8 +15,6 @@ kotlin {
     macosArm64()
 
     sourceSets {
-        val kotestVersion = "5.8.0"
-
         commonMain.dependencies {
             implementation(project(":core"))
             implementation(libs.ktor.core)
@@ -33,7 +32,18 @@ kotlin {
     }
 }
 
-
 tasks.named<Test>("jvmTest") {
     useJUnitPlatform()
+}
+
+publishing {
+    repositories {
+        maven {
+            url = uri("https://repo.repsy.io/mvn/uakihir0/public")
+            credentials {
+                username = System.getenv("USERNAME")
+                password = System.getenv("PASSWORD")
+            }
+        }
+    }
 }

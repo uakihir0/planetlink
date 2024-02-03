@@ -1,6 +1,6 @@
 package work.socialhub.planetlink.action
 
-import org.junit.Test
+import org.junit.jupiter.api.Test
 import work.socialhub.planetlink.AbstractTest
 import work.socialhub.planetlink.PrintClass.dump
 

@@ -1,5 +1,3 @@
-> [日本語](./docs/README_ja.md)
-
 # PlanetLink
 
 ![badge][badge-js]
@@ -7,23 +5,25 @@
 ![badge][badge-ios]
 ![badge][badge-mac]
 
-**This library is a multi Social Media (SNS) client library compatible with [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html).**
-By using this library, you can transparently handle various Social Media platforms.
+**このライブラリは [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html) に対応したマルチ Social Media (SNS) クライアントライブラリです。**
+このライブラリを用いることで、各 Social Media を透過的な操作で扱うことができます。
 
-## Supported Platforms
+## サポートプラットフォーム
 
 - Bluesky (library: [kbksy](https://github.com/uakihir0/kbsky))
 
-## Planned Supported Platforms
+## サポート予定プラットフォーム
 
 - Mastodon
 - Misskey
 - Slack
 - Tumblr
 
-## Usage
+## 使い方
 
-The following is how to use it with Gradle in Kotlin for the respective platforms. **If you are using it on the Apple platform, please refer to [planetlink-cocoapods](https://github.com/uakihir0/planetlink-cocoapods).** Also, make sure to check the test code.
+以下は対応するプラットフォームにおいて Gradle を用いて Kotlin で使用する際の使い方になります。
+**Apple プラットフォームで使用する場合は、 [planetlink-cocoapods](https://github.com/uakihir0/planetlink-cocoapods) を参照してください。**
+また、テストコードも合わせて確認してください。
 
 ```kotlin:build.gradle.kts
 repositories {
@@ -36,11 +36,11 @@ dependencies {
 }
 ```
 
-## License
+## ライセンス
 
 MIT License
 
-## Author
+## 作者
 
 [Akihiro Urushihara](https://github.com/uakihir0)
 
