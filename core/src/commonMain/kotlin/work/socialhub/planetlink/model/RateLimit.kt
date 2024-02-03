@@ -2,7 +2,6 @@ package work.socialhub.planetlink.model
 
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.define.action.ActionType
 
 /**
@@ -19,7 +18,7 @@ class RateLimit {
      */
     fun addInfo(
         action: ActionType,
-        service: ServiceType,
+        service: String,
         limit: Int,
         remaining: Int,
         reset: Instant,
@@ -60,7 +59,7 @@ class RateLimit {
     }
 
     class RateLimitValue(
-        val service: ServiceType,
+        val service: String,
         val limit: Int,
         val remaining: Int,
         val reset: Instant
