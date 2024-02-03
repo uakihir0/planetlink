@@ -37,6 +37,8 @@ kotlin {
     }
 
     sourceSets {
+        val kotestVersion = "5.8.0"
+
         commonMain.dependencies {
             api(project(":core"))
             api(project(":bluesky"))

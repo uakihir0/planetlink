@@ -1,12 +1,10 @@
 package work.socialhub.planetlink.model
 
-import work.socialhub.planetlink.define.ServiceType
-
 object ServiceEx {
 
     /** Is Twitter Account ?  */
     val Service.isTwitter: Boolean
-        get() = (ServiceType.Twitter === type)
+        get() = ("twitter" == type.lowercase())
 
     /**
      * Is Mastodon Account ?
@@ -15,7 +13,7 @@ object ServiceEx {
      * !! if pleroma, use SocialHub#getPleromaAuth to make account object.
      */
     val Service.isMastodon: Boolean
-        get() = (ServiceType.Mastodon == type)
+        get() = ("mastodon" == type.lowercase())
 
     /**
      * Is PixelFed Account ?
@@ -23,7 +21,7 @@ object ServiceEx {
      * !! Use SocialHub#getPixelFedAuth to make account object.
      */
     val Service.isPixelFed: Boolean
-        get() = (ServiceType.PixelFed == type)
+        get() = ("pixelfed" == type.lowercase())
 
     /**
      * Is Pleroma Account ?
@@ -31,25 +29,23 @@ object ServiceEx {
      * !! Use SocialHub#getPleromaAuth to make account object.
      */
     val Service.isPleroma: Boolean
-        get() = (ServiceType.Pleroma == type)
+        get() = ("pleroma" == type.lowercase())
 
     /** Is Slack Account ?  */
     val Service.isSlack: Boolean
-        get() = (ServiceType.Slack == type)
+        get() = ("slack" == type.lowercase())
 
     /** Is Facebook Account ?  */
     val Service.isFacebook: Boolean
-        get() = (ServiceType.Facebook == type)
+        get() = ("facebook" == type.lowercase())
 
     /** Is Tumblr Account ?  */
     val Service.isTumblr: Boolean
-        get() = (ServiceType.Tumblr == type)
+        get() = ("tumblr" == type.lowercase())
 
     /** Is Misskey Account ?  */
     val Service.isMisskey: Boolean
-        get() = (ServiceType.Misskey == type)
+        get() = ("misskey" == type.lowercase())
 
-    /** Is Bluesky Account ?  */
-    val Service.isBluesky: Boolean
-        get() = (ServiceType.Bluesky == type)
+
 }
