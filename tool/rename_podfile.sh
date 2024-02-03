@@ -35,6 +35,6 @@ cp -r planetlink.xcframework ../../repository/release/planetlink.xcframework
 # Copy README
 cd "$BASE_PATH" || exit
 cd ../ || exit
-cp ./LICENSE ./pods/build/cocoapods/repository/LICENSE
-cp ./docs/pods/README.md ./pods/build/cocoapods/repository/README.md
-cp ./docs/pods/README_ja.md ./pods/build/cocoapods/repository/README_ja.md
+cp ./LICENSE ./all/build/cocoapods/repository/LICENSE
+cp ./docs/pods/README.md ./all/build/cocoapods/repository/README.md
+cp ./docs/pods/README_ja.md ./all/build/cocoapods/repository/README_ja.md

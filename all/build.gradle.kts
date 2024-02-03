@@ -4,6 +4,7 @@ plugins {
     kotlin("multiplatform") version "1.9.22"
     kotlin("native.cocoapods") version "1.9.22"
     kotlin("plugin.serialization") version "1.9.22"
+    id("maven-publish")
 }
 
 kotlin {
@@ -37,8 +38,6 @@ kotlin {
     }
 
     sourceSets {
-        val kotestVersion = "5.8.0"
-
         commonMain.dependencies {
             api(project(":core"))
             api(project(":bluesky"))
@@ -56,6 +55,10 @@ kotlin {
     }
 }
 
+tasks.named<Test>("jvmTest") {
+    useJUnitPlatform()
+}
+
 tasks.podPublishXCFramework {
     doLast {
         exec {
@@ -64,3 +67,16 @@ tasks.podPublishXCFramework {
         }
     }
 }
+
+publishing {
+    repositories {
+        maven {
+            url = uri("https://repo.repsy.io/mvn/uakihir0/public")
+            credentials {
+                username = System.getenv("USERNAME")
+                password = System.getenv("PASSWORD")
+            }
+        }
+    }
+}
+
