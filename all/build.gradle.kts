@@ -40,6 +40,16 @@ kotlin {
         commonMain.dependencies {
             api(project(":core"))
             api(project(":bluesky"))
+            implementation(libs.kbsky.core)
+            implementation(libs.kbsky.stream)
+        }
+
+        // for test (kotlin/jvm)
+        jvmTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotest.junit5)
+            implementation(libs.kotest.assertions)
+            implementation(libs.serialization.json)
         }
     }
 }

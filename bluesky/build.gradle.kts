@@ -18,17 +18,17 @@ kotlin {
 
         commonMain.dependencies {
             implementation(project(":core"))
-            implementation("io.ktor:ktor-client-core:2.3.7")
-            implementation("work.socialhub.kbsky:core:0.0.1-SNAPSHOT")
-            implementation("work.socialhub.kbsky:stream:0.0.1-SNAPSHOT")
-            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
+            implementation(libs.ktor.core)
+            implementation(libs.kbsky.core)
+            implementation(libs.kbsky.stream)
+            implementation(libs.datetime)
         }
 
         // for test (kotlin/jvm)
         jvmTest.dependencies {
             implementation(kotlin("test"))
-            implementation("io.kotest:kotest-runner-junit5-jvm:$kotestVersion")
-            implementation("io.kotest:kotest-assertions-core-jvm:$kotestVersion")
+            implementation(libs.kotest.junit5)
+            implementation(libs.kotest.assertions)
         }
     }
 }
