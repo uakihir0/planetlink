@@ -1,4 +1,5 @@
 .idea
+secrets.json
 
 .gradle
 build/

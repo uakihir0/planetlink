@@ -4,13 +4,12 @@ import io.ktor.http.*
 import work.socialhub.kbsky.Bluesky
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.planetlink.action.ServiceAuth
-import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Service
 
 class BlueskyAuth(
     var apiHost: String,
-    var streamHost: String? = null,
+    var streamHost: String,
 ) : ServiceAuth<Bluesky> {
 
     /** Client Objects */
@@ -21,9 +20,7 @@ class BlueskyAuth(
 
     init {
         apiHost = toUrl(apiHost, "https")
-        streamHost?.let {
-            streamHost = toUrl(it, "wss")
-        }
+        streamHost = toUrl(streamHost, "wss")
     }
 
     private fun toUrl(
@@ -37,7 +34,7 @@ class BlueskyAuth(
         }
         try {
             val obj = Url(url)
-            return "${obj.protocol}://${obj.host}/"
+            return "${obj.protocol.name}://${obj.host}/"
         } catch (e: Exception) {
             throw IllegalArgumentException(
                 "invalid host: $host"
@@ -60,7 +57,7 @@ class BlueskyAuth(
 
         return Account().also { acc ->
             acc.action = BlueskyAction(acc, this)
-            acc.service = Service(ServiceType.Bluesky, acc)
+            acc.service = Service("bluesky", acc)
                 .also {
                     it.apiHost = apiHost
                     it.streamHost = streamHost
