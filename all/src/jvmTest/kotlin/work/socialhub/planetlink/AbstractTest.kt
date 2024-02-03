@@ -2,7 +2,7 @@ package work.socialhub.planetlink
 
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
-import work.socialhub.planetlink.PlanetLinkEx.bluesky
+import work.socialhub.planetlink.bluesky.expand.PlanetLinkEx.bluesky
 import work.socialhub.planetlink.config.TestConfig
 import work.socialhub.planetlink.model.Account
 import java.io.FileReader
