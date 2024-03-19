@@ -39,7 +39,7 @@ class BlueskyComment(
 
     override val reactions: List<Reaction>
         get() {
-            return (super.reactions?.toMutableList() ?: mutableListOf())
+            return super.reactions.toMutableList()
                 .also { list ->
                     Reaction().also {
                         it.count = replyCount
