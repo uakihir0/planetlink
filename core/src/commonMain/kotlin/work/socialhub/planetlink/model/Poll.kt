@@ -7,7 +7,7 @@ import work.socialhub.planetlink.model.support.PollOption
  * Poll
  * 投票情報
  */
-class Poll(
+open class Poll(
     service: Service
 ) : Identify(service) {
 
@@ -17,7 +17,6 @@ class Poll(
     /** 有効期限切れしたかどうか？  */
     var isExpired: Boolean = false
 
-    // endregion
     /** 複数投票が可能か？  */
     var isMultiple: Boolean = false
 

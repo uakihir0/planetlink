@@ -6,7 +6,7 @@ import kotlinx.datetime.Instant
  * Thread of Group Messaging
  * グループメッセージスレッド
  */
-class Thread(
+open class Thread(
     service: Service
 ) : Identify(service) {
 
