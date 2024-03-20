@@ -59,7 +59,7 @@ open class User(
      * Get Message Form
      * メッセージ投稿用のフォームを取得
      */
-    val messageForm: CommentForm
+    open val messageForm: CommentForm
         get() = throw NotImplementedException()
 
     /**

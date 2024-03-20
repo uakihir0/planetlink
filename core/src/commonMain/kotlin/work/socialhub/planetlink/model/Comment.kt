@@ -27,7 +27,7 @@ open class Comment(
      * Files which attached with this text
      * if no media with this tweet, return empty list.
      */
-    var medias: List<Media>? = null
+    var medias: List<Media> = listOf()
 
     /**
      * Shared text
@@ -58,7 +58,7 @@ open class Comment(
      * Get many kind of reactions
      * (like, share, :+1:, and so on)
      */
-    open val reactions: List<Reaction>? = null
+    open val reactions: List<Reaction> = listOf()
 
     /**
      * Apply reaction to comment
@@ -81,7 +81,7 @@ open class Comment(
      * Get comment should be shown
      * (Use return object to display)
      */
-    val displayComment: Comment
+    open val displayComment: Comment
         get() = this
 
     /**
@@ -114,7 +114,7 @@ open class Comment(
     val isOnlyShared: Boolean
         get() = ((sharedComment != null)
                 && ((text == null) || (text!!.displayText.isEmpty()))
-                && ((medias == null) || (medias!!.isEmpty())))
+                && (medias.isEmpty()))
 
 
     override fun equals(other: Any?): Boolean {

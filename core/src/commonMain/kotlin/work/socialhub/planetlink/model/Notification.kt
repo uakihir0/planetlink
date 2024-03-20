@@ -7,7 +7,7 @@ import work.socialhub.planetlink.define.NotificationActionType
  * Notification
  * 通知
  */
-class Notification(
+open class Notification(
     service: Service
 ) : Identify(service) {
 
