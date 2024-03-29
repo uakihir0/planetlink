@@ -8,7 +8,7 @@ class PollForm {
     var multiple: Boolean = false
 
     /** Expires in (min)  */
-    var expiresIn: Long = 1440L
+    var expiresIn: Int = 1440
 
     /**
      * Add poll option
