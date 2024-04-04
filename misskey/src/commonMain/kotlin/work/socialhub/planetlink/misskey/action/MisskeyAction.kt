@@ -1,7 +1,8 @@
 package work.socialhub.planetlink.misskey.action
 
 
-import misskey4j.entity.contant.NotificationType
+import kotlinx.coroutines.runBlocking
+import net.socialhub.planetlink.model.event.CommentEvent
 import work.socialhub.kmisskey.Misskey
 import work.socialhub.kmisskey.MisskeyException
 import work.socialhub.kmisskey.api.model.PollRequest
@@ -12,26 +13,49 @@ import work.socialhub.kmisskey.api.request.favorites.FavoritesDeleteRequest
 import work.socialhub.kmisskey.api.request.files.FilesCreateRequest
 import work.socialhub.kmisskey.api.request.following.FollowingCreateRequest
 import work.socialhub.kmisskey.api.request.following.FollowingDeleteRequest
+import work.socialhub.kmisskey.api.request.hashtags.HashtagsTrendRequest
 import work.socialhub.kmisskey.api.request.i.IFavoritesRequest
 import work.socialhub.kmisskey.api.request.i.INotificationsRequest
 import work.socialhub.kmisskey.api.request.i.IRequest
+import work.socialhub.kmisskey.api.request.lists.UsersListsListRequest
+import work.socialhub.kmisskey.api.request.lists.UsersListsShowRequest
 import work.socialhub.kmisskey.api.request.meta.EmojisRequest
 import work.socialhub.kmisskey.api.request.mutes.MutesCreateRequest
 import work.socialhub.kmisskey.api.request.mutes.MutesDeleteRequest
 import work.socialhub.kmisskey.api.request.notes.*
+import work.socialhub.kmisskey.api.request.other.ServiceWorkerRegisterRequest
+import work.socialhub.kmisskey.api.request.polls.PollsVoteRequest
+import work.socialhub.kmisskey.api.request.protocol.PagingBuilder
 import work.socialhub.kmisskey.api.request.reactions.ReactionsCreateRequest
 import work.socialhub.kmisskey.api.request.reactions.ReactionsDeleteRequest
 import work.socialhub.kmisskey.api.request.users.*
 import work.socialhub.kmisskey.api.response.users.UsersShowResponse
 import work.socialhub.kmisskey.entity.Note
-import work.socialhub.kmisskey.entity.share.Response
+import work.socialhub.kmisskey.entity.contant.NotificationType
+import work.socialhub.kmisskey.stream.MisskeyStream
+import work.socialhub.kmisskey.stream.callback.*
 import work.socialhub.planetlink.action.AccountActionImpl
+import work.socialhub.planetlink.action.RequestAction
+import work.socialhub.planetlink.action.callback.EventCallback
+import work.socialhub.planetlink.action.callback.comment.MentionCommentCallback
+import work.socialhub.planetlink.action.callback.comment.NotificationCommentCallback
+import work.socialhub.planetlink.action.callback.comment.UpdateCommentCallback
+import work.socialhub.planetlink.action.callback.lifecycle.ConnectCallback
+import work.socialhub.planetlink.action.callback.lifecycle.DisconnectCallback
+import work.socialhub.planetlink.action.callback.user.FollowUserCallback
 import work.socialhub.planetlink.misskey.define.MisskeyReactionType.Favorite
 import work.socialhub.planetlink.misskey.define.MisskeyReactionType.Renote
+import work.socialhub.planetlink.misskey.model.MisskeyPaging
+import work.socialhub.planetlink.misskey.model.MisskeyPoll
 import work.socialhub.planetlink.model.*
+import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
+import work.socialhub.planetlink.model.event.NotificationEvent
+import work.socialhub.planetlink.model.event.UserEvent
 import work.socialhub.planetlink.model.paging.OffsetPaging
 import work.socialhub.planetlink.model.request.CommentForm
+import work.socialhub.kmisskey.entity.Notification as MNotification
+import work.socialhub.kmisskey.entity.user.User as MUser
 
 class MisskeyAction(
     account: Account,
@@ -340,7 +364,8 @@ class MisskeyAction(
                 response.data
                     // Remove PR featured notes.
                     .filter { it.featuredId == null }
-                    .filter { it.prId == null },
+                    .filter { it.prId == null }
+                    .toList(),
                 misskey.host,
                 service(),
                 paging,
@@ -801,46 +826,30 @@ class MisskeyAction(
         }
 
         val results = mutableListOf<Note>()
-        val futures: MutableList<java.util.concurrent.Future<Response<Array<NotesChildrenResponse>>>> =
-            java.util.ArrayList<java.util.concurrent.Future<Response<Array<NotesChildrenResponse>>>>()
 
         // 各 NextID 毎に検索
         for (nextId in nextIds) {
-            futures.add(pool.submit(java.lang.Runnable {
-                misskey.notes().children(
-                    NotesChildrenRequest()
-                        .noteId(nextId)
-                        .limit(100L)
-                        .build()
-                )
-            }))
-        }
-
-        // 各リクエストの結果を統合
-        for (future in futures) {
-            results.addAll(
-                java.util.stream.Stream.of<Any>(future.get())
-                    .map<Any>(Response::get)
-                    .flatMap<Any>(java.util.function.Function<Any, java.util.stream.Stream<*>> { t: T? ->
-                        java.util.stream.Stream.of(
-                            t
-                        )
-                    })
-                    .filter(java.util.function.Predicate<Any> { e: Any ->
-                        notes.stream().noneMatch(java.util.function.Predicate<Note> { n: Note ->
-                            n.getId().equals(e.getId())
-                        })
-                    })
-                    .collect<List<Any>, Any>(java.util.stream.Collectors.toList<Any>())
+            val children = misskey.notes().children(
+                NotesChildrenRequest()
+                    .also {
+                        it.noteId = nextId
+                        it.limit = 100
+                    }
             )
+
+            children.data.forEach { child ->
+                if (notes.none { it.id == child.id }) {
+                    results.add(child)
+                }
+            }
         }
 
-        val ids: List<String> = results.stream()
-            .filter(java.util.function.Predicate<Note> { note: Note -> this.hasMoreReactionPossibility(note) })
-            .map<Any>(Note::getId).collect<List<String>, Any>(java.util.stream.Collectors.toList<Any>())
+        val ids = results
+            .filter { hasMoreReactionPossibility(it) }
+            .map { it.id }
 
         notes.addAll(results)
-        getMoreReplies(misskey, pool, notes, ids)
+        moreReplies(misskey, notes, ids)
     }
 
     // このノートには更にリアクションが付く可能性があるかどうか？
@@ -854,270 +863,83 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    fun getChannels(id: Identify?, paging: Paging?): Pageable<Channel> {
-        return proceed({
-            val misskey: Misskey = auth.accessor
-            val service: Service = account.service
+    override fun channels(
+        id: Identify,
+        paging: Paging
+    ): Pageable<Channel> {
 
-            if (id != null) {
-                val me: User = getUserMeWithCache()
-                if (!me.getId().equals(id.getId())) {
-                    throw NotSupportedException(
-                        "Sorry, authenticated user only."
-                    )
-                }
+        return proceed {
+            val misskey = auth.accessor
+            val me = userMeWithCache()
+
+            if (me.id<String>() != id.id<String>()) {
+                throw NotSupportedException(
+                    "Sorry, authenticated user only."
+                )
             }
 
             // リスト一覧はページングには非対応
-            val response: Response<Array<UsersListsListResponse>> =
-                misskey.lists().list(UsersListsListRequest().build())
-            MisskeyMapper.channels(response.get(), service)
-        })
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    fun getChannelTimeLine(id: Identify, paging: Paging?): Pageable<Comment> {
-        return proceed({
-            val misskey: Misskey = auth.accessor
-            val service: Service = account.service
-
-            val builder: NotesUserListTimelineRequest.NotesUserListTimelineRequestBuilder =
-                NotesUserListTimelineRequest()
-
-            setPaging(builder, paging)
-            builder.listId(id.getId() as String)
-
-            val response: Response<Array<NotesUserListTimelineResponse>> =
-                misskey.notes().userListTimeline(builder.build())
-            MisskeyMapper.timeLine(
-                response.get(),
-                misskey.getHost(),
-                service,
-                paging
+            val response = misskey.lists().list(UsersListsListRequest())
+            MisskeyMapper.channels(
+                response.data.toList(),
+                service()
             )
-        })
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    fun getChannelUsers(id: Identify, paging: Paging?): Pageable<User> {
-        return proceed({
-            val misskey: Misskey = auth.accessor
-            val service: Service = account.service
-
-            val list: Response<UsersListsShowResponse> =
-                misskey.lists().show(
-                    UsersListsShowRequest()
-                        .listId(id.getId() as String)
-                        .build()
-                )
-
-            val users: Response<Array<UsersShowResponse>> =
-                misskey.users().show(
-                    UsersShowMultipleRequest()
-                        .userIds(list.get().getUserIds())
-                        .build()
-                )
-            MisskeyMapper.users(
-                java.util.stream.Stream.of(users.get())
-                    .collect(java.util.stream.Collectors.toList()),
-                misskey.getHost(),
-                service,
-                null
-            )
-        })
-    }
-
-    // ============================================================== //
-    // Message API
-    // ============================================================== //
-    /**
-     * {@inheritDoc}
-     */
-    fun getMessageThread(paging: Paging): Pageable<java.lang.Thread> {
-        return proceed({
-            val misskey: Misskey = auth.accessor
-            val service: Service = account.service
-            val pool: java.util.concurrent.ExecutorService = java.util.concurrent.Executors.newCachedThreadPool()
-
-            val groupsFuture: java.util.concurrent.Future<Response<Array<MessagingHistoryResponse>>> =
-                pool.submit(java.lang.Runnable {
-                    misskey.messages().history(
-                        MessagingHistoryRequest()
-                            .limit(100L)
-                            .group(true)
-                            .build()
-                    )
-                })
-
-            val messagesFuture: java.util.concurrent.Future<Response<Array<MessagingHistoryResponse>>> =
-                pool.submit(java.lang.Runnable {
-                    misskey.messages().history(
-                        MessagingHistoryRequest()
-                            .limit(100L)
-                            .group(false)
-                            .build()
-                    )
-                })
-
-            val groups: Response<Array<MessagingHistoryResponse>> = groupsFuture.get()
-            val messages: Response<Array<MessagingHistoryResponse>> = messagesFuture.get()
-
-
-            // ユーザーの一覧を取得
-            val userMap: MutableMap<String, User> = java.util.HashMap<String, User>()
-            val userIds: List<String> = java.util.stream.Stream.of(groups.get())
-                .flatMap { e -> e.getGroup().getUserIds().stream() }
-                .distinct().collect(java.util.stream.Collectors.toList())
-
-            CollectionUtil.partitionList(userIds, 100).forEach { ids ->
-                val users: Response<Array<UsersShowResponse>> =
-                    misskey.users().show(
-                        UsersShowMultipleRequest()
-                            .userIds(ids)
-                            .build()
-                    )
-                for (user in users.get()) {
-                    val model: User = MisskeyMapper.user(
-                        user,
-                        misskey.getHost(),
-                        service
-                    )
-                    userMap[user.getId()] = model
-                }
-            }
-
-
-            val threads: MutableList<java.lang.Thread> = java.util.ArrayList<java.lang.Thread>()
-            val me: User = getUserMeWithCache()
-
-            for (group in groups.get()) {
-                threads.add(
-                    MisskeyMapper.thread(
-                        group,
-                        misskey.getHost(), me, userMap, service
-                    )
-                )
-            }
-            for (message in messages.get()) {
-                threads.add(
-                    MisskeyMapper.thread(
-                        message,
-                        misskey.getHost(), me, userMap, service
-                    )
-                )
-            }
-
-            paging.setHasPast(false)
-            paging.setHasNext(false)
-
-            val results: Pageable<java.lang.Thread> = Pageable()
-            results.setEntities(threads)
-            results.setPaging(paging)
-            results
-        })
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    fun getMessageTimeLine(id: Identify, paging: Paging?): Pageable<Comment> {
-        return proceed({
-            val misskey: Misskey = auth.accessor
-            val service: Service = account.service
-            val isGroup = ((id is MisskeyThread)
-                    && (id as MisskeyThread).isGroup())
-
-            val builder: MessagingMessagesRequest.MessagingMessagesRequestBuilder =
-                MessagingMessagesRequest()
-            setPaging(builder, paging)
-
-            builder.markAsRead(true)
-            builder.userId(if (isGroup) null else id.getId())
-            builder.groupId(if (isGroup) id.getId() else null)
-
-            val response: Response<Array<MessagingMessagesResponse>> =
-                misskey.messages().messages(builder.build())
-            MisskeyMapper.messages(
-                response.get(),
-                misskey.getHost(),
-                service,
-                emojis,
-                paging
-            )
-        })
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    fun postMessage(req: CommentForm) {
-        if (!req.isMessage()) {
-            postComment(req)
-            return
         }
-
-        proceed({
-            val misskey: Misskey = auth.accessor
-            var isGroup: Boolean? = null
-            var targetId: String? = null
-
-            if (req.getReplyId() is String) {
-                targetId = req.getReplyId()
-
-                // パラメータからグループか取得
-                isGroup = req.getParams()
-                    .get(MisskeyFormKey.MESSAGE_TYPE)
-                    .equals(MisskeyFormKey.MESSAGE_TYPE_GROUP)
-            }
-
-            if (req.getReplyId() is MisskeyThread) {
-                targetId = (req.getReplyId() as java.lang.Thread).getId()
-                isGroup = (req.getReplyId() as MisskeyThread).isGroup()
-            }
-
-            // 必須パラメータが発見できなかった場合
-            if (isGroup == null || targetId == null) {
-                throw SocialHubException("Cannot found [targetId] or [isGroup] params.")
-            }
-
-            val builder: MessagingMessagesCreateRequest.MessagingMessagesCreateRequestBuilder =
-                MessagingMessagesCreateRequest()
-
-            // 画像の処理
-            if ((req.getImages() != null) && !req.getImages().isEmpty()) {
-                // ファイルは一つまで添付可能
-
-                if (req.getImages().size() > 1) {
-                    throw SocialHubException("Only support one file to send message in Misskey.")
-                }
-
-                // ファイルのアップロードを実行
-                val media: MediaForm = req.getImages().get(0)
-                val input: java.io.InputStream = java.io.ByteArrayInputStream(media.getData())
-                val response: Response<FilesCreateResponse> = misskey.files()
-                    .create(
-                        FilesCreateRequest()
-                            .isSensitive(req.isSensitive())
-                            .name(media.getName())
-                            .stream(input)
-                            .force(true)
-                            .build()
-                    )
-
-                builder.fileId(response.get().getId())
-            }
-
-            builder.userId(if (isGroup) null else targetId)
-            builder.groupId(if (isGroup) targetId else null)
-
-            builder.text(req.getText())
-            misskey.messages().messagesCreate(builder.build())
-        })
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    override fun channelTimeLine(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<Comment> {
+        return proceed {
+            val misskey: Misskey = auth.accessor
+            val request = NotesUserListTimelineRequest()
+                .also { it.listId = id.id<String>() }
+
+            setPaging(request, paging)
+            val response = misskey.notes().userListTimeline(request)
+
+            MisskeyMapper.timeLine(
+                response.data.toList(),
+                misskey.host,
+                service(),
+                paging,
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override fun channelUsers(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<User> {
+        return proceed {
+            val misskey: Misskey = auth.accessor
+
+            val list = misskey.lists().show(
+                UsersListsShowRequest().also {
+                    it.listId = id.id<String>()
+                })
+
+            val users = misskey.users().show(
+                UsersShowMultipleRequest().also {
+                    it.userIds = list.data.userIds!!
+                }
+            )
+            MisskeyMapper.users(
+                users.data.toList(),
+                misskey.host,
+                service(),
+                paging,
+            )
+        }
+    }
+
 
     // ============================================================== //
     // Poll
@@ -1125,24 +947,25 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    fun votePoll(id: Identify, choices: List<Int?>) {
-        // MisskeyPoll 以外のオブジェクトは例外
-
+    fun votePoll(
+        id: Identify,
+        choices: List<Int>
+    ) {
+        // MisskeyPoll 以外は例外
         if (id !is MisskeyPoll) {
             throw SocialHubException("Not support default identify object in Misskey.")
         }
 
-        proceed({
-            val misskey: Misskey = auth.accessor
+        proceed {
             for (choice in choices) {
-                misskey.polls().pollsVote(
-                    PollsVoteRequest()
-                        .noteId((id as MisskeyPoll).getNoteId())
-                        .choice(choice)
-                        .build()
+                auth.accessor.polls().pollsVote(
+                    PollsVoteRequest().also {
+                        it.noteId = id.noteId
+                        it.choice = choice
+                    }
                 )
             }
-        })
+        }
     }
 
     // ============================================================== //
@@ -1151,58 +974,53 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    fun getTrends(limit: Int?): List<Trend> {
-        return proceed({
+    fun trends(
+        limit: Int
+    ): List<Trend> {
+        return proceed {
             val misskey: Misskey = auth.accessor
-            val response: Response<Array<HashtagsTrendResponse>> = misskey
-                .hashtags().trend(HashtagsTrendRequest().build())
-            java.util.stream.Stream.of(response.get())
-                .map(MisskeyMapper::trend)
-                .collect(java.util.stream.Collectors.toList())
-        })
+            val response = misskey.hashtags().trend(
+                HashtagsTrendRequest()
+            )
+
+            response.data.map {
+                MisskeyMapper.trend(it)
+            }
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getNotification(paging: Paging?): Pageable<net.socialhub.core.model.Notification> {
-        return proceed({
-            val misskey: Misskey = auth.accessor
-            val service: Service = account.service
-            val pool: java.util.concurrent.ExecutorService = java.util.concurrent.Executors.newCachedThreadPool()
+    fun notification(
+        paging: Paging
+    ): Pageable<Notification> {
+        return proceed {
+            val misskey = auth.accessor
+            // TODO: 並列でリクエストを実行
+            val emojis = this.emojis
 
-            val emojisFuture: java.util.concurrent.Future<List<Emoji>> =
-                pool.submit<List<Emoji>>(java.util.concurrent.Callable<List<Emoji>> { this.emojis })
-
-            val builder: INotificationsRequest.INotificationsRequestBuilder =
-                INotificationsRequest()
+            val builder = INotificationsRequest()
             setPaging(builder, paging)
 
-            builder.markAsRead(true)
-            builder.includeTypes(
-                java.util.Arrays.asList(
-                    NotificationType.FOLLOW.code(),
-                    NotificationType.REACTION.code(),
-                    NotificationType.RENOTE.code()
-                )
+            builder.markAsRead = true
+            builder.includeTypes = arrayOf(
+                NotificationType.FOLLOW.code,
+                NotificationType.REACTION.code,
+                NotificationType.RENOTE.code
             )
 
-            val responseFuture: java.util.concurrent.Future<Response<Array<INotificationsResponse>>> =
-                pool.submit(java.lang.Runnable {
-                    misskey.accounts()
-                        .iNotifications(builder.build())
-                })
+            val response = misskey.accounts()
+                .iNotifications(builder)
 
-            val emojis: List<Emoji> = emojisFuture.get()
-            val response: Response<Array<INotificationsResponse>> = responseFuture.get()
             MisskeyMapper.notifications(
-                response.get(),
+                response.data.toList(),
                 emojis,
-                misskey.getHost(),
-                service,
-                paging
+                misskey.host,
+                service(),
+                paging,
             )
-        })
+        }
     }
 
     // ============================================================== //
@@ -1211,62 +1029,53 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    fun setHomeTimeLineStream(callback: EventCallback?): net.socialhub.core.model.Stream {
-        return proceed({
-            val misskey: Misskey = auth.accessor
-            val service: Service = account.service
-            val stream: MisskeyStream = misskey.stream()
+    fun homeTimeLineStream(
+        callback: EventCallback
+    ): Stream {
+        return proceed {
+            val misskey = auth.accessor
+            val stream = MisskeyStream(misskey)
 
-            val commentsListener: net.socialhub.service.misskey.action.MisskeyAction.MisskeyCommentsListener =
-                net.socialhub.service.misskey.action.MisskeyAction.MisskeyCommentsListener(
-                    callback,
-                    service, misskey.getHost()
-                )
-            val connectionListener: net.socialhub.service.misskey.action.MisskeyAction.MisskeyConnectionListener =
-                net.socialhub.service.misskey.action.MisskeyAction.MisskeyConnectionListener(
-                    callback,
-                    java.lang.Runnable {
-                        stream.homeTimeLine(
-                            commentsListener
-                        )
-                    })
+            val commentsListener = MisskeyCommentsListener(
+                callback,
+                service(),
+                misskey.host,
+            )
 
-            stream.setOpenedCallback(connectionListener)
-            stream.setClosedCallback(connectionListener)
-            MisskeyStream(stream)
-        })
+            val connectionListener = MisskeyConnectionListener(callback) {
+                runBlocking { stream.homeTimeLine(commentsListener) }
+            }
+
+            setStreamConnectionCallback(stream, connectionListener)
+            work.socialhub.planetlink.misskey.model.MisskeyStream(stream)
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun setNotificationStream(callback: EventCallback?): net.socialhub.core.model.Stream {
-        return proceed({
-            val misskey: Misskey = auth.accessor
-            val service: Service = account.service
-            val stream: MisskeyStream = misskey.stream()
+    fun notificationStream(
+        callback: EventCallback
+    ): Stream {
+        return proceed {
+            val misskey = auth.accessor
+            val stream = MisskeyStream(misskey)
 
-            val notificationListener: net.socialhub.service.misskey.action.MisskeyAction.MisskeyNotificationListener =
-                net.socialhub.service.misskey.action.MisskeyAction.MisskeyNotificationListener(
-                    callback, emojis,
-                    service, misskey.getHost(),
-                    getUserMeWithCache()
-                )
+            val notificationListener = MisskeyNotificationListener(
+                callback,
+                emojis,
+                service(),
+                misskey.host,
+                userMeWithCache()
+            )
 
-            val connectionListener: net.socialhub.service.misskey.action.MisskeyAction.MisskeyConnectionListener =
-                net.socialhub.service.misskey.action.MisskeyAction.MisskeyConnectionListener(
-                    callback,
-                    java.lang.Runnable {
-                        stream.main(
-                            notificationListener
-                        )
-                    })
+            val connectionListener = MisskeyConnectionListener(callback) {
+                runBlocking { stream.main(notificationListener) }
+            }
 
-            stream.setOpenedCallback(connectionListener)
-            stream.setClosedCallback(connectionListener)
-            stream.setErrorCallback(connectionListener)
-            MisskeyStream(stream)
-        })
+            setStreamConnectionCallback(stream, connectionListener)
+            work.socialhub.planetlink.misskey.model.MisskeyStream(stream)
+        }
     }
 
     // ============================================================== //
@@ -1275,149 +1084,124 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    fun getLocalTimeLine(paging: Paging?): Pageable<Comment> {
-        return proceed({
-            val misskey: Misskey = auth.accessor
-            val service: Service = account.service
+    fun localTimeLine(
+        paging: Paging
+    ): Pageable<Comment> {
+        return proceed {
+            val misskey = auth.accessor
+            val request = NotesLocalTimelineRequest()
 
-            val builder: NotesLocalTimelineRequest.NotesLocalTimelineRequestBuilder =
-                NotesLocalTimelineRequest()
+            setPaging(request, paging)
+            val response = misskey.notes().localTimeline(request)
 
-            setPaging(builder, paging)
-            val response: Response<Array<NotesLocalTimelineResponse>> =
-                misskey.notes().localTimeline(builder.build())
             MisskeyMapper.timeLine(
-                response.get(),
-                misskey.getHost(),
-                service,
-                paging
+                response.data.toList(),
+                misskey.host,
+                service(),
+                paging,
             )
-        })
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getFederationTimeLine(paging: Paging?): Pageable<Comment> {
-        return proceed({
-            val misskey: Misskey = auth.accessor
-            val service: Service = account.service
+    fun federationTimeLine(
+        paging: Paging
+    ): Pageable<Comment> {
+        return proceed {
+            val misskey = auth.accessor
+            val request = NotesGlobalTimelineRequest()
 
-            val builder: NotesGlobalTimelineRequest.NotesGlobalTimelineRequestBuilder =
-                NotesGlobalTimelineRequest()
+            setPaging(request, paging)
+            val response = misskey.notes().globalTimeline(request)
 
-            setPaging(builder, paging)
-            val response: Response<Array<NotesGlobalTimelineResponse>> =
-                misskey.notes().globalTimeline(builder.build())
             MisskeyMapper.timeLine(
-                response.get(),
-                misskey.getHost(),
-                service,
-                paging
+                response.data.toList(),
+                misskey.host,
+                service(),
+                paging,
             )
-        })
+        }
     }
 
     /**
      * Get Featured Timeline
      */
-    fun getFeaturedTimeLine(paging: Paging?): Pageable<Comment> {
-        return proceed({
-            val misskey: Misskey = auth.accessor
-            val service: Service = account.service
+    fun featuredTimeLine(
+        paging: Paging
+    ): Pageable<Comment> {
+        return proceed {
+            val misskey = auth.accessor
+            val request = NotesFeaturedRequest()
 
-            val builder: NotesFeaturedRequest.NotesFeaturedRequestBuilder =
-                NotesFeaturedRequest()
-
-            if (paging != null) {
-                if (paging.getCount() != null) {
-                    builder.limit(paging.getCount())
-                    if (paging.getCount() > 100) {
-                        builder.limit(100L)
-                    }
-                }
-                if (paging is OffsetPaging) {
-                    val pg: OffsetPaging? = paging as OffsetPaging?
-                    if (pg.getOffset() != null) {
-                        builder.offset(pg.getOffset())
-                    }
+            paging.count?.let {
+                request.limit = it
+                if (it > 100) {
+                    request.limit = 100
                 }
             }
 
-            val response: Response<Array<NotesFeaturedResponse>> =
-                misskey.notes().featured(builder.build())
-
-            val results: Pageable<Comment> = MisskeyMapper.timeLine(
-                response.get(),
-                misskey.getHost(),
-                service,
-                paging
+            val response = misskey.notes().featured(request)
+            val results = MisskeyMapper.timeLine(
+                response.data.toList(),
+                misskey.host,
+                service(),
+                paging,
             )
 
-            results.setPaging(OffsetPaging.fromPaging(paging))
-            results.getPaging().setHasNew(false)
+            results.paging = OffsetPaging.fromPaging(paging)
+                .also { it.isHasNew = false }
             results
-        })
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun setLocalLineStream(callback: EventCallback?): net.socialhub.core.model.Stream {
-        return proceed({
-            val misskey: Misskey = auth.accessor
-            val service: Service = account.service
-            val stream: MisskeyStream = misskey.stream()
+    fun localLineStream(
+        callback: EventCallback
+    ): Stream {
+        return proceed {
+            val misskey = auth.accessor
+            val stream = MisskeyStream(misskey)
 
-            val commentsListener: net.socialhub.service.misskey.action.MisskeyAction.MisskeyCommentsListener =
-                net.socialhub.service.misskey.action.MisskeyAction.MisskeyCommentsListener(
-                    callback,
-                    service, misskey.getHost()
-                )
-            val connectionListener: net.socialhub.service.misskey.action.MisskeyAction.MisskeyConnectionListener =
-                net.socialhub.service.misskey.action.MisskeyAction.MisskeyConnectionListener(
-                    callback,
-                    java.lang.Runnable {
-                        stream.localTimeline(
-                            commentsListener
-                        )
-                    })
+            val commentsListener = MisskeyCommentsListener(
+                callback,
+                service(),
+                misskey.host,
+            )
 
-            stream.setOpenedCallback(connectionListener)
-            stream.setClosedCallback(connectionListener)
-            stream.setErrorCallback(connectionListener)
-            MisskeyStream(stream)
-        })
+            val connectionListener = MisskeyConnectionListener(callback) {
+                runBlocking { stream.localTimeline(commentsListener) }
+            }
+            setStreamConnectionCallback(stream, connectionListener)
+            work.socialhub.planetlink.misskey.model.MisskeyStream(stream)
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun setFederationLineStream(callback: EventCallback?): net.socialhub.core.model.Stream {
-        return proceed({
-            val misskey: Misskey = auth.accessor
-            val service: Service = account.service
-            val stream: MisskeyStream = misskey.stream()
+    fun federationLineStream(
+        callback: EventCallback
+    ): Stream {
+        return proceed {
+            val misskey = auth.accessor
+            val stream = MisskeyStream(misskey)
 
-            val commentsListener: net.socialhub.service.misskey.action.MisskeyAction.MisskeyCommentsListener =
-                net.socialhub.service.misskey.action.MisskeyAction.MisskeyCommentsListener(
-                    callback,
-                    service, misskey.getHost()
-                )
-            val connectionListener: net.socialhub.service.misskey.action.MisskeyAction.MisskeyConnectionListener =
-                net.socialhub.service.misskey.action.MisskeyAction.MisskeyConnectionListener(
-                    callback,
-                    java.lang.Runnable {
-                        stream.globalTimeline(
-                            commentsListener
-                        )
-                    })
+            val commentsListener = MisskeyCommentsListener(
+                callback,
+                service(),
+                misskey.host,
+            )
+            val connectionListener = MisskeyConnectionListener(callback) {
+                runBlocking { stream.globalTimeline(commentsListener) }
+            }
 
-            stream.setOpenedCallback(connectionListener)
-            stream.setClosedCallback(connectionListener)
-            stream.setErrorCallback(connectionListener)
-            MisskeyStream(stream)
-        })
+            setStreamConnectionCallback(stream, connectionListener)
+            work.socialhub.planetlink.misskey.model.MisskeyStream(stream)
+        }
     }
 
     /**
@@ -1425,18 +1209,19 @@ class MisskeyAction(
      * サービスワーカーのエンドポイントを設定
      */
     fun registerSubscription(
-        endpoint: String?, publicKey: String?, authSecret: String?
+        endpoint: String,
+        publicKey: String,
+        authSecret: String
     ) {
-        proceed({
-            val misskey: Misskey = auth.accessor
-            misskey.other().serviceWorkerRegister(
-                ServiceWorkerRegisterRequest()
-                    .endpoint(endpoint)
-                    .publickey(publicKey)
-                    .auth(authSecret)
-                    .build()
+        proceed {
+            auth.accessor.other().serviceWorkerRegister(
+                ServiceWorkerRegisterRequest().also {
+                    it.endpoint = endpoint
+                    it.publickey = publicKey
+                    it.auth = authSecret
+                }
             )
-        })
+        }
     }
 
     // ============================================================== //
@@ -1445,31 +1230,41 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    fun request(): RequestAction {
+    override fun request(): RequestAction {
         return MisskeyRequest(account)
     }
 
     // ============================================================== //
     // paging
     // ============================================================== //
-    private fun setPaging(builder: PagingBuilder<*>, paging: Paging?) {
-        if (paging != null) {
-            if (paging.getCount() != null) {
-                builder.limit(paging.getCount())
-                if (paging.getCount() > 100) {
-                    builder.limit(100L)
-                }
-            }
-            if (paging is MisskeyPaging) {
-                val mp: MisskeyPaging = paging as MisskeyPaging
-                if (mp.getUntilId() != null) {
-                    builder.untilId(mp.getUntilId())
-                }
-                if (mp.getSinceId() != null) {
-                    builder.sinceId(mp.getSinceId())
-                }
+    private fun setPaging(
+        builder: PagingBuilder,
+        paging: Paging
+    ) {
+        paging.count?.let {
+            builder.limit = it
+            if (it > 100) {
+                builder.limit = 100
             }
         }
+
+        if (paging is MisskeyPaging) {
+            paging.untilId?.let {
+                builder.untilId = it
+            }
+            paging.sinceId?.let {
+                builder.sinceId = it
+            }
+        }
+    }
+
+    private fun setStreamConnectionCallback(
+        stream: MisskeyStream,
+        callback: MisskeyConnectionListener,
+    ) {
+        stream.client.openedCallback = callback::onOpened
+        stream.client.closedCallback = callback::onClosed
+        stream.client.errorCallback = callback::onError
     }
 
     // ============================================================== //
@@ -1477,106 +1272,100 @@ class MisskeyAction(
     // ============================================================== //
     // コメントに対してのコールバック設定
     internal class MisskeyCommentsListener(
-        listener: EventCallback,
-        service: Service,
-        private val host: String
-    ) : NoteCallback {
-        private val listener: EventCallback = listener
-        private val service: Service = service
+        val listener: EventCallback,
+        val service: Service,
+        val host: String
+    ) : TimelineCallback {
 
-        fun onNoteUpdate(note: Note?) {
+        override fun onNoteUpdate(note: Note) {
             if (listener is UpdateCommentCallback) {
-                val comment: Comment = MisskeyMapper.comment(note, host, service)
-                (listener as UpdateCommentCallback).onUpdate(CommentEvent(comment))
+                val comment = MisskeyMapper.comment(note, host, service)
+                listener.onUpdate(CommentEvent(comment))
             }
         }
     }
 
     // 通信に対してのコールバック設定
     internal class MisskeyConnectionListener(
-        listener: EventCallback,
-        runnable: java.lang.Runnable?
-    ) : OpenedCallback, ClosedCallback,
+        val listener: EventCallback,
+        val runnable: () -> Unit
+    ) : OpenedCallback,
+        ClosedCallback,
         ErrorCallback {
-        private val listener: EventCallback = listener
-        private val runnable: java.lang.Runnable? = runnable
 
-        fun onOpened() {
+        override fun onOpened() {
             if (listener is ConnectCallback) {
-                (listener as ConnectCallback).onConnect()
+                listener.onConnect()
             }
-            if (runnable != null) {
-                runnable.run()
-            }
+            runnable()
         }
 
-        fun onClosed(remote: Boolean) {
+        override fun onClosed() {
             if (listener is DisconnectCallback) {
-                (listener as DisconnectCallback).onDisconnect()
+                listener.onDisconnect()
             }
         }
 
-        fun onError(e: java.lang.Exception?) {
-            logger.debug("WebSocket Error: ", e)
+        override fun onError(e: Exception) {
+            TODO("")
         }
     }
 
     // コメントに対してのコールバック設定
     internal class MisskeyNotificationListener(
-        listener: EventCallback,
-        emojis: List<Emoji>,
-        service: Service,
-        private val host: String,
-        me: User
-    ) : FollowedCallback, RenoteCallback, ReplayCallback, MentionCallback, NotificationCallback {
-        private val listener: EventCallback = listener
-        private val emojis: List<Emoji> = emojis
-        private val service: Service = service
-        private val me: User = me
+        val listener: EventCallback,
+        val emojis: List<Emoji>,
+        val service: Service,
+        val host: String,
+        val me: User,
+    ) : FollowedCallback,
+        RenoteCallback,
+        ReplayCallback,
+        MentionCallback,
+        NotificationCallback {
 
-        fun onFollowed(user: misskey4j.entity.User?) {
+        override fun onFollowed(user: MUser) {
             if (listener is FollowUserCallback) {
-                val model: User = MisskeyMapper.user(user, host, service)
-                (listener as FollowUserCallback).onFollow(UserEvent(model))
+                val model = MisskeyMapper.user(user, host, service)
+                listener.onFollow(UserEvent(model))
             }
         }
 
-        fun onMention(note: Note) {
+        override fun onMention(note: Note) {
             // Mention と Reply が重複することを防止
             // -> 自分に対する Reply の場合は Reply に移譲
-            if (note.getReply().getUser().getId().equals(me.getId())) {
+            if (note.reply?.user?.id == me.id<String>()) {
                 return
             }
 
             if (listener is MentionCommentCallback) {
-                val model: Comment = MisskeyMapper.comment(note, host, service)
-                (listener as MentionCommentCallback).onMention(CommentEvent(model))
+                val model = MisskeyMapper.comment(note, host, service)
+                listener.onMention(CommentEvent(model))
             }
         }
 
-        fun onReply(note: Note?) {
+        override fun onReply(note: Note) {
             if (listener is MentionCommentCallback) {
-                val model: Comment = MisskeyMapper.comment(note, host, service)
-                (listener as MentionCommentCallback).onMention(CommentEvent(model))
+                val model = MisskeyMapper.comment(note, host, service)
+                listener.onMention(CommentEvent(model))
             }
         }
 
-        fun onNotification(notification: Notification) {
+        override fun onNotification(notification: MNotification) {
             // Reaction or Renote の場合のみ反応
             // (それ以外の場合は他でカバー済)
 
-            if (notification.getType().equals("reaction") ||
-                notification.getType().equals("renote")
+            if (notification.type == "reaction" ||
+                notification.type == "renote"
             ) {
                 if (listener is NotificationCommentCallback) {
-                    val model: net.socialhub.core.model.Notification =
-                        MisskeyMapper.notification(notification, emojis, host, service)
-                    (listener as NotificationCommentCallback).onNotification(NotificationEvent(model))
+                    val model = MisskeyMapper.notification(notification, emojis, host, service)
+                    listener.onNotification(NotificationEvent(model))
                 }
             }
         }
 
-        fun onRenote(note: Note?) {
+        override fun onRenote(note: Note) {
             // Renote は Notification にて反応
         }
     }

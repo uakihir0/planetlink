@@ -5,9 +5,9 @@ package work.socialhub.planetlink.model.support
  * 投票における選択肢
  */
 class PollOption(
-    var index: Long,
+    var index: Int,
     var title: String = "",
-    var count: Long = 0L,
+    var count: Int = 0,
 ) {
 
     /** 認証ユーザーが投票したかどうか？ */

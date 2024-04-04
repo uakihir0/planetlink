@@ -18,13 +18,7 @@ class Emoji {
      * 絵文字のショートコード
      * (:smile: など)
      */
-    var shortCodes: MutableList<String>? = null
-        get() {
-            if (field == null) {
-                field = mutableListOf()
-            }
-            return field
-        }
+    var shortCodes: List<String> = listOf()
 
     /**
      * カスタム絵文字の場合の画像 URL

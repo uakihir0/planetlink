@@ -228,7 +228,7 @@ open class RequestActionImpl(
         }
     }
 
-    private fun isTypeIncluded(
+    fun isTypeIncluded(
         members: Collection<Enum<*>>,
         action: String
     ): Boolean {
@@ -251,7 +251,7 @@ open class RequestActionImpl(
         }
     }
 
-    private fun getCommentsRequest(
+    fun getCommentsRequest(
         type: ActionType,
         commentsFunction: (Paging) -> Pageable<Comment>,
         raw: SerializedRequest

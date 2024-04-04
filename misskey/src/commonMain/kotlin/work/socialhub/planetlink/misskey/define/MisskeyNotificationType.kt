@@ -1,6 +1,6 @@
 package work.socialhub.planetlink.misskey.define
 
-import misskey4j.entity.contant.NotificationType
+import work.socialhub.kmisskey.entity.contant.NotificationType
 import work.socialhub.planetlink.define.NotificationActionType
 
 
@@ -25,9 +25,9 @@ enum class MisskeyNotificationType(
     companion object {
         fun of(
             code: String
-        ): MisskeyNotificationType {
+        ): MisskeyNotificationType? {
             return entries.toTypedArray()
-                .first { it.code == code }
+                .firstOrNull { it.code == code }
         }
     }
 }

@@ -21,10 +21,10 @@ open class Poll(
     var isMultiple: Boolean = false
 
     /** 投票数  */
-    var votesCount: Long? = null
+    var votesCount: Int? = null
 
     /** 投票人数  */
-    var votersCount: Long? = null
+    var votersCount: Int? = null
 
     /** 認証ユーザーが投票したかどうか？  */
     var isVoted: Boolean = false

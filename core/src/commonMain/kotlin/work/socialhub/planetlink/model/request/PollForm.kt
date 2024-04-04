@@ -29,7 +29,7 @@ class PollForm {
     /**
      * Set expires in (min)
      */
-    fun expiresIn(expiresIn: Long): PollForm {
+    fun expiresIn(expiresIn: Int): PollForm {
         this.expiresIn = expiresIn
         return this
     }

@@ -29,13 +29,16 @@ class MisskeyComment(
     var visibility: MisskeyVisibility? = null
 
     /** User replied this comment  */
-    var replyCount: Long? = null
+    var replyCount: Int? = null
+
+    /** Poll */
+    var poll: Poll? = null
 
     // endregion
     /** Reactions  */
-    override val reactions: List<Reaction>
+    override var reactions: List<Reaction> = listOf()
         get() {
-            return super.reactions.toMutableList()
+            return field.toMutableList()
                 .also { list ->
                     Reaction().also {
                         it.count = replyCount

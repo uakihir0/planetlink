@@ -58,7 +58,7 @@ open class Comment(
      * Get many kind of reactions
      * (like, share, :+1:, and so on)
      */
-    open val reactions: List<Reaction> = listOf()
+    open var reactions: List<Reaction> = listOf()
 
     /**
      * Apply reaction to comment
