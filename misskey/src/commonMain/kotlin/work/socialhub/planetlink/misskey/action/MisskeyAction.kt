@@ -1329,7 +1329,9 @@ class MisskeyAction(
         }
 
         override fun onError(e: Exception) {
-            TODO("")
+            if (listener is ErrorCallback) {
+                listener.onError(e)
+            }
         }
     }
 
