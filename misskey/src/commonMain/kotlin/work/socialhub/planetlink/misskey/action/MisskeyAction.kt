@@ -25,7 +25,8 @@ import work.socialhub.kmisskey.api.request.mutes.MutesDeleteRequest
 import work.socialhub.kmisskey.api.request.notes.*
 import work.socialhub.kmisskey.api.request.other.ServiceWorkerRegisterRequest
 import work.socialhub.kmisskey.api.request.polls.PollsVoteRequest
-import work.socialhub.kmisskey.api.request.protocol.PagingBuilder
+import work.socialhub.kmisskey.api.request.protocol.PagingRequest
+import work.socialhub.kmisskey.api.request.protocol.PagingTokenRequest
 import work.socialhub.kmisskey.api.request.reactions.ReactionsCreateRequest
 import work.socialhub.kmisskey.api.request.reactions.ReactionsDeleteRequest
 import work.socialhub.kmisskey.api.request.users.*
@@ -1238,7 +1239,28 @@ class MisskeyAction(
     // paging
     // ============================================================== //
     private fun setPaging(
-        builder: PagingBuilder,
+        builder: PagingTokenRequest,
+        paging: Paging
+    ) {
+        paging.count?.let {
+            builder.limit = it
+            if (it > 100) {
+                builder.limit = 100
+            }
+        }
+
+        if (paging is MisskeyPaging) {
+            paging.untilId?.let {
+                builder.untilId = it
+            }
+            paging.sinceId?.let {
+                builder.sinceId = it
+            }
+        }
+    }
+
+    private fun setPaging(
+        builder: PagingRequest,
         paging: Paging
     ) {
         paging.count?.let {

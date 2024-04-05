@@ -40,7 +40,7 @@ object BlueskyMapper {
     ): User {
         return BlueskyUser(service).apply {
             isSimple = false
-            protected = false
+            isProtected = false
 
             id = ID(account.did)
             name = account.displayName
@@ -50,9 +50,9 @@ object BlueskyMapper {
 
             description = AttributedString.plain(account.description)
 
-            statusesCount = account.postsCount?.toLong()
-            followingCount = account.followsCount?.toLong()
-            followersCount = account.followersCount?.toLong()
+            statusesCount = account.postsCount
+            followingCount = account.followsCount
+            followersCount = account.followersCount
 
             userViewer(this, account.viewer)
         }
@@ -67,7 +67,7 @@ object BlueskyMapper {
     ): User {
         return BlueskyUser(service).apply {
             isSimple = true
-            protected = false
+            isProtected = false
 
             id = ID(account.did)
             name = account.displayName
@@ -89,7 +89,7 @@ object BlueskyMapper {
     ): User {
         return BlueskyUser(service).apply {
             isSimple = true
-            protected = false
+            isProtected = false
 
             id = ID(account.did)
             name = account.displayName
@@ -160,9 +160,9 @@ object BlueskyMapper {
                 shared = false
                 possiblySensitive = false
 
-                likeCount = 0L
-                shareCount = 0L
-                replyCount = 0L
+                likeCount = 0
+                shareCount = 0
+                replyCount = 0
                 return@apply
             }
 
@@ -174,9 +174,9 @@ object BlueskyMapper {
             // TODO: Labels
             possiblySensitive = false
 
-            likeCount = post.likeCount?.toLong() ?: 0L
-            shareCount = post.repostCount?.toLong() ?: 0L
-            replyCount = post.replyCount?.toLong() ?: 0L
+            likeCount = post.likeCount ?: 0
+            shareCount = post.repostCount ?: 0
+            replyCount = post.replyCount ?: 0
 
             commentViewer(this, post.viewer)
 
@@ -223,7 +223,7 @@ object BlueskyMapper {
         // Media
         if (embed is EmbedImagesView) {
             val medias = embed.images!!.map { media(it) }
-            model.medias = model.medias!!.plus(medias)
+            model.medias = model.medias.plus(medias)
         }
 
         // Quote
@@ -264,9 +264,9 @@ object BlueskyMapper {
             shared = false
             possiblySensitive = false
 
-            likeCount = 0L
-            shareCount = 0L
-            replyCount = 0L
+            likeCount = 0
+            shareCount = 0
+            replyCount = 0
 
             // Text
             val union = post.value

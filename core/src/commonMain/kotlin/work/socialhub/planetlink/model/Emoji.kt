@@ -37,11 +37,13 @@ class Emoji {
     var frequentLevel: Int? = null
 
     fun addShortCode(shortCode: String) {
-        shortCodes!!.add(shortCode)
+        shortCodes = shortCodes
+            .toMutableList()
+            .also { it.add(shortCode) }
     }
 
     val shortCode: String
-        get() = shortCodes!![0]
+        get() = shortCodes[0]
 
     companion object {
 

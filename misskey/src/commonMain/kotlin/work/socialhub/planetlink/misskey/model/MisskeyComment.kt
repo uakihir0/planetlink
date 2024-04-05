@@ -3,6 +3,7 @@ package work.socialhub.planetlink.misskey.model
 import work.socialhub.planetlink.micro.MicroBlogComment
 import work.socialhub.planetlink.misskey.define.MisskeyVisibility
 import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.Poll
 import work.socialhub.planetlink.model.Reaction
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.common.AttributedString

@@ -10,4 +10,9 @@ class GetUserMeTest : AbstractTest() {
     fun testBluesky() {
         dump(bluesky().action.userMe())
     }
+
+    @Test
+    fun testMisskey() {
+        dump(misskey().action.userMe())
+    }
 }

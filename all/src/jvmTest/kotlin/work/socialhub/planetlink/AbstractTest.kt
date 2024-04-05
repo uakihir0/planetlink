@@ -3,6 +3,7 @@ package work.socialhub.planetlink
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import work.socialhub.planetlink.bluesky.expand.PlanetLinkEx.bluesky
+import work.socialhub.planetlink.misskey.expand.PlanetLinkEx.misskey
 import work.socialhub.planetlink.config.TestConfig
 import work.socialhub.planetlink.model.Account
 import java.io.FileReader
@@ -23,7 +24,7 @@ open class AbstractTest {
     fun setupTest() {
         try {
             val string = readFile("../secrets.json")
-            config = json.decodeFromString<TestConfig>(string!!)
+            config = json.decodeFromString<TestConfig>(string)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -44,6 +45,15 @@ open class AbstractTest {
         ).accountWithIdentifyAndPassword(
             c.identify,
             c.password
+        )
+    }
+
+    fun misskey(index: Int = 0): Account {
+        val c = checkNotNull(config).misskey[index]
+        return PlanetLink.misskey(
+            c.host
+        ).accountWithAccessToken(
+            c.userToken,
         )
     }
 }

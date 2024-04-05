@@ -22,7 +22,7 @@ class BlueskyComment(
     var simple: Boolean? = null
 
     /** Reply count  */
-    var replyCount: Long? = null
+    var replyCount: Int = 0
 
     var likeRecordUri: String? = null
 
@@ -37,7 +37,7 @@ class BlueskyComment(
             return "https://bsky.app/profile/${user.screenName}/post/${rkey}"
         }
 
-    override val reactions: List<Reaction>
+    override var reactions: List<Reaction> = listOf()
         get() {
             return super.reactions.toMutableList()
                 .also { list ->
