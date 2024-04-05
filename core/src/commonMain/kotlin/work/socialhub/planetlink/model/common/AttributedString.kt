@@ -74,9 +74,7 @@ class AttributedString {
      * 表示文字列を取得
      */
     val displayText: String
-        get() = elements
-            .map { it.displayText }
-            .joinToString { "" }
+        get() = elements.joinToString(separator = "") { it.displayText }
 
     /**
      * Scan elements

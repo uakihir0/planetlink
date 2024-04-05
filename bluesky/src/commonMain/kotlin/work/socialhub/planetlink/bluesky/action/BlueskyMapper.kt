@@ -180,7 +180,6 @@ object BlueskyMapper {
 
             commentViewer(this, post.viewer)
 
-
             val union = post.record
             if (union is FeedPost) {
                 text = attributedText(union)

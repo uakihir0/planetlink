@@ -1,14 +1,15 @@
 package work.socialhub.planetlink.action
 
-import kotlin.test.Test
 import work.socialhub.planetlink.AbstractTest
 import work.socialhub.planetlink.PrintClass.dump
 import work.socialhub.planetlink.model.Account
+import work.socialhub.planetlink.model.Paging
+import kotlin.test.Test
 
-class GetUserMeTest : AbstractTest() {
+class HomeTimelineTest : AbstractTest() {
 
     private fun action(account: Account) {
-        dump(account.action.userMe())
+        dump(account.action.homeTimeLine(Paging(100)))
     }
 
     @Test
