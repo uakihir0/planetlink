@@ -22,6 +22,7 @@ kotlin {
         it.binaries.framework {
             export(project(":core"))
             export(project(":bluesky"))
+            export(project(":misskey"))
             baseName = "planetlink"
             xcf.add(this)
         }
@@ -41,6 +42,7 @@ kotlin {
         commonMain.dependencies {
             api(project(":core"))
             api(project(":bluesky"))
+            api(project(":misskey"))
             implementation(libs.kbsky.core)
             implementation(libs.kbsky.stream)
         }

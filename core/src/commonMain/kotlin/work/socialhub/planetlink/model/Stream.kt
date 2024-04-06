@@ -5,7 +5,7 @@ package work.socialhub.planetlink.model
  * ストリーム操作 API
  */
 interface Stream {
-    fun open()
+    suspend fun open()
     fun close()
     val isOpened: Boolean
 }

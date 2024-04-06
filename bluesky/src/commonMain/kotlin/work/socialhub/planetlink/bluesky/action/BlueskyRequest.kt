@@ -130,7 +130,10 @@ class BlueskyRequest(
     // ============================================================== //
     // Support
     // ============================================================== //
-    private fun setCommentIdentify(request: CommentsRequest, identify: String) {
+    private fun setCommentIdentify(
+        request: CommentsRequest,
+        identify: String
+    ) {
         request.commentFrom().text("$identify ")
         request.raw!!.add("to", identify)
     }

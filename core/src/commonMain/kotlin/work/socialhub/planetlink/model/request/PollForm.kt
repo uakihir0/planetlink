@@ -8,7 +8,7 @@ class PollForm {
     var multiple: Boolean = false
 
     /** Expires in (min)  */
-    var expiresIn: Long = 1440L
+    var expiresIn: Int = 1440
 
     /**
      * Add poll option
@@ -29,7 +29,7 @@ class PollForm {
     /**
      * Set expires in (min)
      */
-    fun expiresIn(expiresIn: Long): PollForm {
+    fun expiresIn(expiresIn: Int): PollForm {
         this.expiresIn = expiresIn
         return this
     }

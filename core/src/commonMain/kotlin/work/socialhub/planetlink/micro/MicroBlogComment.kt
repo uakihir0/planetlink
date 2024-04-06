@@ -8,11 +8,11 @@ open class MicroBlogComment(
     service: Service
 ) : Comment(service) {
 
-    var liked: Boolean? = null
-    var shared: Boolean? = null
+    var liked: Boolean = false
+    var shared: Boolean = false
 
-    var likeCount: Long? = null
-    var shareCount: Long? = null
+    var likeCount: Int? = null
+    var shareCount: Int? = null
 
     var replyTo: Identify? = null
 }

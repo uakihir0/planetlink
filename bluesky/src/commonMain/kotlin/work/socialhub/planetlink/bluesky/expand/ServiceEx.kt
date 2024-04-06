@@ -2,7 +2,7 @@ package work.socialhub.planetlink.bluesky.expand
 
 import work.socialhub.planetlink.model.Service
 
-class ServiceEx {
+object ServiceEx {
 
     /** Is Bluesky Account ?  */
     val Service.isBluesky: Boolean

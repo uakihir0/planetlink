@@ -18,13 +18,7 @@ class Emoji {
      * 絵文字のショートコード
      * (:smile: など)
      */
-    var shortCodes: MutableList<String>? = null
-        get() {
-            if (field == null) {
-                field = mutableListOf()
-            }
-            return field
-        }
+    var shortCodes: List<String> = listOf()
 
     /**
      * カスタム絵文字の場合の画像 URL
@@ -43,11 +37,13 @@ class Emoji {
     var frequentLevel: Int? = null
 
     fun addShortCode(shortCode: String) {
-        shortCodes!!.add(shortCode)
+        shortCodes = shortCodes
+            .toMutableList()
+            .also { it.add(shortCode) }
     }
 
     val shortCode: String
-        get() = shortCodes!![0]
+        get() = shortCodes[0]
 
     companion object {
 

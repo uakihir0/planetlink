@@ -5,7 +5,7 @@ import work.socialhub.planetlink.model.Paging
 
 class OffsetPaging : Paging() {
 
-    var offset: Long? = null
+    var offset: Int? = null
 
     /**
      * {@inheritDoc}
@@ -14,7 +14,7 @@ class OffsetPaging : Paging() {
         entities: List<T>
     ): Paging {
         val pg = copy()
-        pg.offset = 0L
+        pg.offset = 0
         return pg
     }
 
@@ -27,9 +27,9 @@ class OffsetPaging : Paging() {
         val pg = copy()
 
         if (entities.isNotEmpty()) {
-            val count = entities.size.toLong()
+            val count = entities.size
             if (pg.offset == null) {
-                pg.offset = 0L
+                pg.offset = 0
             }
 
             // オフセット分を取得した量分変更

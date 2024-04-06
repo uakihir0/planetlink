@@ -9,9 +9,9 @@ open class MicroBlogUser(
 
     var screenName: String? = null
 
-    var protected: Boolean? = null
+    var isProtected: Boolean? = null
 
-    var statusesCount: Long? = null
-    var followingCount: Long? = null
-    var followersCount: Long? = null
+    var statusesCount: Int? = null
+    var followingCount: Int? = null
+    var followersCount: Int? = null
 }
