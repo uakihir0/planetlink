@@ -34,12 +34,12 @@ class BlueskyUser(
     var blockedBy: Boolean? = null
 
     override var name: String? = null
-        get() = field ?: screenName
+        get() = field?.let { it.ifEmpty { screenName } } ?: screenName
 
     override val accountIdentify
         get() = "@$screenName"
 
     // TODO: HOST名変更
     override val webUrl
-        get() = "https://bsky.app/profile/$accountIdentify"
+        get() = "https://bsky.app/profile/$screenName"
 }

@@ -1,6 +1,5 @@
 package work.socialhub.planetlink
 
-import work.socialhub.planetlink.PrintClass.dump
 import work.socialhub.planetlink.misskey.model.MisskeyUser
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Pageable
@@ -13,9 +12,10 @@ object PrintClass {
         sp: String = "",
     ) {
         println("${sp}>> USER")
-        println("${sp}Name > ${user.name}")
-        println("${sp}Url  > ${user.webUrl}")
-        println("${sp}Icon > ${user.iconImageUrl}")
+        println("${sp}ID    > ${user.id!!.value}")
+        println("${sp}Name  > ${user.name}")
+        println("${sp}Url   > ${user.webUrl}")
+        println("${sp}Icon  > ${user.iconImageUrl}")
 
 //        if (user is MastodonUser) {
 //            for (filed in mastodonUser.getFields()) {
@@ -25,10 +25,10 @@ object PrintClass {
 //
         if (user is MisskeyUser) {
             for (filed in user.fields) {
-                println("${sp}${filed.name}:${filed.value?.displayText}")
+                println("${sp}Field > ${filed.name} : ${filed.value?.displayText}")
             }
             user.avatarColor?.let {
-                println("${sp}RGB  >${it.toJavaScriptFormat()}")
+                println("${sp}RGB   > ${it.toJavaScriptFormat()}")
             }
         }
 //
@@ -47,7 +47,7 @@ object PrintClass {
             println("${sp}>> SHARED COMMENT")
             dump(shared, "$sp| ")
 
-        }else {
+        } else {
             println("${sp}>> COMMENT")
             println("${sp}Text > ${comment.text?.displayText}")
             println("${sp}Url  > ${comment.webUrl}")
@@ -55,11 +55,21 @@ object PrintClass {
         }
     }
 
-    fun AbstractTest.dump(
+    fun AbstractTest.dumpComments(
         comments: Pageable<Comment>,
         sp: String = "",
     ) {
         comments.entities.forEach {
+            dump(it, sp)
+            println()
+        }
+    }
+
+    fun AbstractTest.dumpUsers(
+        users: Pageable<User>,
+        sp: String = "",
+    ) {
+        users.entities.forEach {
             dump(it, sp)
             println()
         }

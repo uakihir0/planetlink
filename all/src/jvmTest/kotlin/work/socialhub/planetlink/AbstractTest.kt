@@ -56,4 +56,8 @@ open class AbstractTest {
             c.userToken,
         )
     }
+
+    fun icon(): ByteArray {
+        return javaClass.getResourceAsStream("/icon.png").readAllBytes()
+    }
 }

@@ -91,7 +91,7 @@ object MisskeyMapper {
 
                 // フィールドの設定
                 u.fields = detailed.fields.map { f ->
-                    AttributedFiled(f.value, f.name).also { af ->
+                    AttributedFiled(f.name, f.value).also { af ->
                         af.value?.addEmojiElement(selectEmojis(emojis, f.value, host))
                     }
                 }
