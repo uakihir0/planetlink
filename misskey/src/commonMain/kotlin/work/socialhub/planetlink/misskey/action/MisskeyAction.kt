@@ -979,12 +979,11 @@ class MisskeyAction(
         limit: Int
     ): List<Trend> {
         return proceed {
-            val misskey: Misskey = auth.accessor
-            val response = misskey.hashtags().trend(
+            val response = auth.accessor.hashtags().trend(
                 HashtagsTrendRequest()
             )
 
-            response.data.map {
+            response.data.take(limit).map {
                 MisskeyMapper.trend(it)
             }
         }
