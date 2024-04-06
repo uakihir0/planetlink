@@ -13,7 +13,7 @@ By using this library, you can transparently handle various Social Media platfor
 ## Supported Platforms
 
 - Bluesky (library: [kbksy](https://github.com/uakihir0/kbsky))
-- Misskey (library: [kbksy](https://github.com/uakihir0/kmisskey)) (WIP)
+- Misskey (library: [kmisskey](https://github.com/uakihir0/kmisskey))
 
 ## Planned Supported Platforms
 
