@@ -7,6 +7,6 @@ class MisskeyThread(
     service: Service
 ) : Thread(service) {
 
-    /** グループスレッドかどうか？  */
+    /** グループスレッドかどうか？ */
     var isGroup: Boolean = false
 }

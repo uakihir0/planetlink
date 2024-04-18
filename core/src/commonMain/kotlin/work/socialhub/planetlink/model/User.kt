@@ -46,7 +46,7 @@ open class User(
      * Get SNS Additional Fields
      * (recommend to cast specified SNS model)
      */
-    val additionalFields = mutableListOf<AttributedFiled>()
+    open val additionalFields = mutableListOf<AttributedFiled>()
 
     /**
      * Get Comment Form
