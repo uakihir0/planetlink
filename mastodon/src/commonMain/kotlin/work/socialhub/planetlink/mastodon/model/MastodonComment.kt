@@ -54,18 +54,16 @@ class MastodonComment(
 
 
     override var reactions: List<Reaction> = listOf()
-        get() {
-            return field.toMutableList()
-                .also { list ->
-                    replyCount?.let {
-                        Reaction().also {
-                            it.count = replyCount
-                            it.name = "reply"
-                            list.add(it)
-                        }
+        get() = field.toMutableList()
+            .also { list ->
+                replyCount?.let {
+                    Reaction().also {
+                        it.count = replyCount
+                        it.name = "reply"
+                        list.add(it)
                     }
                 }
-        }
+            }
 
     override fun equals(other: Any?): Boolean {
         return if (other is MastodonComment) {

@@ -17,14 +17,15 @@ class MastodonUser(
     service: Service
 ) : MicroBlogUser(service) {
 
-    /** attributed name (custom emoji included) */
+    /**
+     * attributed name (custom emoji included)
+     * 絵文字付き属性文字列
+     */
     var attributedName: AttributedString? = null
-        get() {
-            return field ?: let {
-                field = AttributedString.plain(name, emptyList())
-                field!!.addEmojiElement(emojis)
-                field
-            }
+        get() = field ?: let {
+            field = AttributedString.plain(name, emptyList())
+            field!!.addEmojiElement(emojis)
+            field
         }
 
     /** attributed filed that user input */
@@ -40,15 +41,11 @@ class MastodonUser(
     val isEmojiIncluded: Boolean
         get() = emojis.isNotEmpty()
 
-    override var name: String? = null
-        get() {
-            val name = super.name
-            if (name?.isEmpty() == true) {
-                return screenName
-                    ?.split("@")
-                    ?.get(0)
-            }
-            return name
+    override var name: String = ""
+        get() = field.ifEmpty {
+            return screenName!!
+                .split("@")[0]
+                .also { field = it }
         }
 
     override val accountIdentify: String
@@ -64,16 +61,15 @@ class MastodonUser(
             return "@$screenName@$host"
         }
 
-    override val webUrl: String
-        get() {
-            return profileUrl ?: let {
-                val host = accountIdentify.split("@")[2]
-                val identify = accountIdentify.split("@")[1]
+    override var webUrl: String = ""
+        get() = field.ifEmpty {
+            val host = accountIdentify.split("@")[2]
+            val identify = accountIdentify.split("@")[1]
 
-                return if (service.isPleroma) {
-                    "https://$host/$identify"
-                } else "https://$host/@$identify"
-            }
+            return (if (service.isPleroma) {
+                "https://$host/$identify"
+            } else "https://$host/@$identify")
+                .also { field = it }
         }
 
     override val additionalFields: MutableList<AttributedFiled>
@@ -89,11 +85,9 @@ class MastodonUser(
      * Mastodon の DM はユーザーの AccountIdentify が必要
      */
     override val messageForm: CommentForm
-        get() {
-            return CommentForm().also {
-                it.text = "$accountIdentify "
-                it.isMessage = true
-            }
+        get() = CommentForm().also {
+            it.text = "$accountIdentify "
+            it.isMessage = true
         }
 }
 
