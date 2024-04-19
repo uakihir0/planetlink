@@ -5,15 +5,28 @@ import work.socialhub.kmastodon.MastodonException
 import work.socialhub.kmastodon.api.request.Page
 import work.socialhub.kmastodon.api.request.Range
 import work.socialhub.kmastodon.api.request.accounts.*
+import work.socialhub.kmastodon.api.request.favourites.FavouritesFavouritesRequest
+import work.socialhub.kmastodon.api.request.medias.MediasPostMediaRequest
+import work.socialhub.kmastodon.api.request.notifications.NotificationsNotificationsRequest
 import work.socialhub.kmastodon.api.request.search.SearchSearchRequest
+import work.socialhub.kmastodon.api.request.statuses.*
+import work.socialhub.kmastodon.api.request.timelines.TimelinesHashTagTimelineRequest
+import work.socialhub.kmastodon.api.request.timelines.TimelinesHomeTimelineRequest
 import work.socialhub.planetlink.action.AccountActionImpl
 import work.socialhub.planetlink.define.action.SocialActionType
+import work.socialhub.planetlink.define.action.TimeLineActionType
 import work.socialhub.planetlink.define.action.UsersActionType
+import work.socialhub.planetlink.mastodon.define.MastodonNotificationType
+import work.socialhub.planetlink.mastodon.define.MastodonReactionType.Favorite
+import work.socialhub.planetlink.mastodon.define.MastodonReactionType.Reblog
+import work.socialhub.planetlink.mastodon.define.MastodonVisibility
 import work.socialhub.planetlink.mastodon.model.MastodonPaging
 import work.socialhub.planetlink.model.*
+import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.model.paging.BorderPaging
 import work.socialhub.planetlink.model.paging.OffsetPaging
+import work.socialhub.planetlink.model.request.CommentForm
 
 class MastodonAction(
     account: Account,
@@ -317,172 +330,208 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun getHomeTimeLine(paging: Paging?): Pageable<Comment> {
-        return proceed({
-
-
+    override fun homeTimeLine(
+        paging: Paging
+    ): Pageable<Comment> {
+        return proceed {
             val range = range(paging)
+            val status = auth.accessor.timelines().homeTimeline(
+                TimelinesHomeTimelineRequest().also { it.range = range }
+            )
 
-            val status: Response<Array<Status>> = auth.accessor.getHomeTimeline(range)
-            service().rateLimit.addInfo(HomeTimeLine, MastodonMapper.rateLimit(status))
+            service().rateLimit.addInfo(
+                TimeLineActionType.HomeTimeLine,
+                MastodonMapper.rateLimit(status)
+            )
             MastodonMapper.timeLine(
                 status.data,
-                service,
+                service(),
                 paging,
                 status.link
             )
-        })
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getMentionTimeLine(paging: Paging?): Pageable<Comment> {
-        return proceed({
-
-
+    override fun mentionTimeLine(
+        paging: Paging
+    ): Pageable<Comment> {
+        return proceed {
             val range = range(paging)
+            val notifications = auth.accessor.notifications().notifications(
+                NotificationsNotificationsRequest().also {
+                    it.range = range
+                    // v3.5 から取得するものを指定可能
+                    it.types = arrayOf(
+                        MastodonNotificationType.MENTION.code
+                    )
+                    it.excludeTypes = arrayOf(
+                        MastodonNotificationType.FOLLOW.code,
+                        MastodonNotificationType.FOLLOW_REQUEST.code,
+                        MastodonNotificationType.FAVOURITE.code,
+                        MastodonNotificationType.REBLOG.code
+                    )
+                })
 
-            val status: Response<Array<mastodon4j.entity.Notification>> =
-                auth.accessor.notifications().getNotifications(
-                    range,  // v3.5 から取得するものを指定可能
-                    listOf(
-                        MastodonNotificationType.MENTION.getCode()
-                    ),  // 互換性のために記述
-                    java.util.Arrays.asList(
-                        MastodonNotificationType.FOLLOW.getCode(),
-                        MastodonNotificationType.FOLLOW_REQUEST.getCode(),
-                        MastodonNotificationType.FAVOURITE.getCode(),
-                        MastodonNotificationType.REBLOG.getCode()
-                    ),
-                    null
-                )
+            val statuses = notifications.data
+                .mapNotNull { it.status }
+                .toTypedArray()
 
-            val statuses: List<Status> = java.util.stream.Stream.of(status.data)
-                .map(mastodon4j.entity.Notification::getStatus)
-                .collect(java.util.stream.Collectors.toList())
+            service().rateLimit.addInfo(
+                TimeLineActionType.MentionTimeLine,
+                MastodonMapper.rateLimit(notifications)
+            )
 
-            service().rateLimit.addInfo(MentionTimeLine, MastodonMapper.rateLimit(status))
             MastodonMapper.timeLine(
                 statuses,
-                service,
+                service(),
                 paging,
-                status.link
+                notifications.link
             )
-        })
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getUserCommentTimeLine(id: Identify, paging: Paging?): Pageable<Comment> {
-        return proceed({
-
-
+    override fun userCommentTimeLine(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<Comment> {
+        return proceed {
             val range = range(paging)
-
-            val status: Response<Array<Status>> = auth.accessor.accounts().getStatuses(
-                id.getId() as String, false, false, false, false, range
-            )
-            service().rateLimit.addInfo(UserCommentTimeLine, MastodonMapper.rateLimit(status))
-            MastodonMapper.timeLine(
-                status.data,
-                service,
-                paging,
-                status.link
-            )
-        })
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    fun getUserLikeTimeLine(id: Identify?, paging: Paging?): Pageable<Comment> {
-        return proceed({
-            if (id != null) {
-                // 自分の分しか取得できないので id が自分でない場合は例外
-
-                if (id.getId().equals(getUserMeWithCache().getId())) {
-
-
-                    val range = range(paging)
-
-                    val status: Response<Array<Status>> = auth.accessor.favourites().getFavourites(range)
-                    service().rateLimit.addInfo(UserLikeTimeLine, MastodonMapper.rateLimit(status))
-
-                    return@proceed MastodonMapper.timeLine(
-                        status.data,
-                        service,
-                        paging,
-                        status.link
-                    )
+            val status = auth.accessor.accounts().statuses(
+                AccountsStatusesRequest().also {
+                    it.id = id.id<String>()
+                    it.range = range
                 }
-            }
-            throw NotSupportedException(
-                "Sorry, user favorites timeline is only support only verified account on auth.accessor."
             )
-        })
-    }
 
-    /**
-     * {@inheritDoc}
-     */
-    fun getUserMediaTimeLine(id: Identify, paging: Paging?): Pageable<Comment> {
-        return proceed({
-
-
-            val range = range(paging)
-
-            val status: Response<Array<Status>> = auth.accessor.accounts().getStatuses(
-                id.getId() as String, false, true, false, false, range
+            service().rateLimit.addInfo(
+                TimeLineActionType.UserCommentTimeLine,
+                MastodonMapper.rateLimit(status),
             )
-            service().rateLimit.addInfo(UserMediaTimeLine, MastodonMapper.rateLimit(status))
+
             MastodonMapper.timeLine(
                 status.data,
                 service,
                 paging,
                 status.link
             )
-        })
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getSearchTimeLine(query: String, paging: Paging?): Pageable<Comment> {
-        return proceed({
-
-
-            if (query.startsWith("#")) {
-                // ハッシュタグのクエリの場合
+    override fun userLikeTimeLine(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<Comment> {
+        return proceed {
+            // 自分の分しか取得できないので id が自分でない場合は例外
+            if (id.isSameIdentify(userMeWithCache())) {
 
                 val range = range(paging)
-                val results: Response<Array<Status>> = auth.accessor.getHashtagTimeline(
-                    query.substring(1), false, false, range
+                val status = auth.accessor.favourites().favourites(
+                    FavouritesFavouritesRequest().also {
+                        it.range = range
+                    }
+                )
+                service().rateLimit.addInfo(
+                    TimeLineActionType.UserLikeTimeLine,
+                    MastodonMapper.rateLimit(status)
                 )
 
-                return@proceed MastodonMapper.timeLine(
+                MastodonMapper.timeLine(
+                    status.data,
+                    service,
+                    paging,
+                    status.link
+                )
+            } else {
+                throw NotSupportedException(
+                    "Sorry, user favorites timeline is only support only verified account on auth.accessor."
+                )
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override fun userMediaTimeLine(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<Comment> {
+        return proceed {
+            val range = range(paging)
+            val status = auth.accessor.accounts().statuses(
+                AccountsStatusesRequest().also {
+                    it.id = id.id<String>()
+                    it.onlyMedia = true
+                    it.range = range
+                }
+            )
+            service().rateLimit.addInfo(
+                TimeLineActionType.UserMediaTimeLine,
+                MastodonMapper.rateLimit(status)
+            )
+            MastodonMapper.timeLine(
+                status.data,
+                service,
+                paging,
+                status.link
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override fun searchTimeLine(
+        query: String,
+        paging: Paging
+    ): Pageable<Comment> {
+        return proceed {
+            if (query.startsWith("#")) {
+
+                // ハッシュタグのクエリの場合
+                val range = range(paging)
+                val results = auth.accessor.timelines().hashtagTimeline(
+                    TimelinesHashTagTimelineRequest().also {
+                        it.hashtag = query.substring(1)
+                        it.range = range
+                    }
+                )
+
+                MastodonMapper.timeLine(
                     results.data,
                     service,
                     paging,
                     results.link
                 )
             } else {
-                // それ以外は通常の検索を実施
 
+                // それ以外は通常の検索を実施
                 val page = page(paging)
-                val results: Response<Results> = auth.accessor.search().search(
-                    query, false, false, page
+                val results = auth.accessor.search().search(
+                    SearchSearchRequest().also {
+                        it.query = query
+                        it.page = page
+                    }
                 )
 
-                return@proceed MastodonMapper.timeLine(
-                    results.data.getStatuses(),
+                MastodonMapper.timeLine(
+                    results.data.statuses!!,
                     service,
                     paging,
                     results.link
                 )
             }
-        })
+        }
     }
 
     // ============================================================== //
@@ -491,77 +540,92 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun postComment(req: CommentForm) {
-        proceed({
+    override fun postComment(
+        req: CommentForm
+    ) {
+        proceedUnit {
+            val post = StatusesPostStatusRequest()
 
-
-            val update: StatusUpdate = StatusUpdate()
-            update.setContent(req.getText())
+            // コンテンツ
+            post.content = req.text
 
             // コンテンツ注意文言
-            if (req.getWarning() != null) {
-                update.setSpoilerText(req.getWarning())
+            req.warning?.let {
+                post.spoilerText = it
             }
 
             // 返信の処理
-            if (req.getReplyId() != null) {
-                update.setInReplyToId(req.getReplyId() as String)
+            req.replyId?.let {
+                post.inReplyToId = it.value<String>()
             }
 
             // 公開範囲
-            if (req.getVisibility() != null) {
-                update.setVisibility(req.getVisibility())
+            req.visibility?.let {
+                post.visibility = it
             }
 
             // ダイレクトメッセージの場合
-            if (req.isMessage()) {
-                update.setVisibility(MastodonVisibility.Direct.getCode())
+            if (req.isMessage) {
+                post.visibility = MastodonVisibility.Direct.code
             }
 
             // 画像の処理
-            if (req.getImages() != null && !req.getImages().isEmpty()) {
-                update.setMediaIds(java.util.ArrayList<E>())
+            if (req.images.isNotEmpty()) {
 
                 // Mastodon はアップロードされた順番で配置が決定
                 // -> 並列にメディアをアップロードせずに逐次上げる
-                req.getImages().forEach { image ->
-                    val input: java.io.InputStream = ByteArrayInputStream(image.getData())
-                    val attachment: Response<Attachment> = auth.accessor.media() //
-                        .postMedia(input, image.getName(), null)
-                    update.getMediaIds().add(attachment.data.getId())
-                }
+                post.mediaIds = req.images.map { image ->
+                    val attachment = auth.accessor.medias().postMedia(
+                        MediasPostMediaRequest().also {
+                            it.bytes = image.data
+                            it.name = image.name
+                        }
+                    )
+                    attachment.data.id!!
+                }.toTypedArray()
             }
 
             // センシティブな内容
-            if (req.isSensitive()) {
-                update.setSensitive(true)
+            if (req.isSensitive) {
+                post.sensitive = true
             }
 
             // 投票
-            if (req.getPoll() != null) {
-                val poll: PollForm = req.getPoll()
-                update.setPollOptions(poll.getOptions())
-                update.setPollMultiple(poll.getMultiple())
-                update.setPollExpiresIn(poll.getExpiresIn() * 60)
+            req.poll?.let { poll ->
+                post.pollOptions = poll.options.toTypedArray()
+                post.pollMultiple = poll.multiple
+                post.pollExpiresIn = poll.expiresIn * 60
             }
 
-            val status: Response<Status> = auth.accessor.statuses().postStatus(update)
-            service().rateLimit.addInfo(PostComment, MastodonMapper.rateLimit(status))
-        })
+            val status = auth.accessor.statuses().postStatus(post)
+            service().rateLimit.addInfo(
+                SocialActionType.PostComment,
+                MastodonMapper.rateLimit(status)
+            )
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getComment(id: Identify): Comment {
-        return proceed({
-
-            val status: Response<Status> = auth.accessor.statuses().getStatus(id.getId() as String)
-
-
-            service().rateLimit.addInfo(GetComment, MastodonMapper.rateLimit(status))
-            MastodonMapper.comment(status.data, service)
-        })
+    override fun comment(
+        id: Identify
+    ): Comment {
+        return proceed {
+            val status = auth.accessor.statuses().status(
+                StatusesStatusRequest().also {
+                    it.id = id.id<String>()
+                }
+            )
+            service().rateLimit.addInfo(
+                SocialActionType.GetComment,
+                MastodonMapper.rateLimit(status)
+            )
+            MastodonMapper.comment(
+                status.data,
+                service(),
+            )
+        }
     }
 
     /**
@@ -570,92 +634,127 @@ class MastodonAction(
      * https://auth.accessor.social/@uakihir0/104681506368424218
      * https://auth.accessor.social/web/statuses/104681506368424218
      */
-    fun getComment(url: String?): Comment {
-        return proceed({
+    override fun comment(
+        url: String
+    ): Comment {
+        return proceed {
+            var regex = "https://(.+?)/@(.+?)/(.+)".toRegex()
+            var matcher = regex.find(url)
 
-            run {
-                val regex: java.util.regex.Pattern = java.util.regex.Pattern.compile("https://(.+?)/@(.+?)/(.+)")
-                val matcher: java.util.regex.Matcher = regex.matcher(url)
-                if (matcher.matches()) {
-                    val id: Long = matcher.group(3).toLong()
-                    val identify: Identify = Identify(service, id)
-                    return@proceed getComment(identify)
+            if (matcher != null) {
+                val id = matcher.groupValues[3]
+                val identify = Identify(service(), ID(id))
+                comment(identify)
+
+            } else {
+                regex = "https://(.+?)/web/statuses/(.+)".toRegex()
+                matcher = regex.find(url)
+
+                if (matcher != null) {
+                    val id = matcher.groupValues[2]
+                    val identify = Identify(service(), ID(id))
+                    comment(identify)
+
+                } else {
+                    throw SocialHubException("this url is not supported format.")
                 }
             }
-            run {
-                val regex: java.util.regex.Pattern = java.util.regex.Pattern.compile("https://(.+?)/web/statuses/(.+)")
-                val matcher: java.util.regex.Matcher = regex.matcher(url)
-                if (matcher.matches()) {
-                    val id: Long = matcher.group(2).toLong()
-                    val identify: Identify = Identify(service, id)
-                    return@proceed getComment(identify)
+
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override fun likeComment(
+        id: Identify
+    ) {
+        proceedUnit {
+            val status = auth.accessor.statuses().favourite(
+                StatusesFavouriteRequest().also {
+                    it.id = id.id<String>()
                 }
-            }
-            throw SocialHubException("this url is not supported format.")
-        })
+            )
+            service().rateLimit.addInfo(
+                SocialActionType.LikeComment,
+                MastodonMapper.rateLimit(status),
+            )
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun likeComment(id: Identify) {
-        proceed({
-
-
-            val status: Response<Status> = auth.accessor.statuses().favourite(id.getId() as String)
-            service().rateLimit.addInfo(LikeComment, MastodonMapper.rateLimit(status))
-        })
+    override fun unlikeComment(
+        id: Identify
+    ) {
+        proceedUnit {
+            val status = auth.accessor.statuses().unfavourite(
+                StatusesUnfavouriteRequest().also {
+                    it.id = id.id<String>()
+                }
+            )
+            service().rateLimit.addInfo(
+                SocialActionType.UnlikeComment,
+                MastodonMapper.rateLimit(status),
+            )
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun unlikeComment(id: Identify) {
-        proceed({
-
-
-            val status: Response<Status> = auth.accessor.statuses().unfavourite(id.getId() as String)
-            service().rateLimit.addInfo(UnlikeComment, MastodonMapper.rateLimit(status))
-        })
+    override fun shareComment(
+        id: Identify
+    ) {
+        proceedUnit {
+            val status = auth.accessor.statuses().reblog(
+                StatusesReblogRequest().also {
+                    it.id = id.id<String>()
+                }
+            )
+            service().rateLimit.addInfo(
+                SocialActionType.ShareComment,
+                MastodonMapper.rateLimit(status),
+            )
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun shareComment(id: Identify) {
-        proceed({
-
-
-            val status: Response<Status> = auth.accessor.statuses().reblog(id.getId() as String)
-            service().rateLimit.addInfo(ShareComment, MastodonMapper.rateLimit(status))
-        })
+    override fun unshareComment(
+        id: Identify
+    ) {
+        proceed {
+            val status = auth.accessor.statuses().unreblog(
+                StatusesUnreblogRequest().also {
+                    it.id = id.id<String>()
+                }
+            )
+            service().rateLimit.addInfo(
+                SocialActionType.UnShareComment,
+                MastodonMapper.rateLimit(status),
+            )
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun unshareComment(id: Identify) {
-        proceed({
+    override fun reactionComment(
+        id: Identify,
+        reaction: String
+    ) {
+        if (reaction.isNotEmpty()) {
+            val type = reaction.lowercase()
 
-
-            val status: Response<Status> = auth.accessor.statuses().unreblog(id.getId() as String)
-            service().rateLimit.addInfo(UnShareComment, MastodonMapper.rateLimit(status))
-        })
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    fun reactionComment(id: Identify, reaction: String?) {
-        if (reaction != null && !reaction.isEmpty()) {
-            val type: String = reaction.lowercase(Locale.getDefault())
-
-            if (MastodonReactionType.Favorite.getCode().contains(type)) {
+            if (Favorite.codes.contains(type)) {
                 likeComment(id)
                 return
             }
-            if (MastodonReactionType.Reblog.getCode().contains(type)) {
-                retweetComment(id)
+            if (Reblog.codes.contains(type)) {
+                shareComment(id)
                 return
             }
         }
@@ -665,16 +764,19 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun unreactionComment(id: Identify, reaction: String?) {
-        if (reaction != null && !reaction.isEmpty()) {
-            val type: String = reaction.lowercase(Locale.getDefault())
+    override fun unreactionComment(
+        id: Identify,
+        reaction: String
+    ) {
+        if (reaction.isNotEmpty()) {
+            val type = reaction.lowercase()
 
-            if (MastodonReactionType.Favorite.getCode().contains(type)) {
+            if (Favorite.codes.contains(type)) {
                 unlikeComment(id)
                 return
             }
-            if (MastodonReactionType.Reblog.getCode().contains(type)) {
-                unretweetComment(id)
+            if (Reblog.codes.contains(type)) {
+                unshareComment(id)
                 return
             }
         }
@@ -684,40 +786,54 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun deleteComment(id: Identify) {
-        proceed({
-
-
-            val voids: Response<java.lang.Void> = auth.accessor.statuses().deleteStatus(id.getId() as String)
-            service().rateLimit.addInfo(DeleteComment, MastodonMapper.rateLimit(voids))
-        })
+    override fun deleteComment(
+        id: Identify
+    ) {
+        proceed {
+            val voids = auth.accessor.statuses().deleteStatus(
+                StatusesDeleteStatusRequest().also {
+                    it.id = id.id<String>()
+                }
+            )
+            service().rateLimit.addInfo(
+                SocialActionType.DeleteComment,
+                MastodonMapper.rateLimit(voids)
+            )
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getCommentContext(id: Identify): Context {
-        return proceed({
+    fun commentContext(
+        id: Identify
+    ): Context {
+        return proceed {
+            val idString = if (id is Comment) {
+                id.displayComment.id<String>()
+            } else id.id<String>()
 
-
-            val response: Response<mastodon4j.entity.Context> = auth.accessor.getContext(
-                (if ((id is Comment)) //
-                    (id as Comment).getDisplayComment().getId() else id.getId())
+            val response = auth.accessor.statuses().context(
+                StatusesContextRequest().also {
+                    it.id = idString
+                }
             )
 
-            service().rateLimit.addInfo(GetContext, MastodonMapper.rateLimit(response))
+            service().rateLimit.addInfo(
+                SocialActionType.GetContext,
+                MastodonMapper.rateLimit(response)
+            )
 
-            val context: Context = Context()
-            context.setDescendants(java.util.Arrays.stream(response.data.getDescendants())
-                .map { e -> MastodonMapper.comment(e, service) }
-                .collect(java.util.stream.Collectors.toList()))
-            context.setAncestors(java.util.Arrays.stream(response.data.getAncestors())
-                .map { e -> MastodonMapper.comment(e, service) }
-                .collect(java.util.stream.Collectors.toList()))
-
-            MapperUtil.sortContext(context)
-            context
-        })
+            Context().also { c ->
+                c.descendants = response.data.descendants?.map {
+                    MastodonMapper.comment(it, service())
+                } ?: listOf()
+                c.ancestors = response.data.ancestors?.map {
+                    MastodonMapper.comment(it, service())
+                } ?: listOf()
+                c.sort()
+            }
+        }
     }
 
     val emojis: List<Any>

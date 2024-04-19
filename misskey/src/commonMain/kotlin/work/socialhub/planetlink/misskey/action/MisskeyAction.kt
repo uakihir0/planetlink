@@ -596,13 +596,12 @@ class MisskeyAction(
         url: String
     ): Comment {
         return proceed {
-            val service = account.service
             val regex = ("https://(.+?)/notes/(.+)").toRegex()
             val matcher = regex.find(url)
 
             if (matcher != null) {
                 return@proceed comment(
-                    Identify(service).also {
+                    Identify(service()).also {
                         it.id = ID(matcher.groupValues[2])
                     })
             }
