@@ -8,7 +8,6 @@ open class MicroBlogUser(
 ) : User(service) {
 
     var screenName: String? = null
-    var profileUrl: String? = null
     var isProtected: Boolean? = null
 
     var statusesCount: Int? = null

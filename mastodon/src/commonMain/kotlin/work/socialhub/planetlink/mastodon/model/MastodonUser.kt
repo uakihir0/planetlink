@@ -1,7 +1,6 @@
 package work.socialhub.planetlink.mastodon.model
 
 import io.ktor.http.*
-import work.socialhub.planetlink.mastodon.expand.ServiceEx.isPleroma
 import work.socialhub.planetlink.micro.MicroBlogUser
 import work.socialhub.planetlink.model.Emoji
 import work.socialhub.planetlink.model.Service
@@ -56,27 +55,29 @@ class MastodonUser(
             }
 
             // プロフィール URL から HOST を取得
-            val url = checkNotNull(profileUrl)
-            val host = Url(url).host
+            val host = Url(webUrl).host
             return "@$screenName@$host"
         }
 
     override var webUrl: String = ""
-        get() = field.ifEmpty {
+        get() {
+            return field
+            // TODO: Pleroma の確認
+            /**
+            field.ifEmpty {
             val host = accountIdentify.split("@")[2]
             val identify = accountIdentify.split("@")[1]
-
             return (if (service.isPleroma) {
-                "https://$host/$identify"
+            "https://$host/$identify"
             } else "https://$host/@$identify")
-                .also { field = it }
+            .also { field = it }
+            }
+             */
         }
 
     override val additionalFields: MutableList<AttributedFiled>
-        get() {
-            return fields.toMutableList().also {
-                it.addAll(additionalFields)
-            }
+        get() = fields.toMutableList().also {
+            it.addAll(additionalFields)
         }
 
     /**
