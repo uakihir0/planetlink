@@ -1,32 +1,63 @@
 package work.socialhub.planetlink.mastodon.action
 
 
+import net.socialhub.planetlink.model.event.CommentEvent
 import work.socialhub.kmastodon.MastodonException
 import work.socialhub.kmastodon.api.request.Page
 import work.socialhub.kmastodon.api.request.Range
 import work.socialhub.kmastodon.api.request.accounts.*
 import work.socialhub.kmastodon.api.request.favourites.FavouritesFavouritesRequest
+import work.socialhub.kmastodon.api.request.lists.ListsListAccountsRequest
+import work.socialhub.kmastodon.api.request.lists.ListsListsRequest
 import work.socialhub.kmastodon.api.request.medias.MediasPostMediaRequest
+import work.socialhub.kmastodon.api.request.notifications.NotificationsNotificationRequest
 import work.socialhub.kmastodon.api.request.notifications.NotificationsNotificationsRequest
+import work.socialhub.kmastodon.api.request.notifications.NotificationsPostSubscriptionRequest
+import work.socialhub.kmastodon.api.request.polls.PollsVotePollRequest
 import work.socialhub.kmastodon.api.request.search.SearchSearchRequest
 import work.socialhub.kmastodon.api.request.statuses.*
-import work.socialhub.kmastodon.api.request.timelines.TimelinesHashTagTimelineRequest
-import work.socialhub.kmastodon.api.request.timelines.TimelinesHomeTimelineRequest
+import work.socialhub.kmastodon.api.request.timelines.*
+import work.socialhub.kmastodon.api.request.trends.TrendsTrendsRequest
+import work.socialhub.kmastodon.entity.Alert
+import work.socialhub.kmastodon.entity.Status
+import work.socialhub.kmastodon.stream.MastodonEx.stream
+import work.socialhub.kmastodon.stream.define.PublicType
+import work.socialhub.kmastodon.stream.listener.PublicStreamListener
+import work.socialhub.kmastodon.stream.listener.UserStreamListener
+import work.socialhub.kmastodon.stream.listener.primitive.LifeCycleListener
 import work.socialhub.planetlink.action.AccountActionImpl
+import work.socialhub.planetlink.action.RequestAction
+import work.socialhub.planetlink.action.callback.EventCallback
+import work.socialhub.planetlink.action.callback.comment.DeleteCommentCallback
+import work.socialhub.planetlink.action.callback.comment.MentionCommentCallback
+import work.socialhub.planetlink.action.callback.comment.NotificationCommentCallback
+import work.socialhub.planetlink.action.callback.comment.UpdateCommentCallback
+import work.socialhub.planetlink.action.callback.lifecycle.ConnectCallback
+import work.socialhub.planetlink.action.callback.lifecycle.DisconnectCallback
+import work.socialhub.planetlink.action.callback.lifecycle.ErrorCallback
+import work.socialhub.planetlink.action.callback.user.FollowUserCallback
 import work.socialhub.planetlink.define.action.SocialActionType
 import work.socialhub.planetlink.define.action.TimeLineActionType
 import work.socialhub.planetlink.define.action.UsersActionType
+import work.socialhub.planetlink.mastodon.define.MastodonActionType
 import work.socialhub.planetlink.mastodon.define.MastodonNotificationType
+import work.socialhub.planetlink.mastodon.define.MastodonNotificationType.*
 import work.socialhub.planetlink.mastodon.define.MastodonReactionType.Favorite
 import work.socialhub.planetlink.mastodon.define.MastodonReactionType.Reblog
 import work.socialhub.planetlink.mastodon.define.MastodonVisibility
 import work.socialhub.planetlink.mastodon.model.MastodonPaging
+import work.socialhub.planetlink.mastodon.model.MastodonStream
+import work.socialhub.planetlink.mastodon.model.MastodonThread
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
+import work.socialhub.planetlink.model.event.IdentifyEvent
+import work.socialhub.planetlink.model.event.NotificationEvent
+import work.socialhub.planetlink.model.event.UserEvent
 import work.socialhub.planetlink.model.paging.BorderPaging
 import work.socialhub.planetlink.model.paging.OffsetPaging
 import work.socialhub.planetlink.model.request.CommentForm
+import work.socialhub.kmastodon.entity.Notification as MNotification
 
 class MastodonAction(
     account: Account,
@@ -105,7 +136,7 @@ class MastodonAction(
 
                 if (matcher != null) {
                     val id = matcher.groupValues[2]
-                    user(Identify(service, ID(id)))
+                    user(Identify(service(), ID(id)))
 
                 } else {
                     throw SocialHubException("this url is not supported format.")
@@ -289,7 +320,7 @@ class MastodonAction(
             )
             MastodonMapper.users(
                 accounts.data,
-                service,
+                service(),
                 paging,
                 accounts.link,
             )
@@ -317,7 +348,7 @@ class MastodonAction(
             )
             MastodonMapper.users(
                 results.data.accounts!!,
-                service,
+                service(),
                 paging,
                 results.link
             )
@@ -365,13 +396,13 @@ class MastodonAction(
                     it.range = range
                     // v3.5 から取得するものを指定可能
                     it.types = arrayOf(
-                        MastodonNotificationType.MENTION.code
+                        MENTION.code
                     )
                     it.excludeTypes = arrayOf(
-                        MastodonNotificationType.FOLLOW.code,
+                        FOLLOW.code,
                         MastodonNotificationType.FOLLOW_REQUEST.code,
-                        MastodonNotificationType.FAVOURITE.code,
-                        MastodonNotificationType.REBLOG.code
+                        FAVOURITE.code,
+                        REBLOG.code
                     )
                 })
 
@@ -416,7 +447,7 @@ class MastodonAction(
 
             MastodonMapper.timeLine(
                 status.data,
-                service,
+                service(),
                 paging,
                 status.link
             )
@@ -447,7 +478,7 @@ class MastodonAction(
 
                 MastodonMapper.timeLine(
                     status.data,
-                    service,
+                    service(),
                     paging,
                     status.link
                 )
@@ -481,7 +512,7 @@ class MastodonAction(
             )
             MastodonMapper.timeLine(
                 status.data,
-                service,
+                service(),
                 paging,
                 status.link
             )
@@ -509,7 +540,7 @@ class MastodonAction(
 
                 MastodonMapper.timeLine(
                     results.data,
-                    service,
+                    service(),
                     paging,
                     results.link
                 )
@@ -526,7 +557,7 @@ class MastodonAction(
 
                 MastodonMapper.timeLine(
                     results.data.statuses!!,
-                    service,
+                    service(),
                     paging,
                     results.link
                 )
@@ -836,26 +867,23 @@ class MastodonAction(
         }
     }
 
-    val emojis: List<Any>
-        /**
-         * {@inheritDoc}
-         */
+    /**
+     * {@inheritDoc}
+     */
+    val emojis: List<Emoji>
         get() {
-            if (emojisCache != null) {
-                return emojisCache
+            if (this.emojisCache != null) {
+                return checkNotNull(this.emojisCache)
             }
 
-            return proceed({
+            return proceed {
+                val emojis = auth.accessor.emojis().customEmojis()
 
-                val emojis: Response<Array<mastodon4j.entity.Emoji>> =
-                    auth.accessor.emoji().getCustomEmojis()
-
-                val model: MutableList<Emoji> = java.util.ArrayList<Emoji>()
-                model.addAll(MastodonMapper.emojis(emojis.data))
-                model.addAll(super.getEmojis())
-                emojisCache = model
-                emojisCache
-            })
+                mutableListOf<Emoji>().also {
+                    it.addAll(MastodonMapper.emojis(emojis.data))
+                    it.addAll(super.emojis())
+                }.also { this.emojisCache = it }
+            }
         }
 
     // ============================================================== //
@@ -864,65 +892,86 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun getChannels(id: Identify?, paging: Paging?): Pageable<Channel> {
-        return proceed({
-
-
-            if (id != null) {
-                val me: User = getUserMeWithCache()
-                if (!me.getId().equals(id.getId())) {
-                    throw NotSupportedException(
-                        "Sorry, authenticated user only."
-                    )
-                }
+    override fun channels(
+        id: Identify,
+        paging: Paging
+    ): Pageable<Channel> {
+        return proceed {
+            if (!id.isSameIdentify(userMeWithCache())) {
+                throw NotSupportedException(
+                    "Sorry, authenticated user only."
+                )
             }
 
-            val lists: Response<Array<mastodon4j.entity.List>> = auth.accessor.list().getLists()
-            service().rateLimit.addInfo(GetChannels, MastodonMapper.rateLimit(lists))
-            MastodonMapper.channels(lists.data, service)
-        })
+            val lists = auth.accessor.lists().lists(
+                ListsListsRequest().also {
+                    it.id = id.id<String>()
+                }
+            )
+            service().rateLimit.addInfo(
+                SocialActionType.GetChannels,
+                MastodonMapper.rateLimit(lists),
+            )
+            MastodonMapper.channels(
+                lists.data,
+                service(),
+            )
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getChannelTimeLine(id: Identify, paging: Paging?): Pageable<Comment> {
-        return proceed({
-
-
+    override fun channelTimeLine(
+        id: Identify,
+        paging: Paging
+    ): Pageable<Comment> {
+        return proceed {
             val range = range(paging)
-
-            val status: Response<Array<Status>> = auth.accessor.timelines()
-                .getListTimeline(id.getId() as String, range)
-            service().rateLimit.addInfo(ChannelTimeLine, MastodonMapper.rateLimit(status))
+            val status = auth.accessor.timelines().listTimeline(
+                TimelinesListTimelineRequest().also {
+                    it.listId = id.id<String>()
+                    it.range = range
+                }
+            )
+            service().rateLimit.addInfo(
+                TimeLineActionType.ChannelTimeLine,
+                MastodonMapper.rateLimit(status),
+            )
             MastodonMapper.timeLine(
                 status.data,
-                service,
+                service(),
                 paging,
                 status.link
             )
-        })
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getChannelUsers(id: Identify, paging: Paging?): Pageable<User> {
-        return proceed({
-
-
-            val limit: Long? = if ((paging != null)) paging.getCount() else null
-
-            val users: Response<Array<mastodon4j.entity.Account>> = mastodon
-                .list().getListAccounts(id.getId() as String, limit)
-            service().rateLimit.addInfo(ChannelTimeLine, MastodonMapper.rateLimit(users))
+    override fun channelUsers(
+        id: Identify,
+        paging: Paging
+    ): Pageable<User> {
+        return proceed {
+            val users = auth.accessor.lists().listAccounts(
+                ListsListAccountsRequest().also {
+                    it.id = id.id<String>()
+                    it.limit = paging.count
+                }
+            )
+            service().rateLimit.addInfo(
+                TimeLineActionType.ChannelTimeLine,
+                MastodonMapper.rateLimit(users)
+            )
             MastodonMapper.users(
                 users.data,
-                service,
+                service(),
                 paging,
                 users.link
             )
-        })
+        }
     }
 
     // ============================================================== //
@@ -931,108 +980,110 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun getMessageThread(paging: Paging?): Pageable<java.lang.Thread> {
-        return proceed({
-
-
+    override fun messageThread(
+        paging: Paging
+    ): Pageable<Thread> {
+        return proceed {
             val range = range(paging)
+            val response = auth.accessor.timelines().conversations(
+                TimelinesConversationsRequest().also {
+                    it.range = range
+                }
+            )
 
-            val response: Response<Array<Conversation>> =
-                auth.accessor.timelines().getConversations(range)
+            val threads = mutableListOf<Thread>()
+            for (conv in response.data) {
 
-            val threads: MutableList<java.lang.Thread> = java.util.ArrayList<java.lang.Thread>()
-            for (conv: Conversation in response.data) {
                 // 最後のコメントを取得
-
-                val comment: Comment = MastodonMapper
-                    .comment(conv.getLastStatus(), service)
+                val last = conv.lastStatus!!
+                val comment = MastodonMapper.comment(last, service())
 
                 // 「名前: コメント内容」のフォーマットで説明文を作成
-                val description: String = (comment.getUser().getName()
-                        + ": " + comment.getText().getDisplayText())
+                val name = comment.user!!.name
+                val text = comment.text!!.displayText
+                val description = "${name}: ${text}"
 
-                val thread: MastodonThread = MastodonThread(service)
-                thread.setLastUpdate(comment.getCreateAt())
-                thread.setDescription(description)
-                thread.setUsers(java.util.ArrayList<E>())
-                thread.setLastComment(comment)
-                thread.setId(conv.getId())
-                threads.add(thread)
+                val thread = MastodonThread(service()).also {
+                    it.lastUpdate = comment.createAt
+                    it.description = description
+                    it.users = mutableListOf()
+                    it.lastComment = comment
+                    it.id = ID(conv.id!!)
+                }.also { threads.add(it) }
 
                 // アカウントリストを設定
-                for (account: mastodon4j.entity.Account? in conv.getAccounts()) {
-                    val user: User = MastodonMapper.user(account, service)
-                    thread.getUsers().add(user)
+                conv.accounts?.forEach {
+                    val user = MastodonMapper.user(it, service())
+                    thread.users = (thread.users!! + user)
                 }
             }
 
-            val mpg: MastodonPaging = MastodonPaging.fromPaging(paging)
+            val mpg = MastodonPaging.fromPaging(paging)
             MastodonMapper.withLink(mpg, response.link)
 
-            val results: Pageable<java.lang.Thread> = Pageable()
-            results.setEntities(threads)
-            results.setPaging(mpg)
-            results
-        })
+            Pageable<Thread>().also {
+                it.entities = threads
+                it.paging = mpg
+            }
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getMessageTimeLine(id: Identify, paging: Paging?): Pageable<Comment> {
-        return proceed({
-            var commentId: String? = null
+    override fun messageTimeLine(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<Comment> {
+        return proceed {
+            var commentId = id.id<String>()
 
-
-            // Identify を直接作成した場合
-            if (id.getId() is String) {
-                commentId = id.getId() as String
-            }
-            // MastodonThread から呼び出した場合
+            // MastodonThread の場合
             if (id is MastodonThread) {
-                val th: MastodonThread = id as MastodonThread
-                commentId = (th.getLastComment().getId()) as String
+                commentId = id.lastComment!!.id<String>()
             }
 
-            // ID が発見できない場合
-            if (commentId == null) {
-                val message: String = "matched id is not found."
-                throw java.lang.IllegalStateException(message)
-            }
+            val response = auth.accessor.statuses().context(
+                StatusesContextRequest().also {
+                    it.id = commentId
+                }
+            )
 
-            val response: Response<mastodon4j.entity.Context> =
-                auth.accessor.getContext(commentId)
-
-            val comments: MutableList<Comment> = java.util.ArrayList<Comment>()
-            comments.addAll(java.util.Arrays.stream(response.data.getDescendants()) //
-                .map { e -> MastodonMapper.comment(e, service) } //
-                .collect(java.util.stream.Collectors.toList()))
-            comments.addAll(java.util.Arrays.stream(response.data.getAncestors()) //
-                .map { e -> MastodonMapper.comment(e, service) } //
-                .collect(java.util.stream.Collectors.toList()))
+            val comments = mutableListOf<Comment>()
+            comments.addAll(response.data.descendants!!
+                .map { MastodonMapper.comment(it, service()) })
+            comments.addAll(response.data.ancestors!!
+                .map { MastodonMapper.comment(it, service()) })
 
             // 最後のコメントも追加
             if (id is MastodonThread) {
-                comments.add((id as MastodonThread).getLastComment())
+                comments.add(id.lastComment!!)
             }
 
-            comments.sort(java.util.Comparator.comparing<Any, Any>(Comment::getCreateAt).reversed())
-            service().rateLimit.addInfo(GetContext, MastodonMapper.rateLimit(response))
+            comments.sortBy { it.createAt }
+            comments.reversed()
 
-            val pageable: Pageable<Comment> = Pageable()
-            pageable.setEntities(comments)
-            pageable.setPaging(Paging())
-            pageable.getPaging().setCount(0L)
-            pageable.getPaging().setHasNext(false)
-            pageable.getPaging().setHasPast(false)
-            pageable
-        })
+            service().rateLimit.addInfo(
+                SocialActionType.GetContext,
+                MastodonMapper.rateLimit(response)
+            )
+
+            Pageable<Comment>().also { pg ->
+                pg.entities = comments.reversed()
+                pg.paging = Paging(0).also {
+                    it.isHasNew = false
+                    it.isHasPast = false
+                }
+            }
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun postMessage(req: CommentForm) {
+    override fun postMessage(
+        req: CommentForm
+    ) {
         postComment(req)
     }
 
@@ -1042,40 +1093,26 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun setHomeTimeLineStream(callback: EventCallback?): net.socialhub.core.model.Stream {
-        return proceed({
-
-
-            val model: MastodonStream = MastodonStream()
-            val stream: UserStream = auth.accessor.streaming().userStream().register(
-                net.socialhub.service.auth.accessor.action.MastodonAction.MastodonCommentListener(callback, service),
-                net.socialhub.service.auth.accessor.action.MastodonAction.MastodonConnectionListener(callback, model)
+    fun homeTimeLineStream(
+        callback: EventCallback
+    ): Stream {
+        return proceed {
+            val stream = auth.accessor.stream().userStream()
+            stream.register(
+                MastodonCommentListener(callback, service()),
+                MastodonConnectionListener(callback),
             )
-
-            model.setStream(stream)
-            model
-        })
+            MastodonStream(stream)
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun setNotificationStream(callback: EventCallback?): net.socialhub.core.model.Stream {
-        return proceed({
-
-
-            val model: MastodonStream = MastodonStream()
-            val stream: UserStream = auth.accessor.streaming().userStream().register(
-                net.socialhub.service.auth.accessor.action.MastodonAction.MastodonNotificationListener(
-                    callback,
-                    service
-                ),
-                net.socialhub.service.auth.accessor.action.MastodonAction.MastodonConnectionListener(callback, model)
-            )
-
-            model.setStream(stream)
-            model
-        })
+    fun notificationStream(
+        callback: EventCallback
+    ): Stream {
+        TODO("")
     }
 
     // ============================================================== //
@@ -1084,13 +1121,19 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun votePoll(id: Identify, choices: List<Int?>) {
-        proceed({
-
-            val array: LongArray =
-                choices.stream().mapToLong(java.util.function.ToLongFunction<Int> { e: Int? -> e }).toArray()
-            auth.accessor.votePoll(id.getId() as String, array)
-        })
+    fun votePoll(
+        id: Identify,
+        choices: List<Int>
+    ) {
+        proceedUnit {
+            val array = choices.toTypedArray()
+            auth.accessor.polls().votePoll(
+                PollsVotePollRequest().also {
+                    it.id = id.id<String>()
+                    it.choices = array
+                }
+            )
+        }
     }
 
     // ============================================================== //
@@ -1099,79 +1142,79 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun getTrends(limit: Int): List<Trend> {
-        return proceed({
+    fun trends(
+        limit: Int
+    ): List<Trend> {
+        return proceed {
+            val response = auth.accessor.trends().trends(
+                TrendsTrendsRequest().also {
+                    it.limit = limit
+                }
+            )
 
-            val response: Response<Array<mastodon4j.entity.Trend>> =
-                auth.accessor.trend().getTrends(limit.toLong())
-
-            val results: MutableList<Trend> = java.util.ArrayList<Trend>()
-            for (trend: mastodon4j.entity.Trend in response.data) {
-                val model: Trend = Trend()
-                model.setName("#" + trend.getName())
-                model.setQuery("#" + trend.getName())
-
-                val uses: Int = java.util.Arrays
-                    .stream(trend.getHistory())
-                    .map(History::getUses)
-                    .reduce { a: Long, b: Long -> java.lang.Long.sum(a, b) }
-                    .orElse(0L)
-                    .intValue()
-
-                model.setVolume(uses)
-                results.add(model)
+            mutableListOf<Trend>().also { r ->
+                for (trend in response.data) {
+                    r.add(Trend().also { tr ->
+                        tr.name = "#${trend.name}"
+                        tr.query = "#${trend.name}"
+                        tr.volume = trend.history!!
+                            .sumOf { it.uses ?: 0 }
+                    })
+                }
             }
-            results
-        })
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getNotification(paging: Paging?): Pageable<Notification> {
-        return proceed({
-
-
+    fun notification(
+        paging: Paging
+    ): Pageable<Notification> {
+        return proceed {
             val range = range(paging)
-
-            val notifications: Response<Array<mastodon4j.entity.Notification>> =
-                auth.accessor.notifications().getNotifications(
-                    range,  // v3.5 から取得するものを指定可能
-                    java.util.Arrays.asList(
-                        MastodonNotificationType.FOLLOW.getCode(),
-                        MastodonNotificationType.REBLOG.getCode(),
-                        MastodonNotificationType.FAVOURITE.getCode()
-                    ),  // 互換性のために記述
-                    java.util.Arrays.asList(
-                        MastodonNotificationType.MENTION.getCode(),
-                        MastodonNotificationType.POLL.getCode()
-                    ),
-                    null
-                )
+            val notifications = auth.accessor.notifications().notifications(
+                NotificationsNotificationsRequest().also {
+                    it.range = range
+                    // v3.5 から取得するものを指定可能
+                    it.types = arrayOf(
+                        FOLLOW.code,
+                        REBLOG.code,
+                        FAVOURITE.code
+                    )
+                    // 互換性のために記述
+                    it.excludeTypes = arrayOf(
+                        MENTION.code,
+                        MastodonNotificationType.POLL.code
+                    )
+                }
+            )
             MastodonMapper.notifications(
                 notifications.data,
-                service,
+                service(),
                 paging,
                 notifications.link
             )
-        })
+        }
     }
 
     /**
      * Get Notification (Single)
      * 通知情報を取得
      */
-    fun getNotification(identify: Identify): Notification {
-        return proceed({
-
-
-            val notification: Response<mastodon4j.entity.Notification> =
-                auth.accessor.notifications()
-                    .getNotification(identify.getId().toString())
+    fun notification(
+        identify: Identify
+    ): Notification {
+        return proceed {
+            val notification = auth.accessor.notifications().notification(
+                NotificationsNotificationRequest().also {
+                    it.id = identify.id<String>()
+                })
             MastodonMapper.notification(
-                notification.data, service
+                notification.data,
+                service(),
             )
-        })
+        }
     }
 
     // ============================================================== //
@@ -1180,8 +1223,8 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun request(): RequestAction {
-        return MastodonRequest(getAccount())
+    override fun request(): RequestAction {
+        return MastodonRequest(account)
     }
 
     // ============================================================== //
@@ -1190,93 +1233,87 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun getLocalTimeLine(paging: Paging?): Pageable<Comment> {
-        return proceed({
-
-
+    fun localTimeLine(
+        paging: Paging,
+    ): Pageable<Comment> {
+        return proceed {
             val range = range(paging)
-
-            val status: Response<Array<Status>> = auth.accessor.getPublicTimeline(true, false, range)
-            service().rateLimit.addInfo(MicroBlogActionType.LocalTimeLine, MastodonMapper.rateLimit(status))
+            val status = auth.accessor.timelines().publicTimeline(
+                TimelinesPublicTimelineRequest().also {
+                    it.local = true
+                    it.range = range
+                }
+            )
+            service().rateLimit.addInfo(
+                MastodonActionType.LocalTimeLine,
+                MastodonMapper.rateLimit(status)
+            )
             MastodonMapper.timeLine(
                 status.data,
-                service,
+                service(),
                 paging,
                 status.link
             )
-        })
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getFederationTimeLine(paging: Paging?): Pageable<Comment> {
-        return proceed({
-
-
+    fun federationTimeLine(
+        paging: Paging
+    ): Pageable<Comment> {
+        return proceed {
             val range = range(paging)
-
-            val status: Response<Array<Status>> = auth.accessor.getPublicTimeline(false, false, range)
-            service().rateLimit.addInfo(MicroBlogActionType.FederationTimeLine, MastodonMapper.rateLimit(status))
+            val status = auth.accessor.timelines().publicTimeline(
+                TimelinesPublicTimelineRequest().also {
+                    it.local = false
+                    it.range = range
+                }
+            )
+            service().rateLimit.addInfo(
+                MastodonActionType.FederationTimeLine,
+                MastodonMapper.rateLimit(status)
+            )
             MastodonMapper.timeLine(
                 status.data,
-                service,
+                service(),
                 paging,
                 status.link
             )
-        })
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun setLocalLineStream(callback: EventCallback?): net.socialhub.core.model.Stream {
-        return proceed({
-
-
-            val model: MastodonStream = MastodonStream()
-            val stream: PublicStream = auth.accessor.streaming()
-                .publicStream(true)
-                .register(
-                    net.socialhub.service.auth.accessor.action.MastodonAction.MastodonCommentListener(
-                        callback,
-                        service
-                    ),
-                    net.socialhub.service.auth.accessor.action.MastodonAction.MastodonConnectionListener(
-                        callback,
-                        model
-                    )
-                )
-
-            model.setStream(stream)
-            model
-        })
+    fun localLineStream(
+        callback: EventCallback
+    ): Stream {
+        return proceed {
+            val stream = auth.accessor.stream().publicStream(PublicType.LOCAL)
+            stream.register(
+                MastodonCommentListener(callback, service()),
+                MastodonConnectionListener(callback),
+            )
+            MastodonStream(stream)
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun setFederationLineStream(callback: EventCallback?): net.socialhub.core.model.Stream {
-        return proceed({
-
-
-            val model: MastodonStream = MastodonStream()
-            val stream: PublicStream = auth.accessor.streaming()
-                .publicStream(false)
-                .register(
-                    net.socialhub.service.auth.accessor.action.MastodonAction.MastodonCommentListener(
-                        callback,
-                        service
-                    ),
-                    net.socialhub.service.auth.accessor.action.MastodonAction.MastodonConnectionListener(
-                        callback,
-                        model
-                    )
-                )
-
-            model.setStream(stream)
-            model
-        })
+    fun federationLineStream(
+        callback: EventCallback
+    ): Stream {
+        return proceed {
+            val stream = auth.accessor.stream().publicStream(PublicType.ALL)
+            stream.register(
+                MastodonCommentListener(callback, service()),
+                MastodonConnectionListener(callback),
+            )
+            MastodonStream(stream)
+        }
     }
 
     /**
@@ -1284,169 +1321,165 @@ class MastodonAction(
      * サービスワーカーのエンドポイントを設定
      */
     fun registerSubscription(
-        endpoint: String?, publicKey: String?, authSecret: String?
+        endpoint: String?,
+        publicKey: String?,
+        authSecret: String?
     ) {
-        proceed({
+        proceedUnit {
 
             // All notification
-            val alert: Alert = Alert()
-            alert.setFollow(true)
-            alert.setFavourite(true)
-            alert.setReblog(true)
-            alert.setMention(true)
-            alert.setPoll(true)
+            val alert = Alert().also {
+                it.follow = true
+                it.favourite = true
+                it.reblog = true
+                it.mention = true
+                it.poll = true
+            }
+
             auth.accessor.notifications().pushSubscription(
-                endpoint, publicKey, authSecret, alert
+                NotificationsPostSubscriptionRequest().also {
+                    it.endpoint = endpoint
+                    it.p256dh = publicKey
+                    it.auth = authSecret
+                    it.alert = alert
+                }
             )
-        })
+        }
     }
 
     /**
      * Get user pinned comments.
      * ユーザーのピンされたコメントを取得
      */
-    fun getUserPinedComments(id: Identify): List<Comment> {
-        return proceed({
+    fun userPinedComments(
+        id: Identify
+    ): List<Comment> {
+        return proceed {
+            val range = Range()
+            range.limit = 100
 
-            val range: Range = Range()
-            range.setLimit(100)
-
-            val status: Response<Array<Status>> = auth.accessor.accounts().getStatuses(
-                id.getId() as String, true, false, false, false, range
+            val status = auth.accessor.accounts().statuses(
+                AccountsStatusesRequest().also {
+                    it.id = id.id<String>()
+                    it.onlyPinned = true
+                    it.range = range
+                }
             )
-            java.util.stream.Stream.of(status.data)
-                .map { s -> MastodonMapper.comment(s, service) }
-                .collect(java.util.stream.Collectors.toList())
-        })
+            status.data.map {
+                MastodonMapper.comment(it, service())
+            }
+        }
     }
 
-    val service: mastodon4j.domain.Service
-        /**
-         * Get Service Type.
-         * サービスの種類を取得
-         */
-        get() {
-            return proceed({
-                auth.accessor.service()
-            })
-        }
+    /**
+     * Get Service Type.
+     * サービスの種類を取得
+     */
+    fun serviceType(): String {
+        return auth.accessor.service().name
+    }
 
     // ============================================================== //
     // Classes
     // ============================================================== //
     // コメントに対してのコールバック設定
     internal class MastodonCommentListener(
-        listener: EventCallback,
-        service: Service
-    ) : UserStreamListener, PublicStreamListener {
-        private val listener: EventCallback
+        private val listener: EventCallback,
         private val service: Service
+    ) : UserStreamListener,
+        PublicStreamListener {
 
-        init {
-            this.listener = listener
-            this.service = service
-        }
-
-        fun onUpdate(status: Status?) {
+        override fun onUpdate(
+            status: Status
+        ) {
             if (listener is UpdateCommentCallback) {
-                val comment: Comment = MastodonMapper.comment(status, service)
-                val event: CommentEvent = CommentEvent(comment)
-                (listener as UpdateCommentCallback).onUpdate(event)
+                val comment = MastodonMapper.comment(status, service)
+                listener.onUpdate(CommentEvent(comment))
             }
         }
 
-        fun onDelete(id: Long) {
+        override fun onDelete(
+            id: String
+        ) {
             if (listener is DeleteCommentCallback) {
-                val event: IdentifyEvent = IdentifyEvent(id)
-                (listener as DeleteCommentCallback).onDelete(event)
+                listener.onDelete(IdentifyEvent(id))
             }
         }
+
+        override fun onNotification(notification: MNotification) {}
     }
 
     // 通信に対してのコールバック設定
     internal class MastodonConnectionListener(
-        listener: EventCallback,
-        stream: MastodonStream
+        private val listener: EventCallback,
     ) : LifeCycleListener {
-        private val listener: EventCallback
-        private val stream: MastodonStream
 
-        init {
-            this.listener = listener
-            this.stream = stream
-        }
-
-        fun onConnect() {
-            stream.setConnecting(true)
+        override fun onConnect() {
             if (listener is ConnectCallback) {
-                (listener as ConnectCallback).onConnect()
+                listener.onConnect()
             }
         }
 
-        fun onDisconnect() {
-            stream.setConnecting(false)
+        override fun onDisconnect() {
             if (listener is DisconnectCallback) {
-                (listener as DisconnectCallback).onDisconnect()
+                listener.onDisconnect()
             }
         }
-    }
 
-    // 通知に対してのコールバック設定
-    internal class MastodonNotificationListener(
-        listener: EventCallback,
-        service: Service
-    ) : UserStreamListener, PublicStreamListener {
-        private val listener: EventCallback
-        private val service: Service
-
-        init {
-            this.listener = listener
-            this.service = service
+        override fun onError(e: Exception) {
+            if (listener is ErrorCallback) {
+                listener.onError(SocialHubException(e))
+            }
         }
 
-        fun onNotification(notification: mastodon4j.entity.Notification) {
-            val type: MastodonNotificationType =
-                MastodonNotificationType.of(notification.getType())
+        // 通知に対してのコールバック設定
+        internal class MastodonNotificationListener(
+            val listener: EventCallback,
+            val service: Service
+        ) : UserStreamListener,
+            PublicStreamListener {
 
-            if ((type === MastodonNotificationType.MENTION) || (
-                        type === MastodonNotificationType.FOLLOW) || (
-                        type === MastodonNotificationType.REBLOG) || (
-                        type === MastodonNotificationType.FAVOURITE)
-            ) {
-                // Mention の場合は先に処理
+            override fun onNotification(notification: MNotification) {
+                val type = MastodonNotificationType.of(notification.type!!)
 
-                if (type === MastodonNotificationType.MENTION) {
-                    if (listener is MentionCommentCallback) {
-                        val model: Comment = MastodonMapper.comment(notification.getStatus(), service)
-                        (listener as MentionCommentCallback).onMention(CommentEvent(model))
-                    }
-                    return
-                }
-
-                val model: Notification = MastodonMapper.notification(notification, service)
-
-                when (type) {
-                    FOLLOW -> {
-                        if (listener is FollowUserCallback) {
-                            (listener as FollowUserCallback).onFollow(
-                                UserEvent(model.getUsers().get(0))
-                            )
+                if ((type === MENTION) || (
+                            type === FOLLOW) || (
+                            type === REBLOG) || (
+                            type === FAVOURITE)
+                ) {
+                    // Mention の場合は先に処理
+                    if (type === MENTION) {
+                        if (listener is MentionCommentCallback) {
+                            val model = MastodonMapper.comment(notification.status!!, service)
+                            listener.onMention(CommentEvent(model))
                         }
                         return
                     }
 
-                    REBLOG, FAVOURITE -> {
-                        if (listener is NotificationCommentCallback) {
-                            (listener as NotificationCommentCallback).onNotification(
-                                NotificationEvent(model)
-                            )
-                        }
-                        return
-                    }
+                    val model = MastodonMapper.notification(notification, service)
 
-                    else -> throw java.lang.IllegalStateException()
+                    when (type) {
+                        FOLLOW -> {
+                            if (listener is FollowUserCallback) {
+                                listener.onFollow(UserEvent(model.users!![0]))
+                            }
+                            return
+                        }
+
+                        REBLOG, FAVOURITE -> {
+                            if (listener is NotificationCommentCallback) {
+                                listener.onNotification(NotificationEvent(model))
+                            }
+                            return
+                        }
+
+                        else -> throw IllegalStateException()
+                    }
                 }
             }
+
+            override fun onDelete(id: String) {}
+            override fun onUpdate(status: Status) {}
         }
     }
 
@@ -1479,7 +1512,6 @@ class MastodonAction(
 
         if ((e is MastodonException) && (e.message != null)) {
             return SocialHubException(e.message, e)
-
             // TODO: エラーメッセージが設定されているエラーである場合
         }
 

@@ -29,7 +29,7 @@ class MisskeyRequest(
             val action = account.action as MisskeyAction
             val request = getCommentsRequest(
                 LocalTimeLine,
-                { paging -> action.localTimeLine(paging) },
+                action::localTimeLine,
                 SerializedRequest(LocalTimeLine)
             )
 
@@ -45,7 +45,7 @@ class MisskeyRequest(
             val action = account.action as MisskeyAction
             val request = getCommentsRequest(
                 FederationTimeLine,
-                { paging -> action.federationTimeLine(paging) },
+                action::federationTimeLine,
                 SerializedRequest(FederationTimeLine)
             )
 
@@ -88,9 +88,7 @@ class MisskeyRequest(
         id: Identify
     ): CommentsRequest {
         val request = super.userCommentTimeLine(id) as CommentsRequestImpl
-        if (id is User) {
-            setCommentIdentify(request, id.accountIdentify)
-        }
+        if (id is User) { setCommentIdentify(request, id.accountIdentify) }
         return request
     }
 
@@ -101,9 +99,7 @@ class MisskeyRequest(
         id: Identify
     ): CommentsRequest {
         val request = super.userLikeTimeLine(id) as CommentsRequestImpl
-        if (id is User) {
-            setCommentIdentify(request, id.accountIdentify)
-        }
+        if (id is User) { setCommentIdentify(request, id.accountIdentify) }
         return request
     }
 
@@ -114,9 +110,7 @@ class MisskeyRequest(
         id: Identify
     ): CommentsRequest {
         val request: CommentsRequestImpl = super.userMediaTimeLine(id) as CommentsRequestImpl
-        if (id is User) {
-            setCommentIdentify(request, id.accountIdentify)
-        }
+        if (id is User) { setCommentIdentify(request, id.accountIdentify) }
         return request
     }
 

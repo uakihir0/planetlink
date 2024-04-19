@@ -8,4 +8,5 @@ enum class MediaType {
     Image,
     Movie,
     File,
+    Other,
 }

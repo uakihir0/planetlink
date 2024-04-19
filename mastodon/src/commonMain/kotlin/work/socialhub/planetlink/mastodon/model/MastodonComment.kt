@@ -5,6 +5,7 @@ import work.socialhub.planetlink.mastodon.expand.ServiceEx.isPixelFed
 import work.socialhub.planetlink.mastodon.expand.ServiceEx.isPleroma
 import work.socialhub.planetlink.micro.MicroBlogComment
 import work.socialhub.planetlink.model.Emoji
+import work.socialhub.planetlink.model.Poll
 import work.socialhub.planetlink.model.Reaction
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.common.AttributedString
@@ -24,13 +25,16 @@ class MastodonComment(
     var spoilerText: AttributedString? = null
 
     /** Open range  */
-    private var visibility: MastodonVisibility? = null
+    var visibility: MastodonVisibility? = null
 
     /** Reply count  */
     var replyCount: Int? = null
 
     /** emojis which contains  */
     var emojis: List<Emoji>? = null
+
+    /** poll */
+    var poll: Poll? = null
 
     override val webUrl: String
         get() {
