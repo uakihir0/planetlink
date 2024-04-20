@@ -3,8 +3,9 @@ package work.socialhub.planetlink
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import work.socialhub.planetlink.bluesky.expand.PlanetLinkEx.bluesky
-import work.socialhub.planetlink.misskey.expand.PlanetLinkEx.misskey
 import work.socialhub.planetlink.config.TestConfig
+import work.socialhub.planetlink.mastodon.expand.PlanetLinkEx.mastodon
+import work.socialhub.planetlink.misskey.expand.PlanetLinkEx.misskey
 import work.socialhub.planetlink.model.Account
 import java.io.FileReader
 import kotlin.test.BeforeTest
@@ -54,6 +55,18 @@ open class AbstractTest {
             c.host
         ).accountWithAccessToken(
             c.userToken,
+        )
+    }
+
+    fun mastodon(index: Int = 0): Account {
+        val c = checkNotNull(config).mastodon[index]
+        return PlanetLink.mastodon(
+            c.host,
+            c.service,
+        ).accountWithAccessToken(
+            c.userToken,
+            null,
+            null,
         )
     }
 

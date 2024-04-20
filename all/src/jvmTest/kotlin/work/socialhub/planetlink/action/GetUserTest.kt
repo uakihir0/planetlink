@@ -21,6 +21,9 @@ class GetUserTest {
 
         @Test
         fun testMisskey() = misskey().act()
+
+        @Test
+        fun testMastodon() = mastodon().act()
     }
 
     @Nested

@@ -539,7 +539,7 @@ object MastodonMapper {
                 "Mastodon",
                 it.limit,
                 it.remaining,
-                it.reset!!,
+                it.reset,
             )
         }
         return null
@@ -555,7 +555,7 @@ object MastodonMapper {
                 "Mastodon",
                 it.limit,
                 it.remaining,
-                it.reset!!,
+                it.reset,
             )
         }
         return null

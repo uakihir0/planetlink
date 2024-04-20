@@ -55,7 +55,7 @@ object MisskeyMapper {
             val detailed = account.asUserDetailedNotMe
 
             u.id = ID(account.id)
-            u.name = account.name
+            u.name = account.name!!
             u.host = account.host ?: host
             u.screenName = account.username
             u.iconImageUrl = account.avatarUrl
@@ -235,7 +235,7 @@ object MisskeyMapper {
             it.id = ID(list.id!!)
             it.name = list.name
             it.createAt = list.createdAt?.toInstant()
-            it.public = false
+            it.isPublic = false
         }
     }
 

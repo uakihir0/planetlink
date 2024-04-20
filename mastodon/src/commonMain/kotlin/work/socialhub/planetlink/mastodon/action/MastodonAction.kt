@@ -578,7 +578,7 @@ class MastodonAction(
             val post = StatusesPostStatusRequest()
 
             // コンテンツ
-            post.content = req.text
+            post.status = req.text
 
             // コンテンツ注意文言
             req.warning?.let {
@@ -1511,11 +1511,12 @@ class MastodonAction(
     ): SocialHubException {
 
         if ((e is MastodonException) && (e.message != null)) {
+            println(e.body)
+            println(e.message)
             return SocialHubException(e.message, e)
             // TODO: エラーメッセージが設定されているエラーである場合
         }
-
-        throw SocialHubException(e)
+        return SocialHubException(e)
     }
 
     companion object {

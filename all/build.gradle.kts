@@ -23,6 +23,7 @@ kotlin {
             export(project(":core"))
             export(project(":bluesky"))
             export(project(":misskey"))
+            export(project(":mastodon"))
             baseName = "planetlink"
             xcf.add(this)
         }
@@ -43,6 +44,7 @@ kotlin {
             api(project(":core"))
             api(project(":bluesky"))
             api(project(":misskey"))
+            api(project(":mastodon"))
             implementation(libs.kbsky.core)
             implementation(libs.kbsky.stream)
         }
@@ -52,6 +54,7 @@ kotlin {
             implementation(kotlin("test"))
             implementation(libs.kotest.junit5)
             implementation(libs.kotest.assertions)
+            implementation(libs.datetime)
             implementation(libs.serialization.json)
         }
     }
