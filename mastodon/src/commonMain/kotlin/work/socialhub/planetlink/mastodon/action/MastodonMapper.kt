@@ -2,8 +2,11 @@ package work.socialhub.planetlink.mastodon.action
 
 import io.ktor.http.*
 import kotlinx.datetime.Instant
+import kotlinx.datetime.toInstant
 import work.socialhub.kmastodon.api.response.Response
+import work.socialhub.kmastodon.api.response.ResponseUnit
 import work.socialhub.kmastodon.entity.Account
+import work.socialhub.kmastodon.entity.AccountList
 import work.socialhub.kmastodon.entity.Attachment
 import work.socialhub.kmastodon.entity.Status
 import work.socialhub.kmastodon.entity.share.Link
@@ -12,6 +15,7 @@ import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.mastodon.define.MastodonMediaType
 import work.socialhub.planetlink.mastodon.define.MastodonMediaType.Image
 import work.socialhub.planetlink.mastodon.define.MastodonMediaType.Video
+import work.socialhub.planetlink.mastodon.define.MastodonNotificationType
 import work.socialhub.planetlink.mastodon.define.MastodonVisibility
 import work.socialhub.planetlink.mastodon.model.MastodonComment
 import work.socialhub.planetlink.mastodon.model.MastodonPaging
@@ -24,6 +28,8 @@ import work.socialhub.planetlink.model.common.AttributedKind.ACCOUNT
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.model.support.PollOption
 import work.socialhub.kmastodon.entity.Application as MApplication
+import work.socialhub.kmastodon.entity.Emoji as MEmoji
+import work.socialhub.kmastodon.entity.Notification as MNotification
 import work.socialhub.kmastodon.entity.Poll as MPoll
 import work.socialhub.kmastodon.entity.Relationship as MRelationship
 
@@ -121,7 +127,7 @@ object MastodonMapper {
 object MastodonMapper {
 
     /** 時間のパーサーオブジェクト  */
-    private val dateParsers = mutableMapOf<String, DateFormatter>()
+    private val dateParsers = mutableMapOf<String, DateFormatter?>()
 
     /** 時間のフォーマットの種類一覧  */
     private val DATE_FORMATS = listOf(
@@ -361,213 +367,139 @@ object MastodonMapper {
      * チャンネルマッピング
      */
     fun channel(
-        list: mastodon4j.entity.List,
-        service: Service?
+        list: AccountList,
+        service: Service,
     ): Channel {
-        val channel = Channel(service!!)
-
-        channel.setId(list.getId())
-        channel.setName(list.getTitle())
-        channel.setPublic(false)
-        return channel
+        return Channel(service).also {
+            it.id = ID(list.id!!)
+            it.name = list.title
+            it.isPublic = false
+        }
     }
 
     /**
      * 通知マッピング
      */
     fun notification(
-        notification: mastodon4j.entity.Notification,
-        service: Service?
+        notification: MNotification,
+        service: Service,
     ): Notification {
-        val model = Notification(service!!)
-        model.setCreateAt(MastodonMapper.parseDate(notification.getCreatedAt()))
-        model.setId(notification.getId())
+        return Notification(service).also { n ->
+            n.id = ID(notification.id!!)
+            n.createAt = parseDate(notification.createdAt!!)
 
-        val type: MastodonNotificationType =
-            MastodonNotificationType
-                .of(notification.getType())
+            val type = MastodonNotificationType.of(notification.type!!)
 
-        // 存在する場合のみ設定
-        if (type != null) {
-            model.setType(type.getCode())
-            if (type.getAction() != null) {
-                model.setAction(type.getAction().getCode())
+            // 存在する場合のみ設定
+            type?.let { t ->
+                n.type = t.code
+                t.action?.let { a ->
+                    n.action = a.code
+                }
+            }
+
+            // ステータス情報
+            notification.status?.let { s ->
+                n.comments = listOf(comment(s, service))
+            }
+
+            // ユーザー情報
+            notification.account?.let { a ->
+                n.users = listOf(user(a, service))
             }
         }
-
-        // ステータス情報
-        if (notification.getStatus() != null) {
-            model.setComments(
-                listOf(
-                    comment(notification.getStatus(), service)
-                )
-            )
-        }
-
-        // ユーザー情報
-        if (notification.getAccount() != null) {
-            model.setUsers(
-                listOf(
-                    MastodonMapper.user(notification.getAccount(), service)
-                )
-            )
-        }
-        return model
     }
 
     // ============================================================== //
     // List Object Mapper
     // ============================================================== //
-    /**
-     * タイムラインマッピング
-     */
-    fun timeLine(
-        statuses: Array<Status?>,
-        service: Service?,
-        paging: Paging?,
-        link: Link?
-    ): Pageable<Comment> {
-        return timeLine(
-            java.util.Arrays.asList(*statuses),
-            service,
-            paging,
-            link
-        )
-    }
 
     /**
      * タイムラインマッピング
      */
     fun timeLine(
-        statuses: List<Status?>,
-        service: Service?,
+        statuses: Array<Status>,
+        service: Service,
         paging: Paging?,
         link: Link?
     ): Pageable<Comment> {
-        val model: Pageable<Comment> = Pageable()
-        model.setEntities(
-            statuses.stream().map<Any>(java.util.function.Function<Status, Any> { e: Status? ->
-                comment(
-                    e!!, service!!
-                )
-            })
-                .sorted(java.util.Comparator.comparing<Any, Any>(Comment::getCreateAt).reversed())
-                .collect(java.util.stream.Collectors.toList())
-        )
+        return Pageable<Comment>().also { p ->
+            p.entities = statuses
+                .map { comment(it, service) }
+                .sortedByDescending { it.createAt }
 
-        val mpg = MastodonPaging.fromPaging(paging)
-        model.setPaging(MastodonMapper.withLink(mpg, link))
-        return model
+            val mpg = MastodonPaging.fromPaging(paging)
+            p.paging = withLink(mpg, link)
+        }
     }
 
     /**
      * ユーザーマッピング
      */
     fun users(
-        accounts: Array<Account?>?,
-        service: Service?,
+        accounts: Array<Account>,
+        service: Service,
         paging: Paging?,
         link: Link?
     ): Pageable<User> {
-        val model: Pageable<User> = Pageable()
-        model.setEntities(
-            java.util.stream.Stream.of<Array<Account>>(accounts)
-                .map<Any>(java.util.function.Function<Array<Account>, Any> { a: Array<Account?>? ->
-                    MastodonMapper.user(
-                        a,
-                        service!!
-                    )
-                })
-                .collect(java.util.stream.Collectors.toList())
-        )
-
-        model.setPaging(MastodonMapper.withLink(MastodonPaging.fromPaging(paging), link))
-        return model
+        return Pageable<User>().also { p ->
+            p.entities = accounts.map { user(it, service) }
+            val mpg = MastodonPaging.fromPaging(paging)
+            p.paging = withLink(mpg, link)
+        }
     }
 
     /**
      * チャンネルマッピング
      */
     fun channels(
-        lists: Array<mastodon4j.entity.List?>?,
-        service: Service?
+        lists: Array<AccountList>,
+        service: Service,
     ): Pageable<Channel> {
-        val model: Pageable<Channel> = Pageable()
-        model.setEntities(
-            java.util.stream.Stream.of<Array<mastodon4j.entity.List>>(lists)
-                .map<Any>(java.util.function.Function<Array<mastodon4j.entity.List>, Any> { e: Array<mastodon4j.entity.List?>? ->
-                    MastodonMapper.channel(
-                        e,
-                        service
-                    )
-                })
-                .collect(java.util.stream.Collectors.toList())
-        )
-        return model
+        return Pageable<Channel>().also { p ->
+            p.entities = lists.map { channel(it, service) }
+        }
     }
 
     /**
      * 通知マッピング
      */
     fun notifications(
-        notifications: Array<mastodon4j.entity.Notification?>?,
-        service: Service?,
+        notifications: Array<MNotification>,
+        service: Service,
         paging: Paging?,
-        link: Link?
+        link: Link?,
     ): Pageable<Notification> {
-        val model: Pageable<Notification> = Pageable()
-        model.setEntities(
-            java.util.stream.Stream.of<Array<mastodon4j.entity.Notification>>(notifications)
-                .map<Any>(java.util.function.Function<Array<mastodon4j.entity.Notification>, Any> { a: Array<mastodon4j.entity.Notification?>? ->
-                    MastodonMapper.notification(
-                        a,
-                        service!!
-                    )
-                })
-                .collect(java.util.stream.Collectors.toList())
-        )
-
-        model.setPaging(MastodonMapper.withLink(MastodonPaging.fromPaging(paging), link))
-        return model
+        return Pageable<Notification>().also { p ->
+            p.entities = notifications.map { notification(it, service) }
+            val mpg = MastodonPaging.fromPaging(paging)
+            p.paging = withLink(mpg, link)
+        }
     }
 
     /**
      * 絵文字マッピング
      */
     fun emoji(
-        emoji: mastodon4j.entity.Emoji
+        emoji: MEmoji
     ): Emoji {
-        val model = Emoji()
-        model.addShortCode(emoji.getShortcode())
-        model.setImageUrl(emoji.getStaticUrl())
-        return model
+        return Emoji().also {
+            it.emoji = emoji.shortcode
+            it.imageUrl = emoji.staticUrl
+            it.category = emoji.category
+        }
     }
 
     /**
      * 絵文字マッピング
      */
     fun emojis(
-        emojis: Array<mastodon4j.entity.Emoji?>?
+        emojis: Array<MEmoji>?
     ): List<Emoji> {
         if (emojis == null) {
-            return java.util.ArrayList<Emoji>()
+            return listOf()
         }
-        return java.util.stream.Stream.of<Array<mastodon4j.entity.Emoji>>(emojis)
-            .map(java.util.function.Function<Array<mastodon4j.entity.Emoji>, R> { obj: MastodonMapper?, emoji: mastodon4j.entity.Emoji? ->
-                MastodonMapper.emoji(
-                    emoji
-                )
-            })
-            .collect<List<Emoji>, Any>(java.util.stream.Collectors.toList<Any>())
-    }
-
-    /**
-     * XHtml 変換規則
-     */
-    fun xmlConvertRule(): XmlConvertRule {
-        val rule: XmlConvertRule = XmlConvertRule()
-        rule.setP("\n\n")
-        return rule
+        return emojis.map { emoji(it) }
     }
 
     // ============================================================== //
@@ -576,10 +508,13 @@ object MastodonMapper {
     /**
      * add link paging options.
      */
-    fun withLink(mbp: MastodonPaging, link: Link?): MastodonPaging {
+    fun withLink(
+        mbp: MastodonPaging,
+        link: Link?,
+    ): MastodonPaging {
         if (link != null) {
-            mbp.setMinIdInLink(link.getPrevMinId())
-            mbp.setMaxIdInLink(link.getNextMaxId())
+            mbp.minIdInLink = link.prevMinId
+            mbp.maxIdInLink = link.nextMaxId
         }
         return mbp
     }
@@ -587,33 +522,40 @@ object MastodonMapper {
     // ============================================================== //
     // Support
     // ============================================================== //
-    fun parseDate(str: String): Instant {
-        for (dateFormat in MastodonMapper.DATE_FORMATS) {
-            var dateParser: SimpleDateFormat? = MastodonMapper.dateParsers.get(dateFormat)
-
-            if (dateParser == null) {
-                dateParser = SimpleDateFormat(dateFormat)
-                dateParser.setTimeZone(java.util.TimeZone.getTimeZone("UTC"))
-                MastodonMapper.dateParsers.put(dateFormat, dateParser)
-            }
-            try {
-                return dateParser.parse(str)
-            } catch (ignore: java.text.ParseException) {
-            }
-        }
-        throw java.lang.IllegalStateException("Unparseable date: $str")
+    private fun parseDate(
+        str: String
+    ): Instant {
+        // TODO: 動作確認
+        return str.toInstant()
     }
 
-    fun rateLimit(response: Response<*>): RateLimitValue? {
-        // PixelFed は RateLimit に未対応
+    fun rateLimit(
+        response: Response<*>
+    ): RateLimit.RateLimitValue? {
 
-        if (response.getRateLimit() != null) {
-            val rateLimit: mastodon4j.entity.share.RateLimit = response.getRateLimit()
-            return RateLimitValue(
-                ServiceType.Mastodon,
-                rateLimit.getLimit(),
-                rateLimit.getRemaining(),
-                rateLimit.getReset()
+        // PixelFed は RateLimit に未対応
+        response.limit?.let {
+            return RateLimit.RateLimitValue(
+                "Mastodon",
+                it.limit,
+                it.remaining,
+                it.reset!!,
+            )
+        }
+        return null
+    }
+
+    fun rateLimit(
+        response: ResponseUnit
+    ): RateLimit.RateLimitValue? {
+
+        // PixelFed は RateLimit に未対応
+        response.limit?.let {
+            return RateLimit.RateLimitValue(
+                "Mastodon",
+                it.limit,
+                it.remaining,
+                it.reset!!,
             )
         }
         return null
