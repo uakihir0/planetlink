@@ -14,8 +14,8 @@ object AttributedStringEx {
         val attributes: Map<String, String>,
         var text: String = "",
     ) {
-        operator fun get(text: String): String {
-            return attributes[text]!!
+        operator fun get(text: String): String? {
+            return attributes[text]
         }
     }
 
@@ -34,22 +34,22 @@ object AttributedStringEx {
 
         val handler = KsoupHtmlHandler.Builder()
             .onOpenTag { name, attributes, _ ->
-                println("Open tag: $name")
-
                 when (name) {
 
                     // <a>
                     "a" -> {
-                        val last = stack.last()
-                        if (last.text.isNotEmpty()) {
-                            elements.add(AttributedItem().also {
-                                it.kind = AttributedKind.PLAIN
-                                it.displayText = last.text
-                                it.expandedText = last.text
-                            })
+                        if (stack.isNotEmpty()) {
+                            val last = stack.last()
+                            if (last.text.isNotEmpty()) {
+                                elements.add(AttributedItem().also {
+                                    it.kind = AttributedKind.PLAIN
+                                    it.displayText = last.text
+                                    it.expandedText = last.text
+                                })
 
-                            // 空にして修正
-                            last.text = ""
+                                // 空にして修正
+                                last.text = ""
+                            }
                         }
 
                         // タグの処理をスタックに追加
@@ -76,14 +76,14 @@ object AttributedStringEx {
                     "a" -> {
                         val last = stack.removeLast()
                         if (last.name == "a") {
-                            if (last["class"].contains("hashtag")) {
+                            if (last["class"]?.contains("hashtag") == true) {
                                 elements.add(AttributedItem().also {
                                     it.kind = AttributedKind.HASH_TAG
                                     it.displayText = last.text
                                     it.expandedText = last.text
                                 })
 
-                            } else if (last["class"].contains("u-url")) {
+                            } else if (last["class"]?.contains("u-url") == true) {
                                 elements.add(AttributedItem().also {
                                     it.kind = AttributedKind.ACCOUNT
                                     it.displayText = last.text
@@ -111,11 +111,25 @@ object AttributedStringEx {
                     "span" -> {
                         val last = stack.removeLast()
                         if (last.name == "span") {
-                            if (last["class"] != "invisible") {
-                                stack.last().text += last.text
-                            }
-                            if (last["class"] == "ellipsis") {
-                                stack.last().text += "..."
+                            if (stack.isNotEmpty()) {
+                                if (last["class"] != "invisible") {
+                                    stack.last().text += last.text
+                                }
+                                if (last["class"] == "ellipsis") {
+                                    stack.last().text += "..."
+                                }
+
+                            } else {
+                                if (last["class"] != "invisible") {
+                                    if (last["class"] == "ellipsis") {
+                                        last.text += "..."
+                                    }
+                                    elements.add(AttributedItem().also {
+                                        it.kind = AttributedKind.PLAIN
+                                        it.displayText = last.text
+                                        it.expandedText = last.text
+                                    })
+                                }
                             }
                         } else error()
                     }
@@ -136,6 +150,13 @@ object AttributedStringEx {
             .onText { t ->
                 if (stack.isNotEmpty()) {
                     stack.last().text += t
+                }
+                if (stack.isEmpty()) {
+                    elements.add(AttributedItem().also {
+                        it.kind = AttributedKind.PLAIN
+                        it.displayText = t
+                        it.expandedText = t
+                    })
                 }
             }
             .onEnd {
