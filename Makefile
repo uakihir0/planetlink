@@ -1,9 +1,10 @@
 build:
 	./gradlew \
-	core:clean core:build \
-	bluesky:clean bluesky:build \
-	misskey:clean misskey:build \
-	mastodon:clean mastodon:build \
+	core:clean \
+	bluesky:clean \
+	misskey:clean \
+	mastodon:clean \
+	all:clean all:build \
 	-x test --refresh-dependencies
 
 pods:
