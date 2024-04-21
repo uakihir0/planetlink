@@ -3,6 +3,7 @@ build:
 	core:clean core:build \
 	bluesky:clean bluesky:build \
 	misskey:clean misskey:build \
+	mastodon:clean mastodon:build \
 	-x test --refresh-dependencies
 
 pods:

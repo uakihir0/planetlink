@@ -17,6 +17,7 @@ import work.socialhub.planetlink.mastodon.define.MastodonMediaType.Image
 import work.socialhub.planetlink.mastodon.define.MastodonMediaType.Video
 import work.socialhub.planetlink.mastodon.define.MastodonNotificationType
 import work.socialhub.planetlink.mastodon.define.MastodonVisibility
+import work.socialhub.planetlink.mastodon.expand.AttributedStringEx.mastodon
 import work.socialhub.planetlink.mastodon.model.MastodonComment
 import work.socialhub.planetlink.mastodon.model.MastodonPaging
 import work.socialhub.planetlink.mastodon.model.MastodonPoll
@@ -33,101 +34,7 @@ import work.socialhub.kmastodon.entity.Notification as MNotification
 import work.socialhub.kmastodon.entity.Poll as MPoll
 import work.socialhub.kmastodon.entity.Relationship as MRelationship
 
-/*
 object MastodonMapper {
-
-    fun rateLimit(
-        response: Response<*>
-    ): RateLimit.RateLimitValue {
-        TODO()
-    }
-
-    fun rateLimit(
-        response: ResponseUnit
-    ): RateLimit.RateLimitValue {
-        TODO()
-    }
-
-    fun user(
-        account: Account,
-        service: Service,
-    ): User {
-        TODO()
-    }
-
-    fun relationship(
-        relationship: MRelationship
-    ): Relationship {
-        TODO()
-    }
-
-    fun users(
-        accounts: Array<Account>,
-        service: Service,
-        paging: Paging,
-        link: Link?
-    ): Pageable<User> {
-        TODO()
-    }
-
-    fun timeLine(
-        statuses: Array<Status>,
-        service: Service,
-        paging: Paging,
-        link: Link?
-    ): Pageable<Comment> {
-        TODO("Not yet implemented")
-    }
-
-    fun comment(
-        status: Status,
-        service: Service
-    ): Comment {
-        TODO()
-    }
-
-    fun emojis(
-        emojis: Array<MEmoji>
-    ): Collection<Emoji> {
-        TODO("Not yet implemented")
-    }
-
-    fun channels(
-        accountLists: Array<AccountList>,
-        service: Service,
-    ): Pageable<Channel> {
-        TODO("Not yet implemented")
-    }
-
-    fun withLink(
-        mpg: MastodonPaging,
-        link: Link?
-    ) {
-    }
-
-    fun notifications(
-        notifications: Array<MNotification>,
-        service: Service,
-        paging: Paging,
-        link: Link?,
-    ): Pageable<Notification> {
-        TODO("Not yet implemented")
-    }
-
-    fun notification(
-        notification: MNotification,
-        service: Service
-    ): Notification {
-        TODO()
-    }
-}
-
-*/
-
-object MastodonMapper {
-
-    /** 時間のパーサーオブジェクト  */
-    private val dateParsers = mutableMapOf<String, DateFormatter?>()
 
     /** 時間のフォーマットの種類一覧  */
     private val DATE_FORMATS = listOf(
@@ -152,17 +59,15 @@ object MastodonMapper {
             u.name = account.displayName
             u.screenName = account.account
 
-            // FIXME: AvatarStatic を参照したい
-            // TODO: AvatarStatic が PixelFed 等では存在しない
-            u.iconImageUrl = account.avatar
-            // FIXME: HeaderStatic を参照したい
-            // TODO: HeaderStatic が PixelFed 等では存在しない
-            u.coverImageUrl = account.header
+            // AvatarStatic が PixelFed 等では存在しない
+            u.iconImageUrl = account.avatarStatic ?: account.avatar
+            // HeaderStatic が PixelFed 等では存在しない
+            u.coverImageUrl = account.headerStatic ?: account.header
 
             u.emojis = emojis(account.emojis)
 
             // ユーザー説明分の設定
-            u.description = AttributedString.plain(account.note) // TODO: XML
+            u.description = AttributedString.mastodon(account.note)
                 .also { it.addEmojiElement(u.emojis) }
 
             u.followersCount = account.followersCount
@@ -177,9 +82,8 @@ object MastodonMapper {
             u.fields = account.fields.map { f ->
                 AttributedFiled(
                     name = f.name,
-                    value = AttributedString.plain(f.value).also { // TODO: XML
-                        it.addEmojiElement(u.emojis)
-                    }
+                    value = AttributedString.mastodon(f.value!!)
+                        .also { it.addEmojiElement(u.emojis) }
                 )
             }
         }
@@ -238,7 +142,7 @@ object MastodonMapper {
                     .also { it.addEmojiElement(c.emojis) }
 
                 // 本文の設定
-                c.text = AttributedString.plain(status.content) // TODO: XML
+                c.text = AttributedString.mastodon(status.content)
                     .also { it.addEmojiElement(c.emojis) }
 
                 // メンションの設定
@@ -487,6 +391,7 @@ object MastodonMapper {
             it.emoji = emoji.shortcode
             it.imageUrl = emoji.staticUrl
             it.category = emoji.category
+            it.addShortCode(emoji.shortcode!!)
         }
     }
 

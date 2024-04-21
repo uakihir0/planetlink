@@ -1511,8 +1511,6 @@ class MastodonAction(
     ): SocialHubException {
 
         if ((e is MastodonException) && (e.message != null)) {
-            println(e.body)
-            println(e.message)
             return SocialHubException(e.message, e)
             // TODO: エラーメッセージが設定されているエラーである場合
         }

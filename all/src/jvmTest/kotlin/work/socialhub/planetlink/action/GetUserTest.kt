@@ -38,6 +38,10 @@ class GetUserTest {
         @Test
         fun testMisskey() = misskey()
             .act("https://misskey.io/@uakihir0")
+
+        @Test
+        fun testMastodon() = mastodon()
+            .act("https://mastodon.social/@uakihir0")
     }
 
     @Nested
@@ -51,5 +55,8 @@ class GetUserTest {
 
         @Test
         fun testMisskey() = misskey().act("88473vqwpf")
+
+        @Test
+        fun testMastodon() = mastodon().act("1223371")
     }
 }

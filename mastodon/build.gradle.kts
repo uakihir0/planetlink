@@ -22,6 +22,7 @@ kotlin {
             implementation(libs.kmastodon.stream)
             implementation(libs.kmpcommon)
             implementation(libs.datetime)
+            implementation(libs.ksoup)
         }
 
         // for test (kotlin/jvm)
