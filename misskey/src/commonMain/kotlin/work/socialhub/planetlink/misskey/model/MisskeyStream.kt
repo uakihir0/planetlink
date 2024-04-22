@@ -16,5 +16,5 @@ class MisskeyStream(
     }
 
     override val isOpened: Boolean
-        get() = false
+        get() = stream.isOpen
 }

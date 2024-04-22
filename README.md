@@ -14,6 +14,7 @@ By using this library, you can transparently handle various Social Media platfor
 
 - Bluesky (library: [kbksy](https://github.com/uakihir0/kbsky))
 - Misskey (library: [kmisskey](https://github.com/uakihir0/kmisskey))
+- Mastodon (library: [kmastodon](https://github.com/uakihir0/kmastodon))
 
 ## Planned Supported Platforms
 

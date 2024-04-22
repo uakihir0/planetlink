@@ -35,7 +35,6 @@ class MisskeyComment(
     /** Poll */
     var poll: Poll? = null
 
-    // endregion
     /** Reactions  */
     override var reactions: List<Reaction> = listOf()
         get() {

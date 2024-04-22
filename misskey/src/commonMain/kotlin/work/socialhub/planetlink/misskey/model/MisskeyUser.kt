@@ -44,15 +44,13 @@ class MisskeyUser(
 
     /**
      * attributed name (custom emoji included)
-     *  絵文字付き属性文字列
+     * 絵文字付き属性文字列
      */
     var attributedName: AttributedString? = null
-        get() {
-            if (field == null) {
-                field = AttributedString.plain(name, emptyList())
-                field!!.addEmojiElement(emojis)
-            }
-            return field
+        get() = field ?: let {
+            field = AttributedString.plain(name, emptyList())
+            field!!.addEmojiElement(emojis)
+            field
         }
 
     /**
@@ -62,35 +60,23 @@ class MisskeyUser(
     val isEmojiIncluded: Boolean
         get() = emojis.isNotEmpty()
 
-    override var name: String? = null
+    override var name: String = ""
         get() {
-            val name = super.name
-            return if (name.isNullOrEmpty()) {
+            return field.ifEmpty {
                 return checkNotNull(screenName)
                     .split("@")[0]
-            } else name
+                    .also { field = it }
+            }
         }
 
     override val accountIdentify: String
         get() = ("@$screenName@$host")
 
-    override val webUrl: String
-        get() {
+    override var webUrl: String = ""
+        get() = field.ifEmpty {
             val host = accountIdentify.split("@")[2]
             val identify = accountIdentify.split("@")[1]
             return "https://$host/@$identify"
-        }
-
-    /**
-     * Direct Message Form
-     * メッセージフォームは Twitter と Misskey で扱いが異なる
-     * Misskey の DM はユーザーの AccountIdentify が必要
-     */
-    override val messageForm: CommentForm
-        get() {
-            val form = CommentForm()
-            form.text = "$accountIdentify "
-            form.isMessage = true
-            return form
+                .also { field = it }
         }
 }

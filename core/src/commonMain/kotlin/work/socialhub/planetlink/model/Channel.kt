@@ -13,6 +13,6 @@ open class Channel(
     var name: String? = null
     var description: String? = null
     var createAt: Instant? = null
-    var public: Boolean? = null
+    var isPublic: Boolean? = null
 }
 

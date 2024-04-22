@@ -22,7 +22,7 @@ class MisskeyAuth(
 
     /**
      * Get Request Token for Misskey
-     * Mastodon のリクエストトークンの取得
+     * Misskey のリクエストトークンの取得
      */
     override val accessor: Misskey
         get() {
@@ -74,13 +74,12 @@ class MisskeyAuth(
         callbackUrl: String,
         permissions: Array<String>
     ) {
-        val request: CreateAppRequest =
-            CreateAppRequest().also {
-                it.name = appName
-                it.description = description
-                it.callbackUrl = callbackUrl
-                it.permission = permissions
-            }
+        val request = CreateAppRequest().also {
+            it.name = appName
+            it.description = description
+            it.callbackUrl = callbackUrl
+            it.permission = permissions
+        }
 
         val misskey = MisskeyFactory.instance(host)
         val response = misskey.app().createApp(request)
@@ -107,7 +106,7 @@ class MisskeyAuth(
      * Authentication with Code
      * 認証コードよりアカウントモデルを生成
      */
-    fun getAccountWithCode(
+    fun accountWithCode(
         verifier: String
     ): Account {
         val misskey = MisskeyFactory.instance(host)

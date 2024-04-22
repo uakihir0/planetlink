@@ -20,5 +20,8 @@ class GetUsersTest {
 
         @Test
         fun testMisskey() = misskey().act()
+
+        @Test
+        fun testMastodon() = mastodon().act()
     }
 }

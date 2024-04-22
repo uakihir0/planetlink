@@ -43,7 +43,7 @@ object BlueskyMapper {
             isProtected = false
 
             id = ID(account.did)
-            name = account.displayName
+            name = account.displayName!!
             screenName = account.handle
             iconImageUrl = account.avatar
             coverImageUrl = account.banner
@@ -70,7 +70,7 @@ object BlueskyMapper {
             isProtected = false
 
             id = ID(account.did)
-            name = account.displayName
+            name = account.displayName!!
             screenName = account.handle
             iconImageUrl = account.avatar
 
@@ -92,7 +92,7 @@ object BlueskyMapper {
             isProtected = false
 
             id = ID(account.did)
-            name = account.displayName
+            name = account.displayName!!
             screenName = account.handle
             iconImageUrl = account.avatar
 
@@ -459,7 +459,7 @@ object BlueskyMapper {
         return BlueskyChannel(service).apply {
             id = ID(generator.uri!!)
             cid = generator.cid
-            public = true
+            isPublic = true
 
             name = generator.displayName
             description = generator.description

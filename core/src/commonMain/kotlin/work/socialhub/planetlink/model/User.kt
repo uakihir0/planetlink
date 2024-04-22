@@ -15,7 +15,7 @@ open class User(
 ) : Identify(service) {
 
     /** User's display name  */
-    open var name: String? = null
+    open lateinit var name: String
 
     /**
      * SNS アカウント ID 表現を取得
@@ -46,7 +46,7 @@ open class User(
      * Get SNS Additional Fields
      * (recommend to cast specified SNS model)
      */
-    val additionalFields = mutableListOf<AttributedFiled>()
+    open val additionalFields = mutableListOf<AttributedFiled>()
 
     /**
      * Get Comment Form
@@ -66,6 +66,5 @@ open class User(
      * Get Web Url
      * Web のアドレスを取得
      */
-    open val webUrl: String
-        get() = throw NotImplementedException()
+    open lateinit var webUrl: String
 }

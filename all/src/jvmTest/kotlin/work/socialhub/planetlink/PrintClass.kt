@@ -1,5 +1,6 @@
 package work.socialhub.planetlink
 
+import work.socialhub.planetlink.mastodon.model.MastodonUser
 import work.socialhub.planetlink.misskey.model.MisskeyUser
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Pageable
@@ -17,12 +18,11 @@ object PrintClass {
         println("${sp}Url   > ${user.webUrl}")
         println("${sp}Icon  > ${user.iconImageUrl}")
 
-//        if (user is MastodonUser) {
-//            for (filed in mastodonUser.getFields()) {
-//                println(filed.getName() + ":" + filed.getValue())
-//            }
-//        }
-//
+        if (user is MastodonUser) {
+            for (field in user.fields) {
+                println("${sp}Field > ${field.name} : ${field.value?.displayText}")
+            }
+        }
         if (user is MisskeyUser) {
             for (filed in user.fields) {
                 println("${sp}Field > ${filed.name} : ${filed.value?.displayText}")

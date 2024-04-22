@@ -6,4 +6,5 @@ import kotlinx.serialization.Serializable
 data class TestConfig(
     val bluesky: List<BlueskyTestConfig>,
     val misskey: List<MisskeyTestConfig>,
+    val mastodon: List<MastodonTestConfig>,
 )

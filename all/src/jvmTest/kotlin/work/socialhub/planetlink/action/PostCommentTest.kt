@@ -34,6 +34,9 @@ class PostCommentTest {
 
         @Test
         fun testMisskey() = misskey().act()
+
+        @Test
+        fun testMastodon() = mastodon().act()
     }
 
     @Nested
@@ -45,6 +48,11 @@ class PostCommentTest {
 
         @Test
         fun testMisskey() = misskey().act(
+            text = "Image", fileData = icon(), fineName = "icon.png"
+        )
+
+        @Test
+        fun testMastodon() = mastodon().act(
             text = "Image", fileData = icon(), fineName = "icon.png"
         )
     }

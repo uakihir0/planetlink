@@ -62,7 +62,7 @@ class RateLimit {
         val service: String,
         val limit: Int,
         val remaining: Int,
-        val reset: Instant
+        val reset: Instant?
     ) {
 
         /**
@@ -70,8 +70,8 @@ class RateLimit {
          * Is remaining api request count?
          */
         fun isRemaining(): Boolean {
-            return (remaining > 0) ||
-                    reset < Clock.System.now()
+            val reset = reset ?: return true
+            return (remaining > 0) || reset < Clock.System.now()
         }
     }
 }
