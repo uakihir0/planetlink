@@ -18,7 +18,6 @@ By using this library, you can transparently handle various Social Media platfor
 
 ## Planned Supported Platforms
 
-- Mastodon
 - Slack
 - Tumblr
 
