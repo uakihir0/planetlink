@@ -19,8 +19,8 @@ object PrintClass {
         println("${sp}Icon  > ${user.iconImageUrl}")
 
         if (user is MastodonUser) {
-            for (filed in user.fields) {
-                println("${sp}Field > ${filed.name} : ${filed.value?.displayText}")
+            for (field in user.fields) {
+                println("${sp}Field > ${field.name} : ${field.value?.displayText}")
             }
         }
         if (user is MisskeyUser) {
