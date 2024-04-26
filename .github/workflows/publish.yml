@@ -13,6 +13,8 @@ jobs:
         target:
           - core
           - bluesky
+          - mastodon
+          - misskey
           - all
 
     permissions:
