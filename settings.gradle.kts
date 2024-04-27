@@ -6,7 +6,7 @@ include("core")
 include("bluesky")
 include("misskey")
 include("mastodon")
-
+include("tumblr")
 
 
 // All social media modules included
