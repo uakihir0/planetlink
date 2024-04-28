@@ -103,8 +103,7 @@ open class Comment(
      * Get Web Url
      * Web のアドレスを取得
      */
-    open val webUrl: String
-        get() = throw NotImplementedException()
+    open lateinit var webUrl: String
 
     /**
      * Only shared content comment.

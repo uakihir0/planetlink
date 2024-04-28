@@ -1,33 +1,38 @@
 package work.socialhub.planetlink.tumblr.action
 
 import com.tumblr.jumblr.types.Blog
-import com.tumblr.jumblr.types.Photo
-import com.tumblr.jumblr.types.PhotoPost
 import com.tumblr.jumblr.types.Post
-import com.tumblr.jumblr.types.QuotePost
-import com.tumblr.jumblr.types.TextPost
-import com.tumblr.jumblr.types.Theme
-import com.tumblr.jumblr.types.Trail
-import com.tumblr.jumblr.types.VideoPost
-import net.socialhub.core.define.MediaType
-import net.socialhub.core.model.Comment
-import net.socialhub.core.model.Media
-import net.socialhub.core.model.Pageable
-import net.socialhub.core.model.Paging
-import net.socialhub.core.model.Relationship
-import net.socialhub.core.model.Service
+import io.ktor.http.*
+import io.ktor.util.*
+import kotlinx.datetime.Instant
 import net.socialhub.core.model.User
-import net.socialhub.core.model.common.AttributedString
-import net.socialhub.core.model.common.xml.XmlConvertRule
-import net.socialhub.core.model.common.xml.XmlDocument
-import net.socialhub.core.model.common.xml.XmlTag
-import net.socialhub.core.utils.XmlParseUtil
-import net.socialhub.service.tumblr.define.TumblrIconSize
-import net.socialhub.service.tumblr.model.TumblrComment
 import net.socialhub.service.tumblr.model.TumblrPaging
-import net.socialhub.service.tumblr.model.TumblrUser
+import work.socialhub.ktumblr.entity.blog.Blog
+import work.socialhub.ktumblr.entity.post.Post
+import work.socialhub.ktumblr.entity.post.legacy.LegacyPhotoPost
+import work.socialhub.ktumblr.entity.post.legacy.LegacyQuotePost
+import work.socialhub.ktumblr.entity.post.legacy.LegacyTextPost
+import work.socialhub.ktumblr.entity.post.legacy.LegacyVideoPost
+import work.socialhub.ktumblr.entity.post.options.Photo
+import work.socialhub.ktumblr.entity.trail.Trail
+import work.socialhub.planetlink.define.MediaType
+import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.ID
+import work.socialhub.planetlink.model.Media
+import work.socialhub.planetlink.model.Pageable
+import work.socialhub.planetlink.model.Paging
+import work.socialhub.planetlink.model.Relationship
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.User
+import work.socialhub.planetlink.model.common.AttributedKind.IMAGE
+import work.socialhub.planetlink.model.common.AttributedKind.VIDEO
+import work.socialhub.planetlink.model.common.AttributedString
+import work.socialhub.planetlink.model.error.SocialHubException
+import work.socialhub.planetlink.tumblr.define.TumblrIconSize
+import work.socialhub.planetlink.tumblr.define.TumblrIconSize.S512
+import work.socialhub.planetlink.tumblr.expand.AttributedStringEx.tumblr
+import work.socialhub.planetlink.tumblr.model.TumblrComment
+import work.socialhub.planetlink.tumblr.model.TumblrUser
 import work.socialhub.ktumblr.entity.user.User as KUser
 
 object TumblrMapper {
@@ -48,14 +53,14 @@ object TumblrMapper {
 
         // プライマリブログについての処理
         for (blog in user.blogs!!) {
-            if (blog.isPrimary()) {
+            if (blog.isPrimary == true) {
                 return user(blog, service)
             }
         }
 
-        val model: User = User(service)
-        model.setName(user.getName())
-        return model
+        throw SocialHubException(
+            "Primary blog is not found."
+        )
     }
 
     /**
@@ -64,41 +69,35 @@ object TumblrMapper {
      * (User is user's blog)
      */
     fun user(
-        blog: com.tumblr.jumblr.types.Blog,  //
-        service: Service?
+        blog: Blog,
+        service: Service
     ): User {
-        val model: TumblrUser = TumblrUser(service)
+        return TumblrUser(service).also {
 
-        model.setName(blog.getName())
-        model.setBlogTitle(blog.getTitle())
+            val host = blogIdentify(blog.url!!)
+            it.id = ID(host)
 
-        // FIXME: 説明文が HTML のユーザーはなぜ？
-        if (blog.getDescription() != null) {
-            try {
-                // Tumblr の自己紹介文はまず HTML で解釈
-                model.setDescription(AttributedString.xhtml(blog.getDescription()))
-            } catch (ignore: java.lang.Exception) {
-                // 解釈に失敗した場合は単純なプレーンテキストとして解釈
-                model.setDescription(AttributedString.plain(blog.getDescription()))
+            it.name = blog.name!!
+            it.blogTitle = blog.title
+            it.webUrl = blog.url!!
+
+            it.likesCount = blog.likeCount
+            it.followersCount = blog.followerCount
+            it.postsCount = blog.postCount
+
+            // 説明文は HTML で記述
+            blog.description?.let { d ->
+                it.description = AttributedString.tumblr(d)
+            }
+
+            // FIXME:
+            it.iconImageUrl = blog.avatar?.get(0)?.url
+
+            it.relationship = Relationship().also { r ->
+                r.following = (blog.isFollowed == true)
+                r.blocking = (blog.isBlockedFromPrimary == true)
             }
         }
-
-        val host: String = getBlogIdentify(blog)
-        model.setIconImageUrl(getAvatarUrl(host, TumblrIconSize.S512))
-        model.setScreenName(host)
-        model.setId(host)
-
-        model.setFollowersCount(blog.getFollowersCount())
-        model.setPostsCount(blog.getPostCount())
-        model.setLikesCount(blog.getLikeCount())
-        model.setBlogUrl(blog.getUrl())
-
-        val relationship: Relationship = Relationship()
-        relationship.setFollowing((blog.getFollowed() === java.lang.Boolean.TRUE))
-        relationship.setBlocking((blog.getIsBlockedFromPrimary() === java.lang.Boolean.TRUE))
-        model.setRelationship(relationship)
-
-        return model
     }
 
     /**
@@ -106,22 +105,22 @@ object TumblrMapper {
      * (そのブログの投稿に紐づくユーザーと設定)
      */
     fun user(
-        post: com.tumblr.jumblr.types.Post,  //
-        trails: Map<String?, Trail?>,  //
-        service: Service?
+        post: Post,
+        trails: Map<String, Trail>,
+        service: Service
     ): User {
-        val model: User = user(post.getBlog(), service)
+        return user(post.blog!!, service).also {
+            val name = checkNotNull(post.blog?.name)
 
-        if (trails.containsKey(post.getBlog().getName())) {
-            val trail: Trail? = trails[post.getBlog().getName()]
-            val themes: List<Theme> = trail.getBlog().getTheme()
+            if (trails.containsKey(name)) {
+                val trail = trails[name]
+                val theme = trail?.blog?.theme
 
-            if (themes != null && !themes.isEmpty()) {
-                model.setCoverImageUrl(themes[0].getHeaderImage())
+                if (theme != null) {
+                    it.coverImageUrl = theme.headerImage
+                }
             }
         }
-
-        return model
     }
 
     /**
@@ -129,30 +128,27 @@ object TumblrMapper {
      * (そのブログの投稿に紐づくユーザーと設定)
      */
     fun reblogUser(
-        post: com.tumblr.jumblr.types.Post,  //
-        trails: Map<String?, Trail?>,  //
-        service: Service?
+        post: Post,
+        trails: Map<String, Trail>,
+        service: Service
     ): User {
-        val model: TumblrUser = TumblrUser(service)
+        return TumblrUser(service).also {
+            val host = blogIdentify(post.parentPostUrl!!)
+            val name = blogName(post.parentPostUrl!!)
 
-        val host: String = getBlogIdentify(post.getRebloggedRootUrl())
-        val name: String = post.getRebloggedRootName()
+            it.id = ID(host)
+            it.name = name
+            it.iconImageUrl = avatarUrl(host, S512)
 
-        model.setIconImageUrl(getAvatarUrl(host, TumblrIconSize.S512))
-        model.setScreenName(host)
-        model.setName(name)
-        model.setId(host)
+            if (trails.containsKey(name)) {
+                val trail = trails[name]
+                val theme = trail?.blog?.theme
 
-        if (trails.containsKey(name)) {
-            val trail: Trail? = trails[name]
-            val themes: List<Theme> = trail.getBlog().getTheme()
-
-            if (themes != null && !themes.isEmpty()) {
-                model.setCoverImageUrl(themes[0].getHeaderImage())
+                if (theme != null) {
+                    it.coverImageUrl = theme.headerImage
+                }
             }
         }
-
-        return model
     }
 
     // ============================================================== //
@@ -162,30 +158,31 @@ object TumblrMapper {
      * コメントマッピング
      */
     fun comment(
-        post: com.tumblr.jumblr.types.Post,  //
-        trails: Map<String?, Trail?>,  //
-        service: Service?
+        post: Post,
+        trails: Map<String, Trail>,
+        service: Service,
     ): Comment {
-        val model: TumblrComment = TumblrComment(service)
-        model.setCreateAt(java.util.Date(post.getTimestamp() * 1000))
-        model.setReblogKey(post.getReblogKey())
-        model.setNoteCount(post.getNoteCount())
-        model.setWebUrl(post.getPostUrl())
+        return TumblrComment(service).also {
 
-        model.setId(post.getId())
-        model.setUser(user(post, trails, service))
+            it.id = ID(post.idString!!)
+            it.webUrl = post.postUrl!!
 
-        // リブログ情報を設定
-        if (post.getRebloggedRootId() != null) {
-            model.setSharedComment(reblogComment(post, trails, service))
-            model.setMedias(java.util.ArrayList<E>())
-        } else {
-            // コンテンツを格納
+            // it.noteCount = post.noteCount
+            it.reblogKey = post.reblogKey
+            it.createAt = Instant.fromEpochSeconds(post.timestamp!!.toLong())
 
-            setMedia(model, post)
+            it.user = user(post, trails, service)
+
+            // リブログ情報を設定
+            if (post.parentPostUrl != null) {
+                it.sharedComment = reblogComment(post, trails, service)
+                it.medias = listOf()
+
+            } else {
+                // コンテンツを格納
+                setMedia(it, post)
+            }
         }
-
-        return model
     }
 
     /**
@@ -193,28 +190,32 @@ object TumblrMapper {
      * (Handle as shared post)
      */
     fun reblogComment(
-        post: com.tumblr.jumblr.types.Post,  //
-        trails: Map<String?, Trail?>,  //
-        service: Service?
+        post: Post,
+        trails: Map<String, Trail>,
+        service: Service
     ): Comment {
-        val model: TumblrComment = TumblrComment(service)
-        model.setCreateAt(java.util.Date(post.getTimestamp() * 1000))
-        model.setReblogKey(post.getReblogKey())
-        model.setNoteCount(post.getNoteCount())
+        return TumblrComment(service).also {
+            it.id = ID(post.sourceUrl())
 
-        model.setId(post.getRebloggedRootId())
-        model.setUser(reblogUser(post, trails, service))
-        setMedia(model, post)
+            it.noteCount = post.noteCount
+            it.reblogKey = post.reblogKey
+            it.createAt = Instant.fromEpochSeconds(post.timestamp!!.toLong())
 
-        return model
+
+            model.setId(post.getRebloggedRootId())
+            model.setUser(reblogUser(post, trails, service))
+            setMedia(model, post)
+
+            return model
+        }
     }
 
     // ============================================================== //
     // Medias
     // ============================================================== //
     fun setMedia(
-        model: TumblrComment,  //
-        post: com.tumblr.jumblr.types.Post
+        model: TumblrComment,
+        post: Post
     ) {
         model.setMedias(java.util.ArrayList<E>())
 
@@ -232,8 +233,7 @@ object TumblrMapper {
             }
         }
 
-        if (post is PhotoPost) {
-            val photo: PhotoPost = post as PhotoPost
+        if (post is LegacyPhotoPost) {
             model.getMedias().addAll(photos(photo.getPhotos()))
 
             if (model.getText() == null) {
@@ -241,16 +241,13 @@ object TumblrMapper {
                 textMedia(model, str)
             }
         }
-        if (post is TextPost) {
-            val text: TextPost = post as TextPost
-
+        if (post is LegacyTextPost) {
             if (model.getText() == null) {
                 val str = removeSharedBlogLink(text.getBody())
                 textMedia(model, str)
             }
         }
-        if (post is VideoPost) {
-            val video: VideoPost = post as VideoPost
+        if (post is LegacyVideoPost) {
             model.getMedias().add(video(video))
 
             if (model.getText() == null) {
@@ -259,9 +256,7 @@ object TumblrMapper {
             }
         }
 
-        if (post is QuotePost) {
-            val quote: QuotePost = post as QuotePost
-
+        if (post is LegacyQuotePost) {
             if (model.getText() == null) {
                 val str = removeSharedBlogLink(
                     quote.getText() + " / " + quote.getSource()
@@ -278,37 +273,29 @@ object TumblrMapper {
         model: TumblrComment,
         str: String
     ) {
-        val xml: XmlDocument = XmlParseUtil.xhtml(str)
-        model.setText(xml.toAttributedString(XmlConvertRule()))
+        val medias = mutableListOf<Media>()
+        val attr = AttributedString.tumblr(str)
+            .also { model.text = it }
+
+        val images = attr.elements.filter { it.kind == IMAGE }
+        val videos = attr.elements.filter { it.kind == VIDEO }
 
         // 画像一覧を取得
-        val imgTags: List<XmlTag> = xml.findXmlTag("img")
-        for (imgTag in imgTags) {
-            // 画像を追加
-
-            val media: Media = Media()
-            media.setType(MediaType.Image)
-            media.setSourceUrl(imgTag.getAttributes().get("src"))
-            media.setPreviewUrl(imgTag.getAttributes().get("src"))
-            model.getMedias().add(media)
+        for (image in images) {
+            medias.add(Media().also {
+                it.type = MediaType.Image
+                it.sourceUrl = image.expandedText
+                it.previewUrl = image.displayText
+            })
         }
 
         // 動画一覧を選択
-        val videoTags: List<XmlTag> = xml.findXmlTag("video")
-        for (videoTag in videoTags) {
-            // さらにそこからソースタグを抽出
-
-            val sourceTags: List<XmlTag> = videoTag.findXmlTag("source")
-            if (sourceTags.size == 1) {
-                val sourceTag: XmlTag = sourceTags[0]
-
-                // 動画を追加
-                val media: Media = Media()
-                media.setType(MediaType.Movie)
-                media.setSourceUrl(sourceTag.getAttributes().get("src"))
-                media.setPreviewUrl(videoTag.getAttributes().get("poster"))
-                model.getMedias().add(media)
-            }
+        for (video in videos) {
+            medias.add(Media().also {
+                it.type = MediaType.Movie
+                it.sourceUrl = video.expandedText
+                it.previewUrl = video.displayText
+            })
         }
     }
 
@@ -318,35 +305,34 @@ object TumblrMapper {
     private fun photos(
         photos: List<Photo>
     ): List<Media> {
-        val results: MutableList<Media> = java.util.ArrayList<Media>()
-        for (photo in photos) {
-            val media: Media = Media()
-            media.setType(MediaType.Image)
-            media.setSourceUrl(photo.getOriginalSize().getUrl())
-            media.setPreviewUrl(photo.getOriginalSize().getUrl())
-            results.add(media)
+        return mutableListOf<Media>().also { medias ->
+            for (photo in photos) {
+                medias.add(Media().also {
+                    it.type = MediaType.Image
+                    it.sourceUrl = photo.originalSize?.url
+                    it.previewUrl = photo.originalSize?.url
+                })
+            }
         }
-
-        return results
     }
 
     /**
      * 動画マッピング
      */
     private fun video(
-        video: VideoPost
+        video: LegacyVideoPost
     ): Media {
-        val media: Media = Media()
-        media.setType(MediaType.Movie)
+        return Media().also {
+            it.type = MediaType.Movie
 
-        // VideoUrl or PermalinkUrl を選択
-        media.setSourceUrl(video.getVideoUrl())
-        if (media.getSourceUrl() == null) {
-            media.setSourceUrl(video.getPermalinkUrl())
+            // VideoUrl or PermalinkUrl を選択
+            it.sourceUrl = video.getVideoUrl()
+            if (video.sourceUrl == null) {
+                it.sourceUrl = video.getPermalinkUrl()
+            }
+
+            it.previewUrl = video.getThumbnailUrl()
         }
-
-        media.setPreviewUrl(video.getThumbnailUrl())
-        return media
     }
 
     // ============================================================== //
@@ -356,11 +342,11 @@ object TumblrMapper {
      * タイムラインマッピング
      */
     fun timeLine(
-        posts: List<com.tumblr.jumblr.types.Post?>,  //
-        service: Service?,  //
+        posts: Array<Post>,
+        service: Service,
         paging: Paging?
     ): Pageable<Comment> {
-        val model: Pageable<Comment> = Pageable()
+        val model = Pageable<Comment>()
         val trails: Map<String?, Trail?> = getTrailMap(posts)
 
         model.setEntities(
@@ -438,7 +424,7 @@ object TumblrMapper {
      * ホスト名を取得 (プライマリを取得)
      * Get primary blog host from url
      */
-    fun getUserIdentify(blogs: List<Blog?>): String? {
+    fun userIdentify(blogs: Array<Blog>): String? {
         for (blog in blogs) {
             if (blog.isPrimary()) {
                 return getBlogIdentify(blog)
@@ -451,52 +437,60 @@ object TumblrMapper {
      * ホスト名を取得
      * Get blog host from url
      */
-    fun getBlogIdentify(blog: Blog): String {
-        return getBlogIdentify(blog.getUrl())
+    fun blogIdentify(
+        blog: Blog
+    ): String {
+        return blogIdentify(blog.url!!)
     }
 
     /**
      * ホスト名を取得
      * Get blog host from url
      */
-    fun getBlogIdentify(blogUrl: String): String? {
-        var host = getUrlHost(blogUrl)
+    fun blogIdentify(
+        blogUrl: String
+    ): String {
+        var host = blogUrl.urlHost()
 
         // ドメイン設定していないブログは www.tumblr.com になる (?)
-        if (host != null && host == "www.tumblr.com") {
-            val elements = blogUrl.split("/".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+        if (host == "www.tumblr.com") {
+            val elements = blogUrl.split("/")
+                .dropLastWhile { it.isEmpty() }
+                .toTypedArray()
 
             // 最後の三要素について確認するので、ループ回数を制限
-            for (i in 0 until (elements.size - 2)) {
-                // https://www.tumblr.com/blog/view/{uid}/xxx の形式で UID を取得
+            for (i in 0..<(elements.size - 2)) {
 
+                // https://www.tumblr.com/blog/view/{uid}/xxx の形式で UID を取得
                 if (elements[i] == "blog" && elements[i + 1] == "view") {
-                    host = host!!.replace("www", elements[i + 2])
+                    host = host.replace("www", elements[i + 2])
                 }
             }
         }
         return host
     }
 
+    fun blogName(
+        blogUrl: String
+    ): String {
+        return blogIdentify(blogUrl).split(".")[0]
+    }
+
     /**
      * ホスト名を取得
      * Get host from url
      */
-    fun getUrlHost(url: String?): String? {
-        return try {
-            java.net.URL(url).getHost()
-        } catch (ignore: java.lang.Exception) {
-            null
-        }
-    }
+    private fun String.urlHost() =
+        Url(this).host
 
     /**
      * ユーザーの画面マップを取得
      * Get Trail Map
      */
     fun getTrailMap(
-        posts: List<com.tumblr.jumblr.types.Post?>
-    ): Map<String?, Trail?> {
+        posts: Array<Post>
+    ): Map<String, Trail> {
+        posts.mapNotNull { it.trail }
         val trails: List<Trail> = posts.stream()
             .map<Any>(Post::getTrail)
             .filter(java.util.function.Predicate<Any> { obj: Any? -> java.util.Objects.nonNull(obj) })
@@ -523,8 +517,11 @@ object TumblrMapper {
      * アバター画像を取得
      * Get avatar url
      */
-    fun getAvatarUrl(host: String, size: TumblrIconSize): String {
-        return "https://api.tumblr.com/v2/blog/" + host + "/avatar/" + size.getSize()
+    fun avatarUrl(
+        host: String,
+        size: TumblrIconSize
+    ): String {
+        return "https://api.tumblr.com/v2/blog/$host/avatar/${size.size}"
     }
 
     /**

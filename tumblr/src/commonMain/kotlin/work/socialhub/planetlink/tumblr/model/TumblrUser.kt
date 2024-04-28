@@ -26,4 +26,7 @@ class TumblrUser(
      * (Only following and blocked)
      */
     var relationship: Relationship? = null
+
+    override val accountIdentify: String
+        get() = id!!.value<String>()
 }

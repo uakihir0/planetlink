@@ -24,6 +24,7 @@ kotlin {
             export(project(":bluesky"))
             export(project(":misskey"))
             export(project(":mastodon"))
+            export(project(":tumblr"))
             baseName = "planetlink"
             xcf.add(this)
         }
@@ -45,6 +46,7 @@ kotlin {
             api(project(":bluesky"))
             api(project(":misskey"))
             api(project(":mastodon"))
+            api(project(":tumblr"))
             implementation(libs.kbsky.core)
             implementation(libs.kbsky.stream)
         }
