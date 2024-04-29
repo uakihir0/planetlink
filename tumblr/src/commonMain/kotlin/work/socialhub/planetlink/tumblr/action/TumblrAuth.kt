@@ -10,8 +10,9 @@ import work.socialhub.planetlink.model.Service
 
 class TumblrAuth(
     var consumerKey: String,
-    var consumerSecret: String
-) : ServiceAuth<Tumblr> {
+    var consumerSecret: String,
+) : ServiceAuth<Tumblr>() {
+
     var accessToken: String? = null
     var refreshToken: String? = null
 

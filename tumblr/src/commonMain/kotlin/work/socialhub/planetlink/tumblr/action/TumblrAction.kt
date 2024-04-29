@@ -1,20 +1,47 @@
 package work.socialhub.planetlink.tumblr.action
 
 import work.socialhub.ktumblr.TumblrException
+import work.socialhub.ktumblr.api.request.FileRequest
+import work.socialhub.ktumblr.api.request.auth.AuthOAuth2TokenRefreshRequest
+import work.socialhub.ktumblr.api.request.blog.BlogFollowersRequest
+import work.socialhub.ktumblr.api.request.blog.BlogInfoRequest
+import work.socialhub.ktumblr.api.request.blog.BlogLikesRequest
+import work.socialhub.ktumblr.api.request.blog.BlogPostsRequest
+import work.socialhub.ktumblr.api.request.blog.post.BlogDeleteRequest
+import work.socialhub.ktumblr.api.request.blog.post.BlogPhotoPostRequest
+import work.socialhub.ktumblr.api.request.blog.post.BlogPostRequest
+import work.socialhub.ktumblr.api.request.blog.post.BlogReblogRequest
+import work.socialhub.ktumblr.api.request.blog.post.BlogTextPostRequest
+import work.socialhub.ktumblr.api.request.tagged.TaggedRequest
+import work.socialhub.ktumblr.api.request.user.UserDashboardRequest
+import work.socialhub.ktumblr.api.request.user.UserFollowRequest
+import work.socialhub.ktumblr.api.request.user.UserFollowingRequest
+import work.socialhub.ktumblr.api.request.user.UserLikeRequest
+import work.socialhub.ktumblr.api.request.user.UserUnfollowRequest
+import work.socialhub.ktumblr.api.request.user.UserUnlikeRequest
 import work.socialhub.planetlink.action.AccountActionImpl
-import work.socialhub.planetlink.action.ServiceAuth
 import work.socialhub.planetlink.model.Account
+import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.Identify
+import work.socialhub.planetlink.model.Pageable
+import work.socialhub.planetlink.model.Paging
+import work.socialhub.planetlink.model.Relationship
+import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.User
+import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
+import work.socialhub.planetlink.model.request.CommentForm
+import work.socialhub.planetlink.model.support.TupleIdentify
 import work.socialhub.planetlink.tumblr.define.TumblrIconSize
+import work.socialhub.planetlink.tumblr.define.TumblrReactionType
+import work.socialhub.planetlink.tumblr.model.TumblrComment
+import work.socialhub.planetlink.tumblr.model.TumblrPaging
+import work.socialhub.planetlink.tumblr.model.TumblrUser
 
 class TumblrAction(
     account: Account,
     val auth: TumblrAuth,
 ) : AccountActionImpl(account) {
-
-    /** AvatarIcon Url Mapper */
-    private val avaterMapper = mutableMapOf<String, String>()
 
     // ============================================================== //
     // Account
@@ -27,7 +54,7 @@ class TumblrAction(
         host: String
     ): String {
         val size: TumblrIconSize = TumblrIconSize.S512
-        return TumblrMapper.getAvatarUrl(host, size)
+        return TumblrMapper.avatarUrl(host, size)
     }
 
     /**
@@ -35,97 +62,132 @@ class TumblrAction(
      */
     override fun userMe(): User {
         return proceed {
-            val user = auth.accessor.user().user()
+            val user = validateToken {
+                auth.accessor.user().user()
+            }.data.response?.user
+            checkNotNull(user)
 
             // アイコンキャッシュから取得
-            val host: String = TumblrMapper.getUserIdentify(user.getBlogs())
-            val result: User = TumblrMapper.user(user, service)
+            val host = TumblrMapper.userIdentify(user.blogs!!)
+            val result = TumblrMapper.user(user, service())
 
-            // ホスト情報が存在
-            if (host != null) {
-                // 投稿が一つでも存在すればその投稿情報を取得
-
-                val posts: List<Post> = auth.getAccessor().blogPosts(host, limit1())
-
-                if ((posts != null) && (posts.size > 0)) {
-                    val trails: Map<String, Trail> = TumblrMapper.getTrailMap(posts)
-                    val cover: User = TumblrMapper.user(posts[0], trails, service)
-                    TumblrMapper.margeUser(result, cover)
-                }
+            // 投稿が一つでも存在すればその投稿情報を取得
+            val posts = validateToken {
+                auth.accessor.blog().blogPosts(
+                    BlogPostsRequest().also {
+                        it.blogName = host
+                        it.limit = 1
+                    }).data.response?.posts
             }
-            me = result
-            result
+
+            if (!posts.isNullOrEmpty()) {
+                val trails = TumblrMapper.trailMap(posts)
+                val cover = TumblrMapper.user(posts[0], trails, service())
+                TumblrMapper.margeUser(result, cover)
+            }
+
+            result.also {
+                me = it
+            }
         }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getUser(id: Identify): User {
-        return proceed({
-            val pool: ExecutorService = Executors.newCachedThreadPool()
-
+    override fun user(
+        id: Identify
+    ): User {
+        return proceed {
+            // TODO: 並列実行
 
             // デフォルトのユーザー情報の取得
-            val resultFuture: java.util.concurrent.Future<User> = pool.submit(java.util.concurrent.Callable<T> {
-                val blog: Blog = auth.getAccessor().blogInfo(id.getId() as String)
-                TumblrMapper.user(blog, service)
-            })
+            val blog = validateToken {
+                auth.accessor.blog().blogInfo(
+                    BlogInfoRequest().also {
+                        it.blogName = id.id<String>()
+                    }).data.response?.blog
+            }
+
+            val resultUser = TumblrMapper.user(
+                checkNotNull(blog),
+                service()
+            )
 
             // カバー情報を取得するためのリクエスト
-            val coverFuture: java.util.concurrent.Future<User> = pool.submit(java.util.concurrent.Callable<T> {
-                val posts: List<Post> = auth.getAccessor() //
-                    .blogPosts(id.getId() as String, limit1())
-                if ((posts != null) && (posts.size > 0)) {
-                    val trails: Map<String, Trail> = TumblrMapper.getTrailMap(posts)
-                    return@submit TumblrMapper.user(posts[0], trails, service)
-                }
-                null
-            })
+            val posts = validateToken {
+                auth.accessor.blog().blogPosts(
+                    BlogPostsRequest().also {
+                        it.blogName = id.id<String>()
+                        it.limit = 1
+                    }).data.response?.posts
+            }
 
-            val resultUser: User = resultFuture.get()
-            val coverUser: User = coverFuture.get()
+            if (!posts.isNullOrEmpty()) {
+                val trails = TumblrMapper.trailMap(posts)
+                val coverUser = TumblrMapper.user(posts[0], trails, service())
 
-            TumblrMapper.margeUser(resultUser, coverUser)
+                // カバーを発見した場合はその情報を譲渡
+                TumblrMapper.margeUser(resultUser, coverUser)
+            }
+
             resultUser
-        })
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun followUser(id: Identify) {
-        proceed({
-            auth.getAccessor().follow(id.getId() as String)
-        })
+    override fun followUser(
+        id: Identify
+    ) {
+        proceedUnit {
+            validateToken {
+                auth.accessor.user().follow(
+                    UserFollowRequest().also {
+                        it.url = blogUrl(id.id<String>())
+                    }
+                )
+            }
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun unfollowUser(id: Identify) {
-        proceed({
-            auth.getAccessor().unfollow(id.getId() as String)
-        })
+    override fun unfollowUser(
+        id: Identify
+    ) {
+        proceedUnit {
+            validateToken {
+                auth.accessor.user().unfollow(
+                    UserUnfollowRequest().also {
+                        it.url = blogUrl(id.id<String>())
+                    }
+                )
+            }
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getRelationship(id: Identify): Relationship {
-        return proceed({
+    override fun relationship(
+        id: Identify
+    ): Relationship {
+        return proceed {
             // オブジェクトに格納済みなので返却
             if (id is TumblrUser) {
-                return@proceed (id as TumblrUser).getRelationship()
+                return@proceed id.relationship!!
             }
 
             // ユーザーの一部なのでそれを返却
-            val user: User = getUser(id)
+            val user = user(id)
             if (user is TumblrUser) {
-                return@proceed (user as TumblrUser).getRelationship()
+                return@proceed user.relationship!!
             }
-            throw java.lang.IllegalStateException()
-        })
+            throw IllegalStateException()
+        }
     }
 
     // ============================================================== //
@@ -134,28 +196,53 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    fun getFollowingUsers(id: Identify?, paging: Paging?): Pageable<User> {
-        return proceed({
-
+    override fun followingUsers(
+        id: Identify,
+        paging: Paging
+    ): Pageable<User> {
+        return proceed {
             // TODO: 自分のアカウントのブログであるかどうか？
-            val params: Map<String, Any> = getPagingParams(paging)
-            val blogs: List<Blog> = auth.getAccessor().userFollowing(params)
-            TumblrMapper.usersByBlogs(blogs, service, paging)
-        })
+
+            val blogs = validateToken {
+                auth.accessor.user().userFollowing(
+                    UserFollowingRequest().also {
+                        it.limit = limit(paging)
+                        it.offset = offset(paging)
+                    }).data.response?.blogs
+            }
+
+            TumblrMapper.usersByBlogs(
+                checkNotNull(blogs),
+                service(),
+                paging
+            )
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getFollowerUsers(id: Identify, paging: Paging?): Pageable<User> {
-        return proceed({
-
+    override fun followerUsers(
+        id: Identify,
+        paging: Paging
+    ): Pageable<User> {
+        return proceed {
             // TODO: 自分のアカウントのブログであるかどうか？
-            val params: Map<String, Any> = getPagingParams(paging)
-            val users: List<com.tumblr.jumblr.types.User> = auth.getAccessor() //
-                .blogFollowers(id.getId() as String, params)
-            TumblrMapper.users(users, service, paging)
-        })
+
+            val users = validateToken {
+                auth.accessor.blog().blogFollowers(
+                    BlogFollowersRequest().also {
+                        it.blogName = id.id<String>()
+                        it.limit = limit(paging)
+                    }).data.response?.users
+            }
+
+            TumblrMapper.followerUsers(
+                checkNotNull(users),
+                service(),
+                paging
+            )
+        }
     }
 
     // ============================================================== //
@@ -164,55 +251,103 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    fun getHomeTimeLine(paging: Paging?): Pageable<Comment> {
-        return proceed({
+    override fun homeTimeLine(
+        paging: Paging
+    ): Pageable<Comment> {
+        return proceed {
+            val posts = validateToken {
+                auth.accessor.user().userDashboard(
+                    UserDashboardRequest().also {
+                        it.limit = limit(paging)
+                        it.offset = offset(paging)
+                        it.sinceId = sinceId(paging)?.toInt() // FIXME
+                        it.reblogInfo = true
+                        it.notesInfo = true
+                    }).data.response?.posts
+            }
 
-            val params = getPagingParams(paging)
-            setPagingOptions(params)
-
-            val posts: List<Post> = auth.getAccessor().userDashboard(params)
-            TumblrMapper.timeLine(posts, service, paging)
-        })
+            TumblrMapper.timeLine(
+                checkNotNull(posts),
+                service(),
+                paging
+            )
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getUserCommentTimeLine(id: Identify, paging: Paging?): Pageable<Comment> {
-        return proceed({
+    override fun userCommentTimeLine(
+        id: Identify,
+        paging: Paging
+    ): Pageable<Comment> {
+        return proceed {
+            val posts = validateToken {
+                auth.accessor.blog().blogPosts(
+                    BlogPostsRequest().also {
+                        it.blogName = id.id<String>()
+                        it.limit = limit(paging)
+                        it.offset = offset(paging)
+                        it.reblogInfo = true
+                        it.notesInfo = true
+                    }).data.response?.posts
+            }
 
-            val params = getPagingParams(paging)
-            setPagingOptions(params)
-
-            val posts: List<Post> = auth.getAccessor().blogPosts(id.getId() as String, params)
-            TumblrMapper.timeLine(posts, service, paging)
-        })
+            TumblrMapper.timeLine(
+                checkNotNull(posts),
+                service(),
+                paging
+            )
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getUserLikeTimeLine(id: Identify, paging: Paging?): Pageable<Comment> {
-        return proceed({
+    override fun userLikeTimeLine(
+        id: Identify,
+        paging: Paging
+    ): Pageable<Comment> {
+        return proceed {
+            val posts = validateToken {
+                auth.accessor.blog().blogLikes(
+                    BlogLikesRequest().also {
+                        it.blogName = id.id<String>()
+                        it.limit = limit(paging)
+                        it.offset = offset(paging)
+                    }).data.response?.likedPosts
+            }
 
-            val params: Map<String, Any> = getPagingParams(paging)
-
-            val posts: List<Post> = auth.getAccessor().blogLikes(id.getId() as String, params)
-            TumblrMapper.timeLine(posts, service, paging)
-        })
+            TumblrMapper.timeLine(
+                checkNotNull(posts),
+                service(),
+                paging
+            )
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getSearchTimeLine(query: String?, paging: Paging?): Pageable<Comment> {
-        return proceed({
+    override fun searchTimeLine(
+        query: String,
+        paging: Paging
+    ): Pageable<Comment> {
+        return proceed {
+            val posts = validateToken {
+                auth.accessor.tagged().tagged(
+                    TaggedRequest().also {
+                        it.tag = query
+                        it.limit = limit(paging)
+                    }).data.response
+            }
 
-            val params: Map<String, Any> = getPagingParams(paging)
-
-            val posts: List<Post> = auth.getAccessor().tagged(query, params)
-            TumblrMapper.timeLine(posts, service, paging)
-        })
+            TumblrMapper.timeLine(
+                checkNotNull(posts),
+                service(),
+                paging
+            )
+        }
     }
 
     // ============================================================== //
@@ -221,125 +356,176 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    fun postComment(req: CommentForm) {
-        proceed({
-            val me: User = getUserMeWithCache()
-            val post: Post
+    override fun postComment(
+        req: CommentForm
+    ) {
+        proceedUnit {
+            val me = userMeWithCache()
+            val post: BlogPostRequest
 
-            if (req.getImages() != null && !req.getImages().isEmpty()) {
+            if (req.images.isNotEmpty()) {
+
                 // PhotoPost
-
-                val photoPost: PhotoPost = auth.getAccessor() //
-                    .newPost(me.getId() as String, PhotoPost::class.java)
-
-                for (media in req.getImages()) {
-                    val file: Photo.ByteFile = ByteFile()
-                    file.setBytes(media.getData())
-                    file.setName(media.getName())
-                    val photo: Photo = Photo(file)
-                    photoPost.addPhoto(photo)
+                post = BlogPhotoPostRequest().also { r ->
+                    r.data = req.images.map { img ->
+                        FileRequest(
+                            data = img.data,
+                            name = img.name,
+                        )
+                    }.toTypedArray()
+                    r.caption = req.text
+                    r.type = "photo"
                 }
 
-                photoPost.setCaption(req.getText())
-                post = photoPost
             } else {
+
                 // TextPost
-
-                val textPost: TextPost = auth.getAccessor() //
-                    .newPost(me.getId() as String, TextPost::class.java)
-
-                textPost.setBody(req.getText())
-                post = textPost
+                post = BlogTextPostRequest().also { r ->
+                    r.body = req.text
+                    r.type = "text"
+                }
             }
 
-            // Save
-            post.save()
-        })
+            post.blogName = me.id<String>()
+
+            validateToken {
+                auth.accessor.blog()
+                    .postCreate(post)
+            }
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun getComment(id: Identify): Comment {
-        return proceed({
+    override fun comment(
+        id: Identify
+    ): Comment {
+        return proceed {
             if (id is TupleIdentify) {
-                val tuple: TupleIdentify = (id as TupleIdentify)
 
-                val post: Post = auth.getAccessor().blogPost( //
-                    tuple.getSubId() as String, tuple.getId() as Long
+                val posts = validateToken {
+                    auth.accessor.blog().blogPosts(
+                        BlogPostsRequest().also {
+                            it.blogName = id.subId?.value<String>()
+                            it.id = id.id?.value<String>()?.toInt() // FIXME
+                            it.limit = 1
+                        }).data.response?.posts
+                }
+
+                checkNotNull(posts)
+                val trails = TumblrMapper.trailMap(posts)
+
+                TumblrMapper.comment(
+                    posts[0],
+                    trails,
+                    service()
                 )
 
-                val trails: Map<String, Trail> = TumblrMapper.getTrailMap(listOf(post))
-                return@proceed TumblrMapper.comment(post, trails, service)
             } else {
-                throw NotSupportedException("TupleIdentify required.")
+                throw NotSupportedException(
+                    "TupleIdentify required."
+                )
             }
-        })
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun likeComment(id: Identify) {
-        proceed({
+    override fun likeComment(
+        id: Identify
+    ) {
+        proceedUnit {
             if (id is TumblrComment) {
-                val key: String = (id as TumblrComment).getReblogKey()
-                auth.getAccessor().like(id.getId() as Long, key)
+                validateToken {
+                    auth.accessor.user().like(
+                        UserLikeRequest().also {
+                            it.id = id.id<String>()
+                            it.reblogKey = id.reblogKey
+                        })
+                }
             } else {
-                throw NotSupportedException("TumblrComment (id and reblog key only) required.")
+                throw NotSupportedException(
+                    "TumblrComment (id and reblog key only) required."
+                )
             }
-        })
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun unlikeComment(id: Identify) {
-        proceed({
+    override fun unlikeComment(
+        id: Identify
+    ) {
+        proceedUnit {
             if (id is TumblrComment) {
-                val key: String = (id as TumblrComment).getReblogKey()
-                auth.getAccessor().unlike(id.getId() as Long, key)
+                validateToken {
+                    auth.accessor.user().unlike(
+                        UserUnlikeRequest().also {
+                            it.id = id.id<String>()
+                            it.reblogKey = id.reblogKey
+                        })
+                }
             } else {
-                throw NotSupportedException("TumblrComment (id and reblog key only) required.")
+                throw NotSupportedException(
+                    "TumblrComment (id and reblog key only) required."
+                )
             }
-        })
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun shareComment(id: Identify) {
-        proceed({
+    override fun shareComment(
+        id: Identify
+    ) {
+        proceedUnit {
             if (id is TumblrComment) {
-                val key: String = (id as TumblrComment).getReblogKey()
-                val blog: String = getUserMeWithCache().getScreenName()
-                auth.getAccessor().postReblog(blog, id.getId() as Long, key)
+                val blog = userMeWithCache()
+                validateToken {
+                    auth.accessor.blog().postReblog(
+                        BlogReblogRequest().also {
+                            it.id = id.id<String>()
+                            it.reblogKey = id.reblogKey
+                            it.blogName = blog.id<String>()
+                        })
+                }
             } else {
-                throw NotSupportedException("TumblrComment (id, blogName reblog key only) required.")
+                throw NotSupportedException(
+                    "TumblrComment (id and reblog key only) required."
+                )
             }
-        })
+        }
     }
 
     /**
      * {@inheritDoc}
      */
-    fun unshareComment(id: Identify?) {
+    override fun unshareComment(
+        id: Identify
+    ) {
         throw NotSupportedException()
     }
 
     /**
      * {@inheritDoc}
      */
-    fun reactionComment(id: Identify, reaction: String?) {
-        if (reaction != null && !reaction.isEmpty()) {
-            val type = reaction.lowercase(Locale.getDefault())
+    override fun reactionComment(
+        id: Identify,
+        reaction: String
+    ) {
+        if (reaction.isNotEmpty()) {
+            val type = reaction.lowercase()
 
-            if (TumblrReactionType.Like.getCode().contains(type)) {
+            if (TumblrReactionType.Like.codes.contains(type)) {
                 likeComment(id)
                 return
             }
-            if (TumblrReactionType.Reblog.getCode().contains(type)) {
-                retweetComment(id)
+            if (TumblrReactionType.Reblog.codes.contains(type)) {
+                shareComment(id)
                 return
             }
         }
@@ -349,11 +535,14 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    fun unreactionComment(id: Identify, reaction: String?) {
-        if (reaction != null && !reaction.isEmpty()) {
-            val type = reaction.lowercase(Locale.getDefault())
+    override fun unreactionComment(
+        id: Identify,
+        reaction: String
+    ) {
+        if (reaction.isNotEmpty()) {
+            val type = reaction.lowercase()
 
-            if (TumblrReactionType.Like.getCode().contains(type)) {
+            if (TumblrReactionType.Like.codes.contains(type)) {
                 unlikeComment(id)
                 return
             }
@@ -364,55 +553,91 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    fun deleteComment(id: Identify) {
-        proceed({
+    override fun deleteComment(
+        id: Identify
+    ) {
+        proceed {
             if (id is TumblrComment) {
-                val blog: String = getUserMeWithCache().getScreenName()
-                auth.getAccessor().postDelete(blog, id.getId() as Long)
+                val blog = userMeWithCache()
+                validateToken {
+                    auth.accessor.blog().postDelete(
+                        BlogDeleteRequest().also {
+                            it.blogName = blog.id<String>()
+                            it.id = id.id<String>()
+                        })
+                }
             } else {
-                throw NotSupportedException("TumblrComment (id, blog n ame only) required.")
+                throw NotSupportedException(
+                    "TumblrComment (id, blog n ame only) required."
+                )
             }
-        })
+        }
     }
 
     // ============================================================== //
     // Paging
     // ============================================================== //
-    private fun getPagingParams(paging: Paging?): MutableMap<String, Any> {
-        val params: MutableMap<String, Any> = java.util.HashMap<String, Any>()
+    private fun limit(paging: Paging): Int? = paging.count
 
-        if (paging != null) {
-            if (paging.getCount() != null) {
-                params["limit"] = paging.getCount()
+    private fun offset(paging: Paging): Int? {
+        return if (paging is TumblrPaging) {
+            paging.offset
+        } else null
+    }
+
+    private fun sinceId(paging: Paging): String? {
+        return if (paging is TumblrPaging) {
+            paging.sinceId
+        } else null
+    }
+
+
+    // ============================================================== //
+    // Refresh
+    // ============================================================== //
+
+    private fun <T> validateToken(
+        func: () -> T
+    ): T {
+        try {
+            return func()
+        } catch (e: TumblrException) {
+
+            if (e.status == 401) {
+                val refresh = auth.accessor.auth().oAuth2TokenRefresh(
+                    AuthOAuth2TokenRefreshRequest().also {
+                        it.clientId = auth.consumerKey
+                        it.clientSecret = auth.consumerSecret
+                        it.refreshToken = auth.refreshToken
+                    }
+                )
+
+                // トークン類を取得した値で更新
+                auth.accessToken = refresh.data.accessToken
+                auth.refreshToken = refresh.data.refreshToken
+                return func()
             }
 
-            if (paging is TumblrPaging) {
-                val pg: TumblrPaging = paging as TumblrPaging
-
-                if (pg.getSinceId() != null) {
-                    params["since_id"] = pg.getSinceId()
-                }
-                if (pg.getOffset() != null) {
-                    params["offset"] = pg.getOffset()
-                }
-            }
+            throw e
         }
-
-        return params
     }
+
 
     // ============================================================== //
-    // Request Samples
+    // Support
     // ============================================================== //
-    private fun limit1(): Map<String, Any> {
-        val params: MutableMap<String, Any> = java.util.HashMap<String, Any>()
-        params["limit"] = 1
-        return params
+
+    private fun blogUrl(
+        blogName: String,
+    ): String {
+        return if (blogName.contains(".")) blogName
+        else "$blogName.tumblr.com"
     }
 
-    private fun setPagingOptions(params: MutableMap<String, Any>) {
-        params["reblog_info"] = true
+    private fun service(): Service {
+        return account.service
     }
+
 
     // ============================================================== //
     // Utils
@@ -443,5 +668,4 @@ class TumblrAction(
         }
         return SocialHubException(e)
     }
-
 }

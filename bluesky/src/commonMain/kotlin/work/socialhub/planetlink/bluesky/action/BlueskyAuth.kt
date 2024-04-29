@@ -10,7 +10,7 @@ import work.socialhub.planetlink.model.Service
 class BlueskyAuth(
     var apiHost: String,
     var streamHost: String,
-) : ServiceAuth<Bluesky> {
+) : ServiceAuth<Bluesky>() {
 
     /** Client Objects */
     var bluesky: Bluesky? = null

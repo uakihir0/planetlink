@@ -10,7 +10,7 @@ import work.socialhub.planetlink.model.Paging
 class TumblrPaging : Paging() {
 
     var sinceId: String? = null
-    var offset: Long? = null
+    var offset: Int? = null
 
     /**
      * {@inheritDoc}
@@ -36,11 +36,11 @@ class TumblrPaging : Paging() {
             if (entities.isNotEmpty()) {
                 val count = entities.size.toLong()
                 if (pg.offset == null) {
-                    pg.offset = 0L
+                    pg.offset = 0
                 }
 
                 // オフセット分を取得した量分変更
-                pg.offset = pg.offset!! + count
+                pg.offset = pg.offset!! + count.toInt()
             }
         }
     }

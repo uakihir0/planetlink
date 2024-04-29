@@ -1,20 +1,15 @@
 package work.socialhub.planetlink.tumblr.action
 
-import com.tumblr.jumblr.types.Blog
-import com.tumblr.jumblr.types.Post
 import io.ktor.http.*
-import io.ktor.util.*
 import kotlinx.datetime.Instant
-import net.socialhub.core.model.User
-import net.socialhub.service.tumblr.model.TumblrPaging
 import work.socialhub.ktumblr.entity.blog.Blog
 import work.socialhub.ktumblr.entity.post.Post
 import work.socialhub.ktumblr.entity.post.legacy.LegacyPhotoPost
 import work.socialhub.ktumblr.entity.post.legacy.LegacyQuotePost
 import work.socialhub.ktumblr.entity.post.legacy.LegacyTextPost
-import work.socialhub.ktumblr.entity.post.legacy.LegacyVideoPost
 import work.socialhub.ktumblr.entity.post.options.Photo
 import work.socialhub.ktumblr.entity.trail.Trail
+import work.socialhub.ktumblr.entity.user.FollowerUser
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.ID
@@ -32,6 +27,7 @@ import work.socialhub.planetlink.tumblr.define.TumblrIconSize
 import work.socialhub.planetlink.tumblr.define.TumblrIconSize.S512
 import work.socialhub.planetlink.tumblr.expand.AttributedStringEx.tumblr
 import work.socialhub.planetlink.tumblr.model.TumblrComment
+import work.socialhub.planetlink.tumblr.model.TumblrPaging
 import work.socialhub.planetlink.tumblr.model.TumblrUser
 import work.socialhub.ktumblr.entity.user.User as KUser
 
@@ -125,6 +121,26 @@ object TumblrMapper {
 
     /**
      * ユーザーマッピング
+     * (Primary のブログをユーザーと設定)
+     * (User is user's primary blog)
+     */
+    fun followerUser(
+        user: FollowerUser,
+        service: Service
+    ): User {
+        return TumblrUser(service).also {
+            it.id = ID(blogIdentify(user.name!!))
+            it.name = user.name!!
+            it.webUrl = user.url!!
+
+            it.relationship = Relationship().also { r ->
+                r.following = (user.following == true)
+            }
+        }
+    }
+
+    /**
+     * ユーザーマッピング
      * (そのブログの投稿に紐づくユーザーと設定)
      */
     fun reblogUser(
@@ -133,8 +149,8 @@ object TumblrMapper {
         service: Service
     ): User {
         return TumblrUser(service).also {
-            val host = blogIdentify(post.parentPostUrl!!)
-            val name = blogName(post.parentPostUrl!!)
+            val host = blogIdentify(post.rebloggedRootUrl!!)
+            val name = post.rebloggedRootName!!
 
             it.id = ID(host)
             it.name = name
@@ -195,18 +211,14 @@ object TumblrMapper {
         service: Service
     ): Comment {
         return TumblrComment(service).also {
-            it.id = ID(post.sourceUrl())
+            it.id = ID(post.rebloggedRootId!!)
 
             it.noteCount = post.noteCount
             it.reblogKey = post.reblogKey
             it.createAt = Instant.fromEpochSeconds(post.timestamp!!.toLong())
 
-
-            model.setId(post.getRebloggedRootId())
-            model.setUser(reblogUser(post, trails, service))
-            setMedia(model, post)
-
-            return model
+            it.user = reblogUser(post, trails, service)
+            setMedia(it, post)
         }
     }
 
@@ -217,51 +229,41 @@ object TumblrMapper {
         model: TumblrComment,
         post: Post
     ) {
-        model.setMedias(java.util.ArrayList<E>())
+        val medias = mutableListOf<Media>()
 
         // Trail から優先的に取得
-        if (post.getTrail() != null) {
-            if (post.getTrail().size() > 0) {
-                post.getTrail().stream()
-                    .filter(Trail::isCurrentItem)
-                    .findFirst().ifPresent { trail ->
-                        textMedia(
-                            model,
-                            removeSharedBlogLink(trail.getContentRaw())
-                        )
-                    }
+        post.trail?.let { trail ->
+            if (trail.isNotEmpty()) {
+                trail.first { it.isCurrentItem }.also {
+                    textMedia(model, removeSharedBlogLink(it.contentRaw!!))
+                }
             }
         }
 
         if (post is LegacyPhotoPost) {
-            model.getMedias().addAll(photos(photo.getPhotos()))
-
-            if (model.getText() == null) {
-                val str = removeSharedBlogLink(photo.getCaption())
-                textMedia(model, str)
+            medias.addAll(photos(post.photos!!))
+            if (model.text == null) {
+                textMedia(model, removeSharedBlogLink(post.caption!!))
             }
         }
         if (post is LegacyTextPost) {
-            if (model.getText() == null) {
-                val str = removeSharedBlogLink(text.getBody())
-                textMedia(model, str)
+            if (model.text == null) {
+                textMedia(model, removeSharedBlogLink(post.body!!))
             }
         }
-        if (post is LegacyVideoPost) {
-            model.getMedias().add(video(video))
 
-            if (model.getText() == null) {
-                val str = removeSharedBlogLink(video.getCaption())
-                textMedia(model, str)
-            }
-        }
+        // TODO: VideoType is Duplicated.
+        // if (post is LegacyVideoPost) {
+        //    medias.add(video(post))
+        //    if (model.text == null) {
+        //        textMedia(model, removeSharedBlogLink(post.caption!!))
+        //    }
+        // }
 
         if (post is LegacyQuotePost) {
-            if (model.getText() == null) {
-                val str = removeSharedBlogLink(
-                    quote.getText() + " / " + quote.getSource()
-                )
-                textMedia(model, str)
+            if (model.text == null) {
+                val str = "${post.text} / ${post.source}"
+                textMedia(model, removeSharedBlogLink(str))
             }
         }
     }
@@ -303,7 +305,7 @@ object TumblrMapper {
      * 画像マッピング
      */
     private fun photos(
-        photos: List<Photo>
+        photos: Array<Photo>
     ): List<Media> {
         return mutableListOf<Media>().also { medias ->
             for (photo in photos) {
@@ -313,25 +315,6 @@ object TumblrMapper {
                     it.previewUrl = photo.originalSize?.url
                 })
             }
-        }
-    }
-
-    /**
-     * 動画マッピング
-     */
-    private fun video(
-        video: LegacyVideoPost
-    ): Media {
-        return Media().also {
-            it.type = MediaType.Movie
-
-            // VideoUrl or PermalinkUrl を選択
-            it.sourceUrl = video.getVideoUrl()
-            if (video.sourceUrl == null) {
-                it.sourceUrl = video.getPermalinkUrl()
-            }
-
-            it.previewUrl = video.getThumbnailUrl()
         }
     }
 
@@ -346,24 +329,13 @@ object TumblrMapper {
         service: Service,
         paging: Paging?
     ): Pageable<Comment> {
-        val model = Pageable<Comment>()
-        val trails: Map<String?, Trail?> = getTrailMap(posts)
-
-        model.setEntities(
-            posts.stream() //
-                .map<Any>(java.util.function.Function<com.tumblr.jumblr.types.Post, Any> { e: com.tumblr.jumblr.types.Post ->
-                    comment(
-                        e,
-                        trails,
-                        service
-                    )
-                }) //
-                .sorted(java.util.Comparator.comparing<Any, Any>(Comment::getCreateAt).reversed()) //
-                .collect(java.util.stream.Collectors.toList())
-        )
-
-        model.setPaging(TumblrPaging.fromPaging(paging))
-        return model
+        val trails = trailMap(posts)
+        return Pageable<Comment>().also { pg ->
+            pg.entities = posts
+                .map { comment(it, trails, service) }
+                .sortedByDescending { it.createAt }
+            pg.paging = TumblrPaging.fromPaging(paging)
+        }
     }
 
     // ============================================================== //
@@ -373,48 +345,39 @@ object TumblrMapper {
      * ユーザーマッピング
      */
     fun users(
-        users: List<com.tumblr.jumblr.types.User?>,
-        service: Service?,
+        users: Array<KUser>,
+        service: Service,
         paging: Paging?
     ): Pageable<User> {
-        val model: Pageable<User> = Pageable()
-        model.setEntities(
-            users.stream()
-                .map<Any>(java.util.function.Function<com.tumblr.jumblr.types.User, Any> { e: com.tumblr.jumblr.types.User? ->
-                    user(
-                        e,
-                        service
-                    )
-                })
-                .collect(java.util.stream.Collectors.toList())
-        )
+        return Pageable<User>().also { pg ->
+            pg.entities = users.map { user(it, service) }
+            pg.paging = TumblrPaging.fromPaging(paging)
+        }
+    }
 
-        model.setPaging(TumblrPaging.fromPaging(paging))
-        return model
+    fun followerUsers(
+        users: Array<FollowerUser>,
+        service: Service,
+        paging: Paging?
+    ): Pageable<User> {
+        return Pageable<User>().also { pg ->
+            pg.entities = users.map { followerUser(it, service) }
+            pg.paging = TumblrPaging.fromPaging(paging)
+        }
     }
 
     /**
      * ユーザーマッピング
      */
     fun usersByBlogs(
-        blogs: List<com.tumblr.jumblr.types.Blog?>,  //
-        service: Service?,  //
-        paging: Paging?
+        blogs: Array<Blog>,
+        service: Service,
+        paging: Paging?,
     ): Pageable<User> {
-        val model: Pageable<User> = Pageable()
-        model.setEntities(
-            blogs.stream() //
-                .map<Any>(java.util.function.Function<com.tumblr.jumblr.types.Blog, Any> { e: com.tumblr.jumblr.types.Blog? ->
-                    user(
-                        e,
-                        service
-                    )
-                }) //
-                .collect(java.util.stream.Collectors.toList())
-        )
-
-        model.setPaging(TumblrPaging.fromPaging(paging))
-        return model
+        return Pageable<User>().also { pg ->
+            pg.entities = blogs.map { user(it, service) }
+            pg.paging = TumblrPaging.fromPaging(paging)
+        }
     }
 
     // ============================================================== //
@@ -424,13 +387,17 @@ object TumblrMapper {
      * ホスト名を取得 (プライマリを取得)
      * Get primary blog host from url
      */
-    fun userIdentify(blogs: Array<Blog>): String? {
+    fun userIdentify(
+        blogs: Array<Blog>
+    ): String {
         for (blog in blogs) {
-            if (blog.isPrimary()) {
-                return getBlogIdentify(blog)
+            if (blog.isPrimary == true) {
+                return blogIdentify(blog)
             }
         }
-        return null
+        throw IllegalStateException(
+            "Primary blog not found."
+        )
     }
 
     /**
@@ -487,21 +454,19 @@ object TumblrMapper {
      * ユーザーの画面マップを取得
      * Get Trail Map
      */
-    fun getTrailMap(
+    fun trailMap(
         posts: Array<Post>
     ): Map<String, Trail> {
-        posts.mapNotNull { it.trail }
-        val trails: List<Trail> = posts.stream()
-            .map<Any>(Post::getTrail)
-            .filter(java.util.function.Predicate<Any> { obj: Any? -> java.util.Objects.nonNull(obj) })
-            .flatMap<Any>(java.util.function.Function<Any, java.util.stream.Stream<*>> { obj: Collection<*> -> obj.stream() })
-            .collect<List<Trail>, Any>(java.util.stream.Collectors.toList<Any>())
+        val trails = posts
+            .mapNotNull { it.trail }
+            .flatMap { it.toList() }
 
-        val results: MutableMap<String?, Trail?> = java.util.HashMap<String, Trail>()
-        for (trail in trails) {
-            results[trail.getBlog().getName()] = trail
+        return mutableMapOf<String, Trail>().also {
+            for (trail in trails) {
+                val name = checkNotNull(trail.blog?.name)
+                it[name] = trail
+            }
         }
-        return results
     }
 
     /**
@@ -509,7 +474,7 @@ object TumblrMapper {
      */
     fun margeUser(to: User?, from: User?) {
         if ((to != null) && (from != null)) {
-            to.setCoverImageUrl(from.getCoverImageUrl())
+            to.coverImageUrl = from.coverImageUrl
         }
     }
 
@@ -528,17 +493,20 @@ object TumblrMapper {
      * Remove Shared Post Prefix
      * Share されたポストの定型句を削除
      */
-    private fun removeSharedBlogLink(text: String): String {
-        val regex = "^(<p><a(.+?)href=\"(.+?)\"(.*?)>(.+?)</a>:</p>)"
-        val p: java.util.regex.Pattern = java.util.regex.Pattern.compile(regex)
-        val m: java.util.regex.Matcher = p.matcher(text)
+    private fun removeSharedBlogLink(
+        text: String
+    ): String {
+        val regex = "^(<p><a(.+?)href=\"(.+?)\"(.*?)>(.+?)</a>:</p>)".toRegex()
+        val result = regex.find(text)
 
-        if (m.find()) {
-            val all: String = m.group(1)
+        if (result != null) {
+            val all = result.groupValues[1]
+            val v2 = result.groupValues[2]
+            val v4 = result.groupValues[4]
 
             // ブログへのリンクであることを確認
-            if (m.group(2).contains("class=\"tumblr_blog\"") ||
-                m.group(4).contains("class=\"tumblr_blog\"")
+            if (v2.contains("class=\"tumblr_blog\"") ||
+                v4.contains("class=\"tumblr_blog\"")
             ) {
                 return text.substring(all.length)
             }
