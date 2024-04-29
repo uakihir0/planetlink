@@ -4,7 +4,9 @@ import work.socialhub.planetlink.action.RequestActionImpl
 import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.action.request.CommentsRequestImpl
 import work.socialhub.planetlink.define.action.TimeLineActionType
-import work.socialhub.planetlink.define.action.TimeLineActionType.*
+import work.socialhub.planetlink.define.action.TimeLineActionType.UserCommentTimeLine
+import work.socialhub.planetlink.define.action.TimeLineActionType.UserLikeTimeLine
+import work.socialhub.planetlink.define.action.TimeLineActionType.UserMediaTimeLine
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Request

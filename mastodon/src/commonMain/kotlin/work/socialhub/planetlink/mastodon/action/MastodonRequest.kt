@@ -5,7 +5,10 @@ import work.socialhub.planetlink.action.SerializedRequest
 import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.action.request.CommentsRequestImpl
 import work.socialhub.planetlink.define.action.TimeLineActionType
-import work.socialhub.planetlink.define.action.TimeLineActionType.*
+import work.socialhub.planetlink.define.action.TimeLineActionType.MessageTimeLine
+import work.socialhub.planetlink.define.action.TimeLineActionType.UserCommentTimeLine
+import work.socialhub.planetlink.define.action.TimeLineActionType.UserLikeTimeLine
+import work.socialhub.planetlink.define.action.TimeLineActionType.UserMediaTimeLine
 import work.socialhub.planetlink.mastodon.define.MastodonActionType
 import work.socialhub.planetlink.mastodon.define.MastodonActionType.FederationTimeLine
 import work.socialhub.planetlink.mastodon.define.MastodonActionType.LocalTimeLine
