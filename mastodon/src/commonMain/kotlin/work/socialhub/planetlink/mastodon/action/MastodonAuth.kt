@@ -19,7 +19,7 @@ import work.socialhub.planetlink.model.Service as PLService
 class MastodonAuth(
     var host: String,
     val type: String,
-) : ServiceAuth<Mastodon>() {
+) : ServiceAuth<Mastodon> {
 
     var clientId: String? = null
     var clientSecret: String? = null

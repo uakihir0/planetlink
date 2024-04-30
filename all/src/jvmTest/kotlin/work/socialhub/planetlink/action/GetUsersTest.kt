@@ -23,5 +23,8 @@ class GetUsersTest {
 
         @Test
         fun testMastodon() = mastodon().act()
+
+        @Test
+        fun testTumblr() = tumblr().act()
     }
 }

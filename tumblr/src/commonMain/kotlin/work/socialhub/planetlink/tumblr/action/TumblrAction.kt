@@ -615,6 +615,7 @@ class TumblrAction(
                 // トークン類を取得した値で更新
                 auth.accessToken = refresh.data.accessToken
                 auth.refreshToken = refresh.data.refreshToken
+                auth.tokenRefreshCallback(auth)
                 return func()
             }
 

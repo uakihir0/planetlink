@@ -14,7 +14,7 @@ import work.socialhub.planetlink.model.Service
  */
 class MisskeyAuth(
     var host: String
-) : ServiceAuth<Misskey>() {
+) : ServiceAuth<Misskey> {
 
     var clientId: String? = null
     var clientSecret: String? = null

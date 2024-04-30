@@ -54,7 +54,7 @@ class MisskeyComment(
                 }
         }
 
-    override val webUrl: String
+    override var webUrl: String = ""
         get() = ("https://"
                 + requesterHost
                 + "/notes/"

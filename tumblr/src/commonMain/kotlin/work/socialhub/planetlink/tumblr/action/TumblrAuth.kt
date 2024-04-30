@@ -8,21 +8,36 @@ import work.socialhub.planetlink.action.ServiceAuth
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Service
 
-class TumblrAuth(
-    var consumerKey: String,
-    var consumerSecret: String,
-) : ServiceAuth<Tumblr>() {
+class TumblrAuth : ServiceAuth<Tumblr> {
 
+    var consumerKey: String? = null
+    var consumerSecret: String? = null
     var accessToken: String? = null
     var refreshToken: String? = null
 
+    /** it calls when token is refreshed. */
+    var tokenRefreshCallback: (TumblrAuth) -> Unit = {}
+
     override val accessor: Tumblr
         get() = TumblrFactory.instance(
-            consumerKey,
+            checkNotNull(consumerKey)
+            { "Set consumer info first." },
             consumerSecret,
             accessToken,
             refreshToken,
         )
+
+    /**
+     * Set Consumer Info
+     * 申請済みクライアント情報を設定
+     */
+    fun setConsumerInfo(
+        consumerKey: String,
+        consumerSecret: String,
+    ): TumblrAuth = also {
+        it.consumerKey = consumerKey
+        it.consumerSecret = consumerSecret
+    }
 
     /**
      * Authentication with AccessToken Secret
@@ -49,7 +64,8 @@ class TumblrAuth(
         redirectUri: String?
     ): String {
         return TumblrFactory.instance(
-            consumerKey,
+            checkNotNull(consumerKey)
+            { "Set consumer info first." },
             consumerSecret,
         ).auth().authorizeUrl(
             AuthAuthorizeUrlRequest().also {
@@ -66,7 +82,8 @@ class TumblrAuth(
         code: String
     ): Account {
         val response = TumblrFactory.instance(
-            consumerKey,
+            checkNotNull(consumerKey)
+            { "Set consumer info first." },
             consumerSecret,
         ).auth().oAuth2Token(
             AuthOAuth2TokenRequest().also {
@@ -81,4 +98,7 @@ class TumblrAuth(
             response.data.refreshToken
         )
     }
+
+    fun setTokenRefreshCallback(callback: (TumblrAuth) -> Unit) =
+        also { it.tokenRefreshCallback = callback }
 }

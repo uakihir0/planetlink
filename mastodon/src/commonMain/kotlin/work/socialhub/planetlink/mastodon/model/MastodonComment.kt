@@ -36,7 +36,7 @@ class MastodonComment(
     /** poll */
     var poll: Poll? = null
 
-    override val webUrl: String
+    override var webUrl: String = ""
         get() {
             if (service.isPixelFed) {
                 return ("https://"

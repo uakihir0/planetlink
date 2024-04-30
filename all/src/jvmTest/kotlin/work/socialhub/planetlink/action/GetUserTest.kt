@@ -24,6 +24,9 @@ class GetUserTest {
 
         @Test
         fun testMastodon() = mastodon().act()
+
+        @Test
+        fun testTumblr() = tumblr().act()
     }
 
     @Nested
@@ -42,6 +45,10 @@ class GetUserTest {
         @Test
         fun testMastodon() = mastodon()
             .act("https://mastodon.social/@uakihir0")
+
+        @Test
+        fun testTumblr() = tumblr()
+            .act("https://www.tumblr.com/uakihiro")
     }
 
     @Nested
