@@ -86,8 +86,9 @@ object TumblrMapper {
                 it.description = AttributedString.tumblr(d)
             }
 
-            // FIXME:
+            // Avatar がある場合とない場合を考慮
             it.iconImageUrl = blog.avatar?.get(0)?.url
+                ?: avatarUrl(host, S512)
 
             it.relationship = Relationship().also { r ->
                 r.following = (blog.isFollowed == true)
@@ -155,6 +156,7 @@ object TumblrMapper {
             it.id = ID(host)
             it.name = name
             it.iconImageUrl = avatarUrl(host, S512)
+            it.webUrl = "TODO"
 
             if (trails.containsKey(name)) {
                 val trail = trails[name]
@@ -183,7 +185,7 @@ object TumblrMapper {
             it.id = ID(post.idString!!)
             it.webUrl = post.postUrl!!
 
-            // it.noteCount = post.noteCount
+            it.noteCount = post.noteCount
             it.reblogKey = post.reblogKey
             it.createAt = Instant.fromEpochSeconds(post.timestamp!!.toLong())
 
@@ -212,6 +214,7 @@ object TumblrMapper {
     ): Comment {
         return TumblrComment(service).also {
             it.id = ID(post.rebloggedRootId!!)
+            it.webUrl = post.rebloggedRootUrl!!
 
             it.noteCount = post.noteCount
             it.reblogKey = post.reblogKey
@@ -234,7 +237,7 @@ object TumblrMapper {
         // Trail から優先的に取得
         post.trail?.let { trail ->
             if (trail.isNotEmpty()) {
-                trail.first { it.isCurrentItem }.also {
+                trail.firstOrNull { it.isCurrentItem }?.also {
                     textMedia(model, removeSharedBlogLink(it.contentRaw!!))
                 }
             }

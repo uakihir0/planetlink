@@ -65,5 +65,8 @@ class GetUserTest {
 
         @Test
         fun testMastodon() = mastodon().act("1223371")
+
+        @Test
+        fun testTumblr() = tumblr().act("uakihiro")
     }
 }

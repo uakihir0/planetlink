@@ -138,10 +138,13 @@ object AttributedStringEx {
                     "p" -> {
                         val last = stack.removeLast()
                         if (last.name == "p") {
+                            val t = if (last.text.isNotBlank())
+                                "${last.text}\n\n" else ""
+
                             elements.add(AttributedItem().also {
                                 it.kind = AttributedKind.PLAIN
-                                it.displayText = "${last.text}\n\n"
-                                it.expandedText = "${last.text}\n\n"
+                                it.displayText = t
+                                it.expandedText = t
                             })
                         } else error()
                     }

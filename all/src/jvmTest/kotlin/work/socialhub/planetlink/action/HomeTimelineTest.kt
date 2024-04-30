@@ -19,4 +19,7 @@ class HomeTimelineTest : AbstractTest() {
 
     @Test
     fun testMastodon() = mastodon().act()
+
+    @Test
+    fun testTumblr() = tumblr().act()
 }

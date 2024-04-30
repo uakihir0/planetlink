@@ -37,6 +37,9 @@ class PostCommentTest {
 
         @Test
         fun testMastodon() = mastodon().act()
+
+        @Test
+        fun testTumblr() = tumblr().act()
     }
 
     @Nested
@@ -55,5 +58,11 @@ class PostCommentTest {
         fun testMastodon() = mastodon().act(
             text = "Image", fileData = icon(), fineName = "icon.png"
         )
+
+        @Test
+        fun testTumblr() = tumblr().act(
+            text = "Image", fileData = icon(), fineName = "icon.png"
+        )
+
     }
 }

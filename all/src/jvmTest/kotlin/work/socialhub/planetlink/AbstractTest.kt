@@ -36,7 +36,6 @@ open class AbstractTest {
 
     fun writeProps() {
         val json = json.encodeToString(config!!)
-        println(json)
         writeFile("../secrets.json", json)
     }
 
@@ -96,8 +95,6 @@ open class AbstractTest {
                 println(">> Token Refreshed <<")
                 c.accessToken = it.accessToken!!
                 c.refreshToken = it.refreshToken!!
-                println(it.accessToken)
-                println(it.refreshToken)
                 writeProps()
             }
             .accountWithAccessToken(
