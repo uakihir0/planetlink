@@ -22,6 +22,7 @@ import work.socialhub.ktumblr.api.request.user.UserUnlikeRequest
 import work.socialhub.planetlink.action.AccountActionImpl
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Paging
@@ -132,6 +133,19 @@ class TumblrAction(
             }
 
             resultUser
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * https://www.tumblr.com/uakihiro
+     */
+    override fun user(
+        url: String
+    ): User {
+        return proceed {
+            val name = url.split("/").last()
+            user(Identify(service(), ID(name)))
         }
     }
 
