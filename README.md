@@ -15,11 +15,11 @@ By using this library, you can transparently handle various Social Media platfor
 - Bluesky (library: [kbksy](https://github.com/uakihir0/kbsky))
 - Misskey (library: [kmisskey](https://github.com/uakihir0/kmisskey))
 - Mastodon (library: [kmastodon](https://github.com/uakihir0/kmastodon))
+- Tumblr (library: [ktumblr](https://github.com/uakihir0/ktumblr))
 
 ## Planned Supported Platforms
 
 - Slack
-- Tumblr
 
 ## Usage
 
