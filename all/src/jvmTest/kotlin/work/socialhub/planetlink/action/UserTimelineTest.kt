@@ -6,10 +6,16 @@ import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Paging
 import kotlin.test.Test
 
-class HomeTimelineTest : AbstractTest() {
+class UserTimelineTest : AbstractTest() {
 
-    private fun Account.act() =
-        dumpComments(action.homeTimeLine(Paging(100)))
+    private fun Account.act() {
+        dumpComments(
+            action.userCommentTimeLine(
+                action.userMe(),
+                Paging(100),
+            )
+        )
+    }
 
     @Test
     fun testBluesky() = bluesky().act()

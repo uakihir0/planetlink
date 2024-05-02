@@ -6,9 +6,13 @@ import work.socialhub.planetlink.action.SerializedRequest
 import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.action.request.CommentsRequestImpl
 import work.socialhub.planetlink.define.action.TimeLineActionType
-import work.socialhub.planetlink.define.action.TimeLineActionType.*
+import work.socialhub.planetlink.define.action.TimeLineActionType.UserCommentTimeLine
+import work.socialhub.planetlink.define.action.TimeLineActionType.UserLikeTimeLine
+import work.socialhub.planetlink.define.action.TimeLineActionType.UserMediaTimeLine
 import work.socialhub.planetlink.misskey.define.MisskeyActionType
-import work.socialhub.planetlink.misskey.define.MisskeyActionType.*
+import work.socialhub.planetlink.misskey.define.MisskeyActionType.FeaturedTimeline
+import work.socialhub.planetlink.misskey.define.MisskeyActionType.FederationTimeLine
+import work.socialhub.planetlink.misskey.define.MisskeyActionType.LocalTimeLine
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Request
@@ -88,7 +92,9 @@ class MisskeyRequest(
         id: Identify
     ): CommentsRequest {
         val request = super.userCommentTimeLine(id) as CommentsRequestImpl
-        if (id is User) { setCommentIdentify(request, id.accountIdentify) }
+        if (id is User) {
+            setCommentIdentify(request, id.accountIdentify)
+        }
         return request
     }
 
@@ -99,7 +105,9 @@ class MisskeyRequest(
         id: Identify
     ): CommentsRequest {
         val request = super.userLikeTimeLine(id) as CommentsRequestImpl
-        if (id is User) { setCommentIdentify(request, id.accountIdentify) }
+        if (id is User) {
+            setCommentIdentify(request, id.accountIdentify)
+        }
         return request
     }
 
@@ -110,7 +118,9 @@ class MisskeyRequest(
         id: Identify
     ): CommentsRequest {
         val request: CommentsRequestImpl = super.userMediaTimeLine(id) as CommentsRequestImpl
-        if (id is User) { setCommentIdentify(request, id.accountIdentify) }
+        if (id is User) {
+            setCommentIdentify(request, id.accountIdentify)
+        }
         return request
     }
 

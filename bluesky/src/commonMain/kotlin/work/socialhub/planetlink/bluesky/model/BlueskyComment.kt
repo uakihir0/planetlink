@@ -30,8 +30,9 @@ class BlueskyComment(
 
     var replyRootTo: Identify? = null
 
-    override val webUrl: String
+    override var webUrl: String = ""
         get() {
+            // TODO: HOST の変更
             val user = user as BlueskyUser
             val rkey = ATUriParser.getRKey(id!!.value())
             return "https://bsky.app/profile/${user.screenName}/post/${rkey}"

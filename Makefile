@@ -4,6 +4,7 @@ build:
 	bluesky:clean \
 	misskey:clean \
 	mastodon:clean \
+	tumblr:clean \
 	all:clean all:build \
 	-x test --refresh-dependencies
 

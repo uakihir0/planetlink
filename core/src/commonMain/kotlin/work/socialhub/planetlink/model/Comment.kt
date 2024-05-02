@@ -65,7 +65,7 @@ open class Comment(
      * (like, share, :+1:, and so on)
      */
     @Suppress("UNUSED_PARAMETER")
-    fun applyReaction(reaction: Reaction) {
+    open fun applyReaction(reaction: Reaction) {
         throw NotImplementedException()
     }
 
@@ -103,9 +103,7 @@ open class Comment(
      * Get Web Url
      * Web のアドレスを取得
      */
-    open val webUrl: String
-        get() = throw NotImplementedException()
-
+    open lateinit var webUrl: String
 
     /**
      * Only shared content comment.

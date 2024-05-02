@@ -6,7 +6,6 @@ import work.socialhub.planetlink.model.Emoji
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.common.AttributedFiled
 import work.socialhub.planetlink.model.common.AttributedString
-import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.model.support.Color
 
 /**

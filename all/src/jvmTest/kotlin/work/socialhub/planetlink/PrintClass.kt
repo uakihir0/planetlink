@@ -47,6 +47,10 @@ object PrintClass {
             println("${sp}>> SHARED COMMENT")
             dump(shared, "$sp| ")
 
+            println("${sp}>> BY >>")
+            println("${sp}Url  > ${comment.webUrl}")
+            comment.user?.let { dump(it, "$sp| ") }
+
         } else {
             println("${sp}>> COMMENT")
             println("${sp}Text > ${comment.text?.displayText}")
