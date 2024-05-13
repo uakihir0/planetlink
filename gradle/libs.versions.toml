@@ -1,6 +1,6 @@
 [versions]
 kotest = "5.8.1"
-kotlin = "1.9.23"
+kotlin = "1.9.24"
 
 [libraries]
 kbsky-core = "work.socialhub.kbsky:core:0.0.1-SNAPSHOT"
