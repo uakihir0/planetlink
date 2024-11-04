@@ -1,23 +1,23 @@
 [versions]
 kotest = "5.9.1"
-kotlin = "2.0.10"
+kotlin = "2.0.21"
 
 [libraries]
-kbsky-core = "work.socialhub.kbsky:core:0.0.1-SNAPSHOT"
-kbsky-stream = "work.socialhub.kbsky:stream:0.0.1-SNAPSHOT"
+kbsky-core = "work.socialhub.kbsky:core:0.2.0-SNAPSHOT"
+kbsky-stream = "work.socialhub.kbsky:stream:0.2.0-SNAPSHOT"
 kmisskey-core = "work.socialhub.kmisskey:core:0.0.1-SNAPSHOT"
 kmisskey-stream = "work.socialhub.kmisskey:stream:0.0.1-SNAPSHOT"
 kmastodon-core = "work.socialhub.kmastodon:core:0.0.1-SNAPSHOT"
 kmastodon-stream = "work.socialhub.kmastodon:stream:0.0.1-SNAPSHOT"
 ktumblr-core = "work.socialhub.ktumblr:core:0.0.1-SNAPSHOT"
-khttpclient = "work.socialhub:khttpclient:0.0.1-SNAPSHOT"
+khttpclient = "work.socialhub:khttpclient:0.0.4-SNAPSHOT"
 kmpcommon = "work.socialhub:kmpcommon:0.0.1-SNAPSHOT"
-ktor-core = "io.ktor:ktor-client-core:2.3.12"
+ktor-core = "io.ktor:ktor-client-core:3.0.1"
 ksoup = "com.mohamedrejeb.ksoup:ksoup-html:0.4.0"
-datetime = "org.jetbrains.kotlinx:kotlinx-datetime:0.6.0"
-coroutines-core = "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1"
-serialization-json = "org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1"
-serialization-cbor = "org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.7.1"
+datetime = "org.jetbrains.kotlinx:kotlinx-datetime:0.6.1"
+coroutines-core = "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0"
+serialization-json = "org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3"
+serialization-cbor = "org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.7.3"
 kotest-junit5 = { module = "io.kotest:kotest-runner-junit5-jvm", version.ref = "kotest" }
 kotest-assertions = { module = "io.kotest:kotest-assertions-core-jvm", version.ref = "kotest" }
 
