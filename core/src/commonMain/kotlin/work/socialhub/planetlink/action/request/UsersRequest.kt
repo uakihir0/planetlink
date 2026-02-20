@@ -11,5 +11,5 @@ interface UsersRequest : Request {
      * Get Users
      * ユーザーを取得
      */
-    fun users(paging: Paging): Pageable<User>
+    suspend fun users(paging: Paging): Pageable<User>
 }

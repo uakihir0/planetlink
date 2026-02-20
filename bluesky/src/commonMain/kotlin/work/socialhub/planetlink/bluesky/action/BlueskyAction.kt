@@ -2,7 +2,7 @@ package work.socialhub.planetlink.bluesky.action
 
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.coroutineScope
 import kotlinx.datetime.Clock
 import kotlinx.datetime.toInstant
 import work.socialhub.kbsky.BlueskyException
@@ -39,6 +39,8 @@ import work.socialhub.kbsky.api.entity.com.atproto.identity.IdentityResolveHandl
 import work.socialhub.kbsky.api.entity.com.atproto.repo.RepoListRecordsRequest
 import work.socialhub.kbsky.api.entity.com.atproto.repo.RepoUploadBlobRequest
 import work.socialhub.kbsky.api.entity.com.atproto.server.ServerCreateSessionRequest
+import work.socialhub.kbsky.auth.AuthProvider
+import work.socialhub.kbsky.auth.BearerTokenAuthProvider
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeedsPref
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImages
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImagesImage
@@ -98,10 +100,10 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun userMe(): User {
+    override suspend fun userMe(): User {
         return proceed {
             val response = auth.accessor.actor().getProfile(
-                ActorGetProfileRequest(accessJwt())
+                ActorGetProfileRequest(authProvider())
                     .also { it.actor = did() }
             )
 
@@ -113,12 +115,12 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun user(
+    override suspend fun user(
         id: Identify
     ): User {
         return proceed {
             val response = auth.accessor.actor().getProfile(
-                ActorGetProfileRequest(accessJwt())
+                ActorGetProfileRequest(authProvider())
                     .also { it.actor = id.id!!.value() }
             )
             Mapper.user(response.data, service())
@@ -131,13 +133,13 @@ class BlueskyAction(
      * https://staging.bsky.app/profile/uakihir0.com
      * https://staging.bsky.app/profile/did:plc:bwdof2anluuf5wmfy2upgulw
      */
-    override fun user(
+    override suspend fun user(
         url: String
     ): User {
         return proceed {
             val id = Utils.userIdentifyFromUrl(url)
             val response = auth.accessor.actor().getProfile(
-                ActorGetProfileRequest(accessJwt())
+                ActorGetProfileRequest(authProvider())
                     .also { it.actor = id }
             )
             Mapper.user(response.data, service())
@@ -147,12 +149,12 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun followUser(
+    override suspend fun followUser(
         id: Identify
     ) {
         proceedUnit {
             auth.accessor.graph().follow(
-                GraphFollowRequest(accessJwt())
+                GraphFollowRequest(authProvider())
                     .also { it.subject = id.id!!.value() }
             )
         }
@@ -161,14 +163,14 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun unfollowUser(
+    override suspend fun unfollowUser(
         id: Identify
     ) {
         proceedUnit {
             // TODO: uri の取得について確認
             userUri(id).let { uri ->
                 auth.accessor.graph().deleteFollow(
-                    GraphDeleteFollowRequest(accessJwt())
+                    GraphDeleteFollowRequest(authProvider())
                         .also { it.uri = uri }
                 )
             }
@@ -178,12 +180,12 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun muteUser(
+    override suspend fun muteUser(
         id: Identify
     ) {
         proceedUnit {
             auth.accessor.graph().muteActor(
-                GraphMuteActorRequest(accessJwt())
+                GraphMuteActorRequest(authProvider())
                     .also { it.actor = id.id!!.value() }
             )
         }
@@ -192,12 +194,12 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun unmuteUser(
+    override suspend fun unmuteUser(
         id: Identify
     ) {
         proceedUnit {
             auth.accessor.graph().unmuteActor(
-                GraphUnmuteActorRequest(accessJwt())
+                GraphUnmuteActorRequest(authProvider())
                     .also { it.actor = id.id!!.value() }
             )
         }
@@ -206,12 +208,12 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun blockUser(
+    override suspend fun blockUser(
         id: Identify
     ) {
         proceedUnit {
             auth.accessor.graph().block(
-                GraphBlockRequest(accessJwt())
+                GraphBlockRequest(authProvider())
                     .also { it.subject = id.id!!.value() }
             )
         }
@@ -220,14 +222,14 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun unblockUser(
+    override suspend fun unblockUser(
         id: Identify
     ) {
         proceedUnit {
             // TODO: uri の取得について確認
             userUri(id).let { uri ->
                 auth.accessor.graph().deleteBlock(
-                    GraphDeleteBlockRequest(accessJwt())
+                    GraphDeleteBlockRequest(authProvider())
                         .also { it.uri = uri }
                 )
             }
@@ -237,7 +239,7 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun relationship(
+    override suspend fun relationship(
         id: Identify
     ): Relationship {
         return proceed {
@@ -257,14 +259,14 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun followingUsers(
+    override suspend fun followingUsers(
         id: Identify,
         paging: Paging,
     ): Pageable<User> {
         return proceed {
             val follows =
                 auth.accessor.graph().getFollows(
-                    GraphGetFollowsRequest(accessJwt()).also {
+                    GraphGetFollowsRequest(authProvider()).also {
                         it.actor = id.id!!.value()
                         it.cursor = cursor(paging)
                         it.limit = limit(paging)
@@ -283,14 +285,14 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun followerUsers(
+    override suspend fun followerUsers(
         id: Identify,
         paging: Paging,
     ): Pageable<User> {
         return proceed {
             val follows =
                 auth.accessor.graph().getFollowers(
-                    GraphGetFollowersRequest(accessJwt()).also {
+                    GraphGetFollowersRequest(authProvider()).also {
                         it.actor = id.id!!.value()
                         it.cursor = cursor(paging)
                         it.limit = limit(paging)
@@ -308,14 +310,14 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun searchUsers(
+    override suspend fun searchUsers(
         query: String,
         paging: Paging
     ): Pageable<User> {
         return proceed {
             val response =
                 auth.accessor.actor().searchActors(
-                    ActorSearchActorsRequest(accessJwt()).also {
+                    ActorSearchActorsRequest(authProvider()).also {
                         it.cursor = cursor(paging)
                         it.limit = limit(paging)
                         it.q = query
@@ -336,12 +338,12 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun homeTimeLine(
+    override suspend fun homeTimeLine(
         paging: Paging
     ): Pageable<Comment> {
         return proceed {
             val response = auth.accessor.feed().getTimeline(
-                FeedGetTimelineRequest(accessJwt()).also {
+                FeedGetTimelineRequest(authProvider()).also {
                     it.cursor = cursor(paging)
                     it.limit = limit(paging)
                 }
@@ -358,7 +360,7 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun mentionTimeLine(
+    override suspend fun mentionTimeLine(
         paging: Paging
     ): Pageable<Comment> {
         return proceed {
@@ -402,14 +404,14 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun userCommentTimeLine(
+    override suspend fun userCommentTimeLine(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
         return proceed {
             val response =
                 auth.accessor.feed().getAuthorFeed(
-                    FeedGetAuthorFeedRequest(accessJwt()).also {
+                    FeedGetAuthorFeedRequest(authProvider()).also {
                         it.actor = id.id!!.value()
                         it.cursor = cursor(paging)
                         it.limit = limit(paging)
@@ -426,7 +428,7 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun userLikeTimeLine(
+    override suspend fun userLikeTimeLine(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
@@ -485,7 +487,7 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun userMediaTimeLine(
+    override suspend fun userMediaTimeLine(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
@@ -501,7 +503,7 @@ class BlueskyAction(
             for (i in 0..9) {
                 val response =
                     auth.accessor.feed().getAuthorFeed(
-                        FeedGetAuthorFeedRequest(accessJwt()).also {
+                        FeedGetAuthorFeedRequest(authProvider()).also {
                             it.actor = id.id!!.value()
                             it.cursor = cursor
                             it.limit = limit
@@ -538,13 +540,13 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun searchTimeLine(
+    override suspend fun searchTimeLine(
         query: String,
         paging: Paging,
     ): Pageable<Comment> {
         return proceed {
             val response = auth.accessor.feed().searchPosts(
-                FeedSearchPostsRequest(accessJwt(), query).also {
+                FeedSearchPostsRequest(authProvider(), query).also {
                     it.cursor = cursor(paging)
                     it.limit = limit(paging)
                 }
@@ -564,11 +566,11 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun postComment(
+    override suspend fun postComment(
         req: CommentForm
     ) {
         proceedUnit {
-            runBlocking {
+            coroutineScope {
                 val imagesAsync = mutableListOf<Deferred<EmbedImagesImage>>()
 
                 if (req.images.isNotEmpty()) {
@@ -578,7 +580,7 @@ class BlueskyAction(
                         imagesAsync.add(async {
                             val response = auth.accessor.repo().uploadBlob(
                                 RepoUploadBlobRequest(
-                                    accessJwt = accessJwt(),
+                                    auth = authProvider(),
                                     bytes = img.data,
                                     name = img.name,
                                 )
@@ -617,7 +619,7 @@ class BlueskyAction(
                     }
 
                     // 投稿リクエスト
-                    val builder = FeedPostRequest(accessJwt()).also {
+                    val builder = FeedPostRequest(authProvider()).also {
                         it.text = list.displayText()
                         it.facets = facets
                     }
@@ -642,7 +644,7 @@ class BlueskyAction(
                         // リプライルートを探索
                         // TODO: 深さがありえないぐらい深い場合はどうする？
                         val response = auth.accessor.feed().getPostThread(
-                            FeedGetPostThreadRequest(accessJwt())
+                            FeedGetPostThreadRequest(authProvider())
                                 .also { it.uri = uri }
                         )
 
@@ -663,8 +665,8 @@ class BlueskyAction(
                                 root = reply
                             }
 
-                            val rootRef = RepoStrongRef(root.uri!!, root.cid!!)
-                            val replyRef = RepoStrongRef(reply.uri!!, reply.cid!!)
+                            val rootRef = RepoStrongRef(root?.uri!!, root.cid!!)
+                            val replyRef = RepoStrongRef(reply?.uri!!, reply.cid!!)
 
                             val ref = FeedPostReplyRef()
                             ref.parent = replyRef
@@ -710,12 +712,12 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun comment(
+    override suspend fun comment(
         id: Identify
     ): Comment {
         return proceed {
             val posts = auth.accessor.feed().getPosts(
-                FeedGetPostsRequest(accessJwt()).also {
+                FeedGetPostsRequest(authProvider()).also {
                     it.uris = listOf(id.id!!.value())
                 }
             )
@@ -726,7 +728,7 @@ class BlueskyAction(
         }
     }
 
-    private fun commentWithCheck(
+    private suspend fun commentWithCheck(
         id: Identify
     ): BlueskyComment {
         return if (id is BlueskyComment) id
@@ -737,7 +739,7 @@ class BlueskyAction(
      * {@inheritDoc}
      * https://bsky.app/profile/uakihir0.com/post/3jw2ydtuktc2j
      */
-    override fun comment(
+    override suspend fun comment(
         url: String
     ): Comment {
         return proceed {
@@ -765,7 +767,7 @@ class BlueskyAction(
      * 25 投稿しか同時に取得できないので順々に取得
      * https://atproto.com/lexicons/app-bsky-feed#appbskyfeedgetposts
      */
-    private fun postViews(
+    private suspend fun postViews(
         uris: List<String>
     ): List<FeedDefsPostView> {
 
@@ -780,7 +782,7 @@ class BlueskyAction(
 
                 results.addAll(
                     auth.accessor.feed().getPosts(
-                        FeedGetPostsRequest(accessJwt())
+                        FeedGetPostsRequest(authProvider())
                             .also { it.uris = subUris }
                     ).data.posts
                 )
@@ -792,13 +794,13 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun likeComment(
+    override suspend fun likeComment(
         id: Identify
     ) {
         proceedUnit {
             val c = commentWithCheck(id)
             auth.accessor.feed().like(
-                FeedLikeRequest(accessJwt())
+                FeedLikeRequest(authProvider())
                     .also { it.subject = c.ref() }
             )
         }
@@ -807,13 +809,13 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun unlikeComment(
+    override suspend fun unlikeComment(
         id: Identify
     ) {
         proceed {
             val c = commentWithCheck(id)
             auth.accessor.feed().deleteLike(
-                FeedDeleteLikeRequest(accessJwt())
+                FeedDeleteLikeRequest(authProvider())
                     .also { it.uri = c.likeRecordUri }
             )
         }
@@ -822,13 +824,13 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun shareComment(
+    override suspend fun shareComment(
         id: Identify
     ) {
         proceed {
             val c = commentWithCheck(id)
             auth.accessor.feed().repost(
-                FeedRepostRequest(accessJwt())
+                FeedRepostRequest(authProvider())
                     .also { it.subject = c.ref() }
             )
         }
@@ -837,13 +839,13 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun unshareComment(
+    override suspend fun unshareComment(
         id: Identify
     ) {
         proceed {
             val c = commentWithCheck(id)
             auth.accessor.feed().deleteRepost(
-                FeedDeleteRepostRequest(accessJwt())
+                FeedDeleteRepostRequest(authProvider())
                     .also { it.uri = c.repostRecordUri }
             )
         }
@@ -852,7 +854,7 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun reactionComment(
+    override suspend fun reactionComment(
         id: Identify,
         reaction: String,
     ) {
@@ -874,7 +876,7 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun unreactionComment(
+    override suspend fun unreactionComment(
         id: Identify,
         reaction: String
     ) {
@@ -896,12 +898,12 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun deleteComment(
+    override suspend fun deleteComment(
         id: Identify
     ) {
         proceed {
             auth.accessor.feed().deletePost(
-                FeedDeletePostRequest(accessJwt())
+                FeedDeletePostRequest(authProvider())
                     .also { it.uri = id.id!!.value() }
             )
         }
@@ -910,7 +912,7 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    fun commentContext(
+    suspend fun commentContext(
         id: Identify
     ): Context {
         return proceed {
@@ -918,7 +920,7 @@ class BlueskyAction(
             val descendants = mutableListOf<Comment>()
 
             val response = auth.accessor.feed().getPostThread(
-                FeedGetPostThreadRequest(accessJwt())
+                FeedGetPostThreadRequest(authProvider())
                     .also { it.uri = id.id!!.value() }
             )
 
@@ -944,14 +946,14 @@ class BlueskyAction(
     ) {
         if (post.parent is FeedDefsThreadViewPost) {
             val parent = post.parent as FeedDefsThreadViewPost
-            ancestors.add(Mapper.simpleComment(parent.post, service))
+            ancestors.add(Mapper.simpleComment(parent.post!!, service))
             subGetCommentContext(parent, ancestors, descendants, service)
         }
 
         if (post.replies != null && post.replies!!.isNotEmpty()) {
             for (reply in post.replies!!) {
                 if (reply is FeedDefsThreadViewPost) {
-                    descendants.add(Mapper.simpleComment(reply.post, service))
+                    descendants.add(Mapper.simpleComment(reply.post!!, service))
                     subGetCommentContext(reply, ancestors, descendants, service)
                 }
             }
@@ -964,7 +966,7 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun channels(
+    override suspend fun channels(
         id: Identify,
         paging: Paging,
     ): Pageable<Channel> {
@@ -980,7 +982,7 @@ class BlueskyAction(
             }
 
             val preferences = auth.accessor.actor().getPreferences(
-                ActorGetPreferencesRequest(accessJwt())
+                ActorGetPreferencesRequest(authProvider())
             )
 
             val uris = mutableListOf<String>()
@@ -998,7 +1000,7 @@ class BlueskyAction(
             }
 
             val feeds = auth.accessor.feed().getFeedGenerators(
-                FeedGetFeedGeneratorsRequest(accessJwt())
+                FeedGetFeedGeneratorsRequest(authProvider())
                     .also { it.feeds = uris }
             )
 
@@ -1013,14 +1015,14 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    override fun channelTimeLine(
+    override suspend fun channelTimeLine(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
 
         return proceed {
             val response = auth.accessor.feed().getFeed(
-                FeedGetFeedRequest(accessJwt()).also {
+                FeedGetFeedRequest(authProvider()).also {
                     it.feed = id.id!!.value()
                     it.cursor = cursor(paging)
                     it.limit = limit(paging)
@@ -1048,7 +1050,7 @@ class BlueskyAction(
      * {@inheritDoc}
      */
     @Suppress("unused")
-    fun notification(
+    suspend fun notification(
         paging: Paging
     ): Pageable<Notification> {
         return proceed {
@@ -1093,16 +1095,16 @@ class BlueskyAction(
     /**
      * 通知取得 + ページング
      */
-    private fun notifications(
+    private suspend fun notifications(
         paging: Paging,
         types: List<String>
     ): NotificationStructure {
-        return runBlocking {
+        return coroutineScope {
 
             // 既読処理を別スレッドで実行
             val seen = async {
                 auth.accessor.notification().updateSeen(
-                    NotificationUpdateSeenRequest(accessJwt())
+                    NotificationUpdateSeenRequest(authProvider())
                 )
             }
 
@@ -1115,7 +1117,7 @@ class BlueskyAction(
 
             for (i in 0..9) {
                 val response = auth.accessor.notification().listNotifications(
-                    NotificationListNotificationsRequest(accessJwt()).also {
+                    NotificationListNotificationsRequest(authProvider()).also {
                         it.cursor = cursor
                         it.limit = 100
                     }
@@ -1185,14 +1187,14 @@ class BlueskyAction(
      * Get Users who likes specified post
      * 特定のポストをいいねしたユーザーを取得
      */
-    fun usersFavoriteBy(
+    suspend fun usersFavoriteBy(
         id: Identify,
         paging: Paging,
     ): Pageable<User> {
 
         return proceed {
             val response = auth.accessor.feed().getLikes(
-                FeedGetLikesRequest(accessJwt()).also {
+                FeedGetLikesRequest(authProvider()).also {
                     it.uri = id.id!!.value()
                     it.cursor = cursor(paging)
                     it.limit = limit(paging)
@@ -1211,13 +1213,13 @@ class BlueskyAction(
      * Get Users who reposts specified post
      * 特定のポストをリポストしたユーザーを取得
      */
-    fun usersRetweetBy(
+    suspend fun usersRetweetBy(
         id: Identify,
         paging: Paging,
     ): Pageable<User> {
         return proceed {
             val response = auth.accessor.feed().getRepostedBy(
-                FeedGetRepostedByRequest(accessJwt()).also {
+                FeedGetRepostedByRequest(authProvider()).also {
                     it.uri = id.id!!.value()
                     it.cursor = cursor(paging)
                     it.limit = limit(paging)
@@ -1240,7 +1242,7 @@ class BlueskyAction(
      * Get User Uri from Identify
      * ID からユーザー URI を取得
      */
-    private fun userUri(
+    private suspend fun userUri(
         id: Identify
     ): String {
         var uri: String? = null
@@ -1253,7 +1255,7 @@ class BlueskyAction(
         // DID から取得
         if (uri == null) {
             val response = auth.accessor.actor().getProfile(
-                ActorGetProfileRequest(accessJwt())
+                ActorGetProfileRequest(authProvider())
                     .also { it.actor = id.id!!.value() }
             )
 
@@ -1315,7 +1317,7 @@ class BlueskyAction(
     // ============================================================== //
     // Session
     // ============================================================== //
-    private fun createSession() {
+    private suspend fun createSession() {
         val response = auth.accessor.server().createSession(
             ServerCreateSessionRequest().also {
                 it.identifier = auth.identifier
@@ -1330,25 +1332,24 @@ class BlueskyAction(
         this.expireAt = jwt.exp.toLong()
     }
 
-    private fun accessJwt(): String {
-
+    private suspend fun authProvider(): AuthProvider {
         // 初回アクセスの場合
         if (accessJwt == null) {
             createSession()
-            return accessJwt!!
+            return BearerTokenAuthProvider(accessJwt!!)
         }
 
         // 有効期限が切れている場合
         val now = Clock.System.now().toEpochMilliseconds() / 1000
         if (now > (expireAt!! + 60)) {
             createSession()
-            return accessJwt!!
+            return BearerTokenAuthProvider(accessJwt!!)
         }
 
-        return accessJwt!!
+        return BearerTokenAuthProvider(accessJwt!!)
     }
 
-    private fun did(): String {
+    private suspend fun did(): String {
         if (did == null) createSession()
         return did!!
     }
@@ -1360,7 +1361,7 @@ class BlueskyAction(
     // ============================================================== //
     // Utils
     // ============================================================== //
-    private fun <T> proceed(runner: () -> T): T {
+    private suspend fun <T> proceed(runner: suspend () -> T): T {
         try {
             return runner()
         } catch (e: Exception) {
@@ -1368,7 +1369,7 @@ class BlueskyAction(
         }
     }
 
-    private fun proceedUnit(runner: () -> Unit) {
+    private suspend fun proceedUnit(runner: suspend () -> Unit) {
         try {
             runner()
         } catch (e: Exception) {

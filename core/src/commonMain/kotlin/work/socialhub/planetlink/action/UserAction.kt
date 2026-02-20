@@ -9,47 +9,47 @@ interface UserAction {
      * Get Account
      * アカウントを再度取得
      */
-    fun userRefresh(): User
+    suspend fun userRefresh(): User
 
     /**
      * Follow User
      * アカウントをフォロー
      */
-    fun follow()
+    suspend fun follow()
 
     /**
      * UnFollow User
      * アカウントをアンフォロー
      */
-    fun unfollow()
+    suspend fun unfollow()
 
     /**
      * Mute User
      * ユーザーをミュート
      */
-    fun mute()
+    suspend fun mute()
 
     /**
      * UnMute User
      * ユーザーをミュート解除
      */
-    fun unmute()
+    suspend fun unmute()
 
     /**
      * Block User
      * ユーザーをブロック
      */
-    fun block()
+    suspend fun block()
 
     /**
      * UnBlock User
      * ユーザーをブロック解除
      */
-    fun unblock()
+    suspend fun unblock()
 
     /**
      * Get relationship
      * 認証アカウントとの関係を取得
      */
-    fun relationship(): Relationship?
+    suspend fun relationship(): Relationship?
 }

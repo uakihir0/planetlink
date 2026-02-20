@@ -2,7 +2,7 @@ package work.socialhub.planetlink.action.group
 
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.coroutineScope
 import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Pageable
@@ -20,10 +20,10 @@ class CommentGroupActionImpl(
     /**
      * {@inheritDoc}
      */
-    override fun newComments(): CommentGroup {
+    override suspend fun newComments(): CommentGroup {
         val entities = mutableMapOf<CommentsRequest, Pageable<Comment>>()
 
-        runBlocking {
+        coroutineScope {
             commentGroup.entities.entries.map { (k, v) ->
                 async { entities[k] = k.comments(v.newPage()) }
             }.awaitAll()
@@ -41,10 +41,10 @@ class CommentGroupActionImpl(
     /**
      * {@inheritDoc}
      */
-    override fun pastComments(): CommentGroup {
+    override suspend fun pastComments(): CommentGroup {
         val entities = mutableMapOf<CommentsRequest, Pageable<Comment>>()
 
-        runBlocking {
+        coroutineScope {
             commentGroup.entities.entries.map { (k, v) ->
                 async { entities[k] = k.comments(v.pastPage()) }
             }.awaitAll()

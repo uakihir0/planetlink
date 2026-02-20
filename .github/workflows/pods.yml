@@ -18,7 +18,7 @@ jobs:
       - name: Pods XCFramework
         uses: gradle/actions/setup-gradle@v3
         with:
-          arguments: all:assemblePlanetlinkXCFramework all:podPublishXCFramework -x test
+          arguments: all:assemblePlanetlinkXCFramework all:podPublishXCFramework -x check
 
       - name: Set Project Version
         run: |

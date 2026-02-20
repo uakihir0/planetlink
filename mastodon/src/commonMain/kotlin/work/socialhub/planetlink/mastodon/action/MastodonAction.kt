@@ -97,7 +97,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun userMe(): User {
+    override suspend fun userMe(): User {
         return proceed {
             val account = auth.accessor.accounts()
                 .verifyCredentials()
@@ -117,7 +117,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun user(
+    override suspend fun user(
         id: Identify
     ): User {
         return proceed {
@@ -139,7 +139,7 @@ class MastodonAction(
      * https://mastodon.social/@uakihir0
      * https://mastodon.social/web/accounts/1223371
      */
-    override fun user(
+    override suspend fun user(
         url: String
     ): User {
         return proceed {
@@ -172,7 +172,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun followUser(
+    override suspend fun followUser(
         id: Identify
     ) {
         proceedUnit {
@@ -189,7 +189,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun unfollowUser(
+    override suspend fun unfollowUser(
         id: Identify
     ) {
         proceedUnit {
@@ -206,7 +206,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun muteUser(
+    override suspend fun muteUser(
         id: Identify
     ) {
         proceedUnit {
@@ -223,7 +223,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun unmuteUser(
+    override suspend fun unmuteUser(
         id: Identify
     ) {
         proceedUnit {
@@ -240,7 +240,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun blockUser(
+    override suspend fun blockUser(
         id: Identify
     ) {
         proceedUnit {
@@ -257,7 +257,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun unblockUser(
+    override suspend fun unblockUser(
         id: Identify
     ) {
         proceedUnit {
@@ -274,7 +274,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun relationship(
+    override suspend fun relationship(
         id: Identify
     ): Relationship {
         return proceed {
@@ -296,7 +296,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun followingUsers(
+    override suspend fun followingUsers(
         id: Identify,
         paging: Paging,
     ): Pageable<User> {
@@ -326,7 +326,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun followerUsers(
+    override suspend fun followerUsers(
         id: Identify,
         paging: Paging,
     ): Pageable<User> {
@@ -354,7 +354,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun searchUsers(
+    override suspend fun searchUsers(
         query: String,
         paging: Paging
     ): Pageable<User> {
@@ -385,7 +385,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun homeTimeLine(
+    override suspend fun homeTimeLine(
         paging: Paging
     ): Pageable<Comment> {
         return proceed {
@@ -410,7 +410,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun mentionTimeLine(
+    override suspend fun mentionTimeLine(
         paging: Paging
     ): Pageable<Comment> {
         return proceed {
@@ -451,7 +451,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun userCommentTimeLine(
+    override suspend fun userCommentTimeLine(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
@@ -481,7 +481,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun userLikeTimeLine(
+    override suspend fun userLikeTimeLine(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
@@ -517,7 +517,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun userMediaTimeLine(
+    override suspend fun userMediaTimeLine(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
@@ -546,7 +546,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun searchTimeLine(
+    override suspend fun searchTimeLine(
         query: String,
         paging: Paging
     ): Pageable<Comment> {
@@ -595,7 +595,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun postComment(
+    override suspend fun postComment(
         req: CommentForm
     ) {
         proceedUnit {
@@ -663,7 +663,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun comment(
+    override suspend fun comment(
         id: Identify
     ): Comment {
         return proceed {
@@ -689,7 +689,7 @@ class MastodonAction(
      * https://auth.accessor.social/@uakihir0/104681506368424218
      * https://auth.accessor.social/web/statuses/104681506368424218
      */
-    override fun comment(
+    override suspend fun comment(
         url: String
     ): Comment {
         return proceed {
@@ -721,7 +721,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun likeComment(
+    override suspend fun likeComment(
         id: Identify
     ) {
         proceedUnit {
@@ -740,7 +740,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun unlikeComment(
+    override suspend fun unlikeComment(
         id: Identify
     ) {
         proceedUnit {
@@ -759,7 +759,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun shareComment(
+    override suspend fun shareComment(
         id: Identify
     ) {
         proceedUnit {
@@ -778,10 +778,10 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun unshareComment(
+    override suspend fun unshareComment(
         id: Identify
     ) {
-        proceed {
+        proceedUnit {
             val status = auth.accessor.statuses().unreblog(
                 StatusesUnreblogRequest().also {
                     it.id = id.id<String>()
@@ -797,7 +797,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun reactionComment(
+    override suspend fun reactionComment(
         id: Identify,
         reaction: String
     ) {
@@ -819,7 +819,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun unreactionComment(
+    override suspend fun unreactionComment(
         id: Identify,
         reaction: String
     ) {
@@ -841,10 +841,10 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun deleteComment(
+    override suspend fun deleteComment(
         id: Identify
     ) {
-        proceed {
+        proceedUnit {
             val voids = auth.accessor.statuses().deleteStatus(
                 StatusesDeleteStatusRequest().also {
                     it.id = id.id<String>()
@@ -860,7 +860,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun commentContext(
+    suspend fun commentContext(
         id: Identify
     ): Context {
         return proceed {
@@ -894,21 +894,20 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    val emojis: List<Emoji>
-        get() {
-            if (this.emojisCache != null) {
-                return checkNotNull(this.emojisCache)
-            }
-
-            return proceed {
-                val emojis = auth.accessor.emojis().customEmojis()
-
-                mutableListOf<Emoji>().also {
-                    it.addAll(MastodonMapper.emojis(emojis.data))
-                    it.addAll(super.emojis())
-                }.also { this.emojisCache = it }
-            }
+    suspend fun getEmojis(): List<Emoji> {
+        if (this.emojisCache != null) {
+            return checkNotNull(this.emojisCache)
         }
+
+        return proceed {
+            val emojis = auth.accessor.emojis().customEmojis()
+
+            mutableListOf<Emoji>().also {
+                it.addAll(MastodonMapper.emojis(emojis.data))
+                it.addAll(super.emojis())
+            }.also { this.emojisCache = it }
+        }
+    }
 
     // ============================================================== //
     // Channel (List) API
@@ -916,7 +915,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun channels(
+    override suspend fun channels(
         id: Identify,
         paging: Paging
     ): Pageable<Channel> {
@@ -946,7 +945,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun channelTimeLine(
+    override suspend fun channelTimeLine(
         id: Identify,
         paging: Paging
     ): Pageable<Comment> {
@@ -974,7 +973,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun channelUsers(
+    override suspend fun channelUsers(
         id: Identify,
         paging: Paging
     ): Pageable<User> {
@@ -1004,7 +1003,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun messageThread(
+    override suspend fun messageThread(
         paging: Paging
     ): Pageable<Thread> {
         return proceed {
@@ -1055,7 +1054,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun messageTimeLine(
+    override suspend fun messageTimeLine(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
@@ -1105,7 +1104,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    override fun postMessage(
+    override suspend fun postMessage(
         req: CommentForm
     ) {
         postComment(req)
@@ -1117,7 +1116,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun homeTimeLineStream(
+    suspend fun homeTimeLineStream(
         callback: EventCallback
     ): Stream {
         return proceed {
@@ -1145,7 +1144,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun votePoll(
+    suspend fun votePoll(
         id: Identify,
         choices: List<Int>
     ) {
@@ -1166,7 +1165,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun trends(
+    suspend fun trends(
         limit: Int
     ): List<Trend> {
         return proceed {
@@ -1192,7 +1191,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun notification(
+    suspend fun notification(
         paging: Paging
     ): Pageable<Notification> {
         return proceed {
@@ -1226,7 +1225,7 @@ class MastodonAction(
      * Get Notification (Single)
      * 通知情報を取得
      */
-    fun notification(
+    suspend fun notification(
         identify: Identify
     ): Notification {
         return proceed {
@@ -1257,7 +1256,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun localTimeLine(
+    suspend fun localTimeLine(
         paging: Paging,
     ): Pageable<Comment> {
         return proceed {
@@ -1284,7 +1283,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun federationTimeLine(
+    suspend fun federationTimeLine(
         paging: Paging
     ): Pageable<Comment> {
         return proceed {
@@ -1311,7 +1310,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun localLineStream(
+    suspend fun localLineStream(
         callback: EventCallback
     ): Stream {
         return proceed {
@@ -1327,7 +1326,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    fun federationLineStream(
+    suspend fun federationLineStream(
         callback: EventCallback
     ): Stream {
         return proceed {
@@ -1344,7 +1343,7 @@ class MastodonAction(
      * Register ServiceWorker endpoint.
      * サービスワーカーのエンドポイントを設定
      */
-    fun registerSubscription(
+    suspend fun registerSubscription(
         endpoint: String?,
         publicKey: String?,
         authSecret: String?
@@ -1375,7 +1374,7 @@ class MastodonAction(
      * Get user pinned comments.
      * ユーザーのピンされたコメントを取得
      */
-    fun userPinedComments(
+    suspend fun userPinedComments(
         id: Identify
     ): List<Comment> {
         return proceed {
@@ -1514,7 +1513,7 @@ class MastodonAction(
     // ============================================================== //
     // Utils
     // ============================================================== //
-    private fun <T> proceed(runner: () -> T): T {
+    private suspend fun <T> proceed(runner: suspend () -> T): T {
         try {
             return runner()
         } catch (e: Exception) {
@@ -1522,7 +1521,7 @@ class MastodonAction(
         }
     }
 
-    private fun proceedUnit(runner: () -> Unit) {
+    private suspend fun proceedUnit(runner: suspend () -> Unit) {
         try {
             runner()
         } catch (e: Exception) {

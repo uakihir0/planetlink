@@ -240,7 +240,7 @@ open class RequestActionImpl(
     // ============================================================== //
     private fun getUsersRequest(
         type: ActionType,
-        usersFunction: (Paging) -> Pageable<User>,
+        usersFunction: suspend (Paging) -> Pageable<User>,
         raw: SerializedRequest
     ): UsersRequestImpl {
         return UsersRequestImpl().also {
@@ -253,7 +253,7 @@ open class RequestActionImpl(
 
     fun getCommentsRequest(
         type: ActionType,
-        commentsFunction: (Paging) -> Pageable<Comment>,
+        commentsFunction: suspend (Paging) -> Pageable<Comment>,
         raw: SerializedRequest
     ): CommentsRequestImpl {
         return CommentsRequestImpl().also {

@@ -1,27 +1,37 @@
 [versions]
-kotest = "5.9.1"
-kotlin = "2.0.10"
+kotlin = "2.3.10"
+dokka = "2.1.0"
+maven-publish = "0.36.0"
+serialization = "1.10.0"
+coroutines = "1.10.2"
 
 [libraries]
-kbsky-core = "work.socialhub.kbsky:core:0.0.1-SNAPSHOT"
-kbsky-stream = "work.socialhub.kbsky:stream:0.0.1-SNAPSHOT"
-kmisskey-core = "work.socialhub.kmisskey:core:0.0.1-SNAPSHOT"
-kmisskey-stream = "work.socialhub.kmisskey:stream:0.0.1-SNAPSHOT"
+kbsky-core = "work.socialhub.kbsky:core:1.0.0-SNAPSHOT"
+kbsky-stream = "work.socialhub.kbsky:stream:1.0.0-SNAPSHOT"
+kmisskey-core = "work.socialhub.kmisskey:core:0.1.0-SNAPSHOT"
+kmisskey-stream = "work.socialhub.kmisskey:stream:0.1.0-SNAPSHOT"
 kmastodon-core = "work.socialhub.kmastodon:core:0.0.1-SNAPSHOT"
 kmastodon-stream = "work.socialhub.kmastodon:stream:0.0.1-SNAPSHOT"
 ktumblr-core = "work.socialhub.ktumblr:core:0.0.1-SNAPSHOT"
-khttpclient = "work.socialhub:khttpclient:0.0.1-SNAPSHOT"
+khttpclient = "work.socialhub:khttpclient:0.0.9-SNAPSHOT"
 kmpcommon = "work.socialhub:kmpcommon:0.0.1-SNAPSHOT"
-ktor-core = "io.ktor:ktor-client-core:2.3.12"
+ktor-core = "io.ktor:ktor-client-core:3.4.0"
 ksoup = "com.mohamedrejeb.ksoup:ksoup-html:0.4.0"
-datetime = "org.jetbrains.kotlinx:kotlinx-datetime:0.6.0"
-coroutines-core = "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1"
-serialization-json = "org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1"
-serialization-cbor = "org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.7.1"
-kotest-junit5 = { module = "io.kotest:kotest-runner-junit5-jvm", version.ref = "kotest" }
-kotest-assertions = { module = "io.kotest:kotest-assertions-core-jvm", version.ref = "kotest" }
+datetime = "org.jetbrains.kotlinx:kotlinx-datetime:0.7.1-0.6.x-compat"
+coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+serialization-cbor = { module = "org.jetbrains.kotlinx:kotlinx-serialization-cbor", version.ref = "serialization" }
+nexus-publish = "io.github.gradle-nexus.publish-plugin:io.github.gradle-nexus.publish-plugin.gradle.plugin:2.0.0"
+maven-publish = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "maven-publish" }
+dokka = { module = "org.jetbrains.dokka:dokka-gradle-plugin", version.ref = "dokka" }
+slf4j-simple = "org.slf4j:slf4j-simple:2.0.17"
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlin-cocoapods = { id = "org.jetbrains.kotlin.native.cocoapods", version.ref = "kotlin" }
+maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }
+dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
+swiftpackage = "io.github.luca992.multiplatform-swiftpackage:2.3.0"
+git-versioning = "me.qoomon.git-versioning:6.4.4"

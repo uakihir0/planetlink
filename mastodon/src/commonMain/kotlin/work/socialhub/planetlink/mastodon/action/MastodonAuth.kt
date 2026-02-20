@@ -76,7 +76,7 @@ class MastodonAuth(
      * Request Client Application
      * クライアント情報を申請して設定
      */
-    fun requestClientApplication(
+    suspend fun requestClientApplication(
         appName: String,
         website: String,
         redirectUris: String,
@@ -98,7 +98,7 @@ class MastodonAuth(
      * Get Authorization URL
      * Mastodon の認証ページの URL を取得
      */
-    fun authorizationURL(
+    suspend fun authorizationURL(
         redirectUri: String,
         scopes: String,
     ): String {
@@ -114,7 +114,7 @@ class MastodonAuth(
      * Authentication with Code
      * 認証コードよりアカウントモデルを生成
      */
-    fun accountWithCode(
+    suspend fun accountWithCode(
         redirectUri: String,
         code: String,
     ): Account {
@@ -139,7 +139,7 @@ class MastodonAuth(
      * Refresh AccessToken with RefreshToken.
      * トークン情報を更新
      */
-    fun refreshToken(): Account {
+    suspend fun refreshToken(): Account {
         val accessToken = accessor.oauth().refreshAccessToken(
             OAuthRefreshAccessTokenRequest().also {
                 it.clientId = clientId

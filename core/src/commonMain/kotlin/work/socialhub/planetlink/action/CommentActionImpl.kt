@@ -11,63 +11,63 @@ class CommentActionImpl(
     /**
      * {@inheritDoc}
      */
-    override fun commentRefresh(): Comment {
+    override suspend fun commentRefresh(): Comment {
         return action.comment(comment)
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun reaction(action: String) {
+    override suspend fun reaction(action: String) {
         this.action.reactionComment(comment, action)
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun unreaction(action: String) {
+    override suspend fun unreaction(action: String) {
         this.action.unreactionComment(comment, action)
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun like() {
+    override suspend fun like() {
         action.likeComment(comment)
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun unlike() {
+    override suspend fun unlike() {
         action.unlikeComment(comment)
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun share() {
+    override suspend fun share() {
         action.shareComment(comment)
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun unshare() {
+    override suspend fun unshare() {
         action.unshareComment(comment)
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun delete() {
+    override suspend fun delete() {
         action.deleteComment(comment)
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun commentContexts(): Context {
+    override suspend fun commentContexts(): Context {
         return action.commentContexts(comment)
     }
 }

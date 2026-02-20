@@ -10,7 +10,7 @@ interface CommentsRequest : Request {
      * Get Comments
      * コメントを取得
      */
-    fun comments(paging: Paging): Pageable<Comment>
+    suspend fun comments(paging: Paging): Pageable<Comment>
 
     /**
      * Set Comment Stream

@@ -9,7 +9,7 @@ import work.socialhub.planetlink.model.request.CommentForm
 
 class CommentsRequestImpl : CommentsRequest {
 
-    var commentsFunction: ((Paging) -> Pageable<Comment>)? = null
+    var commentsFunction: (suspend (Paging) -> Pageable<Comment>)? = null
     var streamFunction: ((EventCallback) -> Stream)? = null
     var commentForm: CommentForm? = null
     var streamRecommended = true
@@ -32,7 +32,7 @@ class CommentsRequestImpl : CommentsRequest {
     /**
      * {@inheritDoc}
      */
-    override fun comments(
+    override suspend fun comments(
         paging: Paging
     ): Pageable<Comment> {
         return commentsFunction?.invoke(paging)

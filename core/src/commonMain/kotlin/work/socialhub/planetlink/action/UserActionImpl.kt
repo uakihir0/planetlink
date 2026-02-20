@@ -11,57 +11,56 @@ class UserActionImpl(
     /**
      * {@inheritDoc}
      */
-    override fun userRefresh(): User {
+    override suspend fun userRefresh(): User {
         return action.user(user)
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun follow() {
+    override suspend fun follow() {
         action.followUser(user)
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun unfollow() {
+    override suspend fun unfollow() {
         action.unfollowUser(user)
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun mute() {
+    override suspend fun mute() {
         action.muteUser(user)
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun unmute() {
+    override suspend fun unmute() {
         action.unmuteUser(user)
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun block() {
+    override suspend fun block() {
         action.blockUser(user)
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun unblock() {
+    override suspend fun unblock() {
         action.unblockUser(user)
     }
 
     /**
      * {@inheritDoc}
      */
-    override fun relationship(): Relationship {
+    override suspend fun relationship(): Relationship {
         return action.relationship(user)
     }
 }
-

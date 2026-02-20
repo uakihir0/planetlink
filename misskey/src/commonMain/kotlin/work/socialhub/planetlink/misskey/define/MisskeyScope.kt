@@ -1,6 +1,6 @@
 package work.socialhub.planetlink.misskey.define
 
-import work.socialhub.kmisskey.entity.contant.Scope
+import work.socialhub.kmisskey.entity.constant.Scope
 
 object MisskeyScope {
 

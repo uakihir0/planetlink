@@ -60,7 +60,7 @@ class TumblrAuth : ServiceAuth<Tumblr> {
      * Get Authorization URL
      * Tumblr の認証ページの URL を取得
      */
-    fun authorizationURL(
+    suspend fun authorizationURL(
         redirectUri: String?
     ): String {
         return TumblrFactory.instance(
@@ -77,7 +77,7 @@ class TumblrAuth : ServiceAuth<Tumblr> {
      * Authentication with Code
      * 認証してアクセストークンを取得し格納
      */
-    fun accountWithVerifier(
+    suspend fun accountWithVerifier(
         redirectUri: String?,
         code: String
     ): Account {

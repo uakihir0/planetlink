@@ -1,7 +1,6 @@
 package work.socialhub.planetlink.misskey.action
 
 
-import kotlinx.coroutines.runBlocking
 import net.socialhub.planetlink.model.event.CommentEvent
 import work.socialhub.kmisskey.Misskey
 import work.socialhub.kmisskey.MisskeyException
@@ -49,7 +48,7 @@ import work.socialhub.kmisskey.api.request.users.UsersShowMultipleRequest
 import work.socialhub.kmisskey.api.request.users.UsersShowSingleRequest
 import work.socialhub.kmisskey.api.response.users.UsersShowResponse
 import work.socialhub.kmisskey.entity.Note
-import work.socialhub.kmisskey.entity.contant.NotificationType
+import work.socialhub.kmisskey.entity.constant.NotificationType
 import work.socialhub.kmisskey.stream.MisskeyStream
 import work.socialhub.kmisskey.stream.callback.ClosedCallback
 import work.socialhub.kmisskey.stream.callback.ErrorCallback
@@ -61,6 +60,7 @@ import work.socialhub.kmisskey.stream.callback.RenoteCallback
 import work.socialhub.kmisskey.stream.callback.ReplayCallback
 import work.socialhub.kmisskey.stream.callback.TimelineCallback
 import work.socialhub.planetlink.action.AccountActionImpl
+import work.socialhub.planetlink.utils.toBlocking
 import work.socialhub.planetlink.action.RequestAction
 import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.action.callback.comment.MentionCommentCallback
@@ -97,7 +97,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun userMe(): User {
+    override suspend fun userMe(): User {
         return proceed {
             val misskey = auth.accessor
             val response = misskey.accounts().i(IRequest())
@@ -113,7 +113,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun user(
+    override suspend fun user(
         id: Identify
     ): User {
         return proceed {
@@ -150,7 +150,7 @@ class MisskeyAction(
      * https://misskey.io/@syuilo
      * https://misskey.io/@syuilo@misskey.io
      */
-    override fun user(
+    override suspend fun user(
         url: String
     ): User {
         return proceed {
@@ -178,7 +178,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun followUser(
+    override suspend fun followUser(
         id: Identify
     ) {
         proceedUnit {
@@ -192,7 +192,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun unfollowUser(
+    override suspend fun unfollowUser(
         id: Identify
     ) {
         proceedUnit {
@@ -206,7 +206,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun muteUser(
+    override suspend fun muteUser(
         id: Identify
     ) {
         proceedUnit {
@@ -220,7 +220,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun unmuteUser(
+    override suspend fun unmuteUser(
         id: Identify
     ) {
         proceedUnit {
@@ -234,7 +234,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun blockUser(
+    override suspend fun blockUser(
         id: Identify
     ) {
         proceedUnit {
@@ -248,7 +248,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun unblockUser(
+    override suspend fun unblockUser(
         id: Identify
     ) {
         proceedUnit {
@@ -262,7 +262,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun relationship(
+    override suspend fun relationship(
         id: Identify
     ): Relationship {
         return proceed {
@@ -286,7 +286,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun followingUsers(
+    override suspend fun followingUsers(
         id: Identify,
         paging: Paging
     ): Pageable<User> {
@@ -310,7 +310,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun followerUsers(
+    override suspend fun followerUsers(
         id: Identify,
         paging: Paging,
     ): Pageable<User> {
@@ -334,7 +334,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun searchUsers(
+    override suspend fun searchUsers(
         query: String,
         paging: Paging
     ): Pageable<User> {
@@ -376,7 +376,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun homeTimeLine(
+    override suspend fun homeTimeLine(
         paging: Paging,
     ): Pageable<Comment> {
         return proceed {
@@ -402,7 +402,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun mentionTimeLine(
+    override suspend fun mentionTimeLine(
         paging: Paging,
     ): Pageable<Comment> {
         return proceed {
@@ -428,7 +428,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun userCommentTimeLine(
+    override suspend fun userCommentTimeLine(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
@@ -452,7 +452,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun userLikeTimeLine(
+    override suspend fun userLikeTimeLine(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
@@ -476,7 +476,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun userMediaTimeLine(
+    override suspend fun userMediaTimeLine(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
@@ -501,7 +501,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun searchTimeLine(
+    override suspend fun searchTimeLine(
         query: String,
         paging: Paging,
     ): Pageable<Comment> {
@@ -527,7 +527,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun postComment(
+    override suspend fun postComment(
         req: CommentForm
     ) {
         if (req.isMessage) {
@@ -594,7 +594,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun comment(
+    override suspend fun comment(
         id: Identify
     ): Comment {
         return proceed {
@@ -617,7 +617,7 @@ class MisskeyAction(
      * Parse Misskey Post's url, like:
      * https://misskey.io/notes/8axwbcxiff
      */
-    override fun comment(
+    override suspend fun comment(
         url: String
     ): Comment {
         return proceed {
@@ -638,7 +638,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun likeComment(
+    override suspend fun likeComment(
         id: Identify
     ) {
         proceedUnit {
@@ -652,7 +652,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun unlikeComment(
+    override suspend fun unlikeComment(
         id: Identify
     ) {
         proceedUnit {
@@ -666,7 +666,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun shareComment(
+    override suspend fun shareComment(
         id: Identify
     ) {
         proceedUnit {
@@ -680,7 +680,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun unshareComment(
+    override suspend fun unshareComment(
         id: Identify
     ) {
         proceedUnit {
@@ -694,7 +694,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun reactionComment(
+    override suspend fun reactionComment(
         id: Identify,
         reaction: String,
     ) {
@@ -710,11 +710,13 @@ class MisskeyAction(
                 return
             }
 
-            auth.accessor.reactions().create(
-                ReactionsCreateRequest().also {
-                    it.noteId = id.id<String>()
-                    it.reaction = reaction
-                })
+            proceedUnit {
+                auth.accessor.reactions().create(
+                    ReactionsCreateRequest().also {
+                        it.noteId = id.id<String>()
+                        it.reaction = reaction
+                    })
+            }
             return
         }
 
@@ -724,7 +726,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun unreactionComment(
+    override suspend fun unreactionComment(
         id: Identify,
         reaction: String,
     ) {
@@ -741,10 +743,12 @@ class MisskeyAction(
             }
 
             // ユーザーごとにリアクションは一つのみ
-            auth.accessor.reactions().delete(
-                ReactionsDeleteRequest().also {
-                    it.noteId = id.id<String>()
-                })
+            proceedUnit {
+                auth.accessor.reactions().delete(
+                    ReactionsDeleteRequest().also {
+                        it.noteId = id.id<String>()
+                    })
+            }
             return
         }
 
@@ -754,7 +758,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun deleteComment(
+    override suspend fun deleteComment(
         id: Identify
     ) {
         proceedUnit {
@@ -768,31 +772,30 @@ class MisskeyAction(
     /**
      * Get List of Emojis
      */
-    val emojis: List<Emoji>
-        get() {
-            if (this.emojisCache != null) {
-                return checkNotNull(this.emojisCache)
-            }
-
-            return proceed {
-                val misskey = auth.accessor
-
-                // V13 からは emojis エンドポイントから取得
-                val response = misskey.meta()
-                    .emojis(EmojisRequest())
-
-                this.emojisCache = MisskeyMapper.emojis(
-                    response.data.emojis.toList()
-                )
-
-                checkNotNull(this.emojisCache)
-            }
+    suspend fun getEmojis(): List<Emoji> {
+        if (this.emojisCache != null) {
+            return checkNotNull(this.emojisCache)
         }
+
+        return proceed {
+            val misskey = auth.accessor
+
+            // V13 からは emojis エンドポイントから取得
+            val response = misskey.meta()
+                .emojis(EmojisRequest())
+
+            this.emojisCache = MisskeyMapper.emojis(
+                response.data.emojis.toList()
+            )
+
+            checkNotNull(this.emojisCache)
+        }
+    }
 
     /**
      * {@inheritDoc}
      */
-    fun commentContext(
+    suspend fun commentContext(
         id: Identify
     ): Context {
         return proceed {
@@ -840,7 +843,7 @@ class MisskeyAction(
     }
 
     // さらなる返信を探して notes に追加
-    private fun moreReplies(
+    private suspend fun moreReplies(
         misskey: Misskey,
         notes: MutableList<Note>,
         nextIds: List<String>,
@@ -888,7 +891,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun channels(
+    override suspend fun channels(
         id: Identify,
         paging: Paging
     ): Pageable<Channel> {
@@ -915,7 +918,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun channelTimeLine(
+    override suspend fun channelTimeLine(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
@@ -939,7 +942,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    override fun channelUsers(
+    override suspend fun channelUsers(
         id: Identify,
         paging: Paging,
     ): Pageable<User> {
@@ -972,7 +975,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    fun votePoll(
+    suspend fun votePoll(
         id: Identify,
         choices: List<Int>
     ) {
@@ -999,7 +1002,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    fun trends(
+    suspend fun trends(
         limit: Int
     ): List<Trend> {
         return proceed {
@@ -1016,13 +1019,13 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    fun notification(
+    suspend fun notification(
         paging: Paging
     ): Pageable<Notification> {
         return proceed {
             val misskey = auth.accessor
             // TODO: 並列でリクエストを実行
-            val emojis = this.emojis
+            val emojis = this.getEmojis()
 
             val builder = INotificationsRequest()
             setPaging(builder, paging)
@@ -1053,7 +1056,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    fun homeTimeLineStream(
+    suspend fun homeTimeLineStream(
         callback: EventCallback
     ): Stream {
         return proceed {
@@ -1067,7 +1070,7 @@ class MisskeyAction(
             )
 
             val connectionListener = MisskeyConnectionListener(callback) {
-                runBlocking { stream.homeTimeLine(commentsListener) }
+                toBlocking { stream.homeTimeLine(commentsListener) }
             }
 
             setStreamConnectionCallback(stream, connectionListener)
@@ -1078,7 +1081,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    fun notificationStream(
+    suspend fun notificationStream(
         callback: EventCallback
     ): Stream {
         return proceed {
@@ -1087,14 +1090,14 @@ class MisskeyAction(
 
             val notificationListener = MisskeyNotificationListener(
                 callback,
-                emojis,
+                getEmojis(),
                 service(),
                 misskey.host,
                 userMeWithCache()
             )
 
             val connectionListener = MisskeyConnectionListener(callback) {
-                runBlocking { stream.main(notificationListener) }
+                toBlocking { stream.main(notificationListener) }
             }
 
             setStreamConnectionCallback(stream, connectionListener)
@@ -1108,7 +1111,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    fun localTimeLine(
+    suspend fun localTimeLine(
         paging: Paging
     ): Pageable<Comment> {
         return proceed {
@@ -1130,7 +1133,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    fun federationTimeLine(
+    suspend fun federationTimeLine(
         paging: Paging
     ): Pageable<Comment> {
         return proceed {
@@ -1152,7 +1155,7 @@ class MisskeyAction(
     /**
      * Get Featured Timeline
      */
-    fun featuredTimeLine(
+    suspend fun featuredTimeLine(
         paging: Paging
     ): Pageable<Comment> {
         return proceed {
@@ -1183,7 +1186,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    fun localLineStream(
+    suspend fun localLineStream(
         callback: EventCallback
     ): Stream {
         return proceed {
@@ -1197,7 +1200,7 @@ class MisskeyAction(
             )
 
             val connectionListener = MisskeyConnectionListener(callback) {
-                runBlocking { stream.localTimeline(commentsListener) }
+                toBlocking { stream.localTimeline(commentsListener) }
             }
             setStreamConnectionCallback(stream, connectionListener)
             work.socialhub.planetlink.misskey.model.MisskeyStream(stream)
@@ -1207,7 +1210,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    fun federationLineStream(
+    suspend fun federationLineStream(
         callback: EventCallback
     ): Stream {
         return proceed {
@@ -1220,7 +1223,7 @@ class MisskeyAction(
                 misskey.host,
             )
             val connectionListener = MisskeyConnectionListener(callback) {
-                runBlocking { stream.globalTimeline(commentsListener) }
+                toBlocking { stream.globalTimeline(commentsListener) }
             }
 
             setStreamConnectionCallback(stream, connectionListener)
@@ -1232,12 +1235,12 @@ class MisskeyAction(
      * Register ServiceWorker endpoint.
      * サービスワーカーのエンドポイントを設定
      */
-    fun registerSubscription(
+    suspend fun registerSubscription(
         endpoint: String,
         publicKey: String,
         authSecret: String
     ) {
-        proceed {
+        proceedUnit {
             auth.accessor.other().serviceWorkerRegister(
                 ServiceWorkerRegisterRequest().also {
                     it.endpoint = endpoint
@@ -1424,7 +1427,7 @@ class MisskeyAction(
     // ============================================================== //
     // Utils
     // ============================================================== //
-    private fun <T> proceed(runner: () -> T): T {
+    private suspend fun <T> proceed(runner: suspend () -> T): T {
         try {
             return runner()
         } catch (e: Exception) {
@@ -1432,7 +1435,7 @@ class MisskeyAction(
         }
     }
 
-    private fun proceedUnit(runner: () -> Unit) {
+    private suspend fun proceedUnit(runner: suspend () -> Unit) {
         try {
             runner()
         } catch (e: Exception) {
