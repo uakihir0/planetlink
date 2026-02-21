@@ -1,3 +1,4 @@
+import org.gradle.api.tasks.compile.JavaCompile
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.konan.target.HostManager
 
@@ -17,8 +18,15 @@ kotlin {
     js(IR) {
         nodejs()
         browser()
+
         compilerOptions {
             target.set("es2015")
+        }
+
+        compilations.all {
+            compileTaskProvider.configure {
+                compilerOptions { target.set("es2015") }
+            }
         }
     }
 
@@ -58,4 +66,8 @@ kotlin {
 
 tasks.named<Test>("jvmTest") {
     useJUnitPlatform()
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.release.set(11)
 }
