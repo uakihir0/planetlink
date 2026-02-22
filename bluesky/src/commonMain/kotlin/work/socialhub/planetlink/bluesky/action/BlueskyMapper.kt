@@ -17,6 +17,7 @@ import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsFeedViewPost
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsGeneratorView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsPostView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsReasonRepost
+import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsReasonUnion
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsReplyRef
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsViewerState
 import work.socialhub.kbsky.model.app.bsky.feed.FeedLike
@@ -157,13 +158,13 @@ object BlueskyMapper {
     fun comment(
         post: FeedDefsPostView,
         reply: FeedDefsReplyRef?,
-        repost: FeedDefsReasonRepost?,
+        repost: FeedDefsReasonUnion?,
         service: Service
     ): Comment {
         return BlueskyComment(service).apply {
 
             // Repost
-            if (repost != null) {
+            if (repost is FeedDefsReasonRepost) {
 
                 id = ID(post.uri!!)
                 cid = post.cid

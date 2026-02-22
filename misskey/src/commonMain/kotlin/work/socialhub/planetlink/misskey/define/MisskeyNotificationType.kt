@@ -1,6 +1,6 @@
 package work.socialhub.planetlink.misskey.define
 
-import work.socialhub.kmisskey.entity.contant.NotificationType
+import work.socialhub.kmisskey.entity.constant.NotificationType
 import work.socialhub.planetlink.define.NotificationActionType
 
 

@@ -9,11 +9,11 @@ interface AccountGroupAction {
      * Get All User's Information
      * グループのユーザー情報を取得
      */
-    fun userMe(): UserGroup
+    suspend fun userMe(): UserGroup
 
     /**
      * Get Timeline Comments
      * タイムラインを取得
      */
-    fun homeTimeLine(): CommentGroup
+    suspend fun homeTimeLine(): CommentGroup
 }

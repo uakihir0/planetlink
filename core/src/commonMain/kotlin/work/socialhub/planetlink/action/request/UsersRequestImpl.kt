@@ -10,7 +10,7 @@ import work.socialhub.planetlink.model.error.NotSupportedException
 
 class UsersRequestImpl : UsersRequest {
 
-    var usersFunction: ((Paging) -> Pageable<User>)? = null
+    var usersFunction: (suspend (Paging) -> Pageable<User>)? = null
 
     /**
      * {@inheritDoc}
@@ -30,7 +30,7 @@ class UsersRequestImpl : UsersRequest {
     /**
      * {@inheritDoc}
      */
-    override fun users(
+    override suspend fun users(
         paging: Paging
     ): Pageable<User> {
         return usersFunction?.invoke(paging)

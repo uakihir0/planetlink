@@ -1,8 +1,8 @@
 package work.socialhub.planetlink.action.group
 
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
-import kotlinx.coroutines.runBlocking
 import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.User
@@ -18,9 +18,9 @@ class AccountGroupActionImpl(
     /**
      * {@inheritDoc}
      */
-    override fun userMe(): UserGroup {
+    override suspend fun userMe(): UserGroup {
         return UserGroupImpl(
-            runBlocking {
+            coroutineScope {
                 mutableMapOf<Account, User>().also { map ->
                     accountGroup.accounts.map { acc ->
                         async { map[acc] = acc.action.userMe() }
@@ -33,14 +33,14 @@ class AccountGroupActionImpl(
     /**
      * {@inheritDoc}
      */
-    override fun homeTimeLine(): CommentGroup {
+    override suspend fun homeTimeLine(): CommentGroup {
         return comments(
             accountGroup.accounts.map {
                 it.action.request().homeTimeLine()
             })
     }
 
-    private fun comments(
+    private suspend fun comments(
         requests: List<CommentsRequest>
     ): CommentGroup {
         return CommentsRequestGroupImpl(*requests.toTypedArray())

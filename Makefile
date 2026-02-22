@@ -6,13 +6,13 @@ build:
 	mastodon:clean \
 	tumblr:clean \
 	all:clean all:build \
-	-x test --refresh-dependencies
+	-x check --refresh-dependencies
 
 pods:
 	./gradlew \
 	all:assemblePlanetlinkXCFramework \
 	all:podPublishXCFramework \
-	-x test --refresh-dependencies
+	-x check --refresh-dependencies
 
 version:
 	 ./gradlew version --no-daemon --console=plain -q

@@ -2,7 +2,7 @@ package work.socialhub.planetlink.action.group
 
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.coroutineScope
 import kotlinx.datetime.Clock
 import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.model.Comment
@@ -19,7 +19,7 @@ class CommentsRequestGroupActionImpl(
     /**
      * {@inheritDoc}
      */
-    override fun comments(
+    override suspend fun comments(
         count: Int
     ): CommentGroup {
         return comments(Paging(count))
@@ -28,12 +28,12 @@ class CommentsRequestGroupActionImpl(
     /**
      * コメント情報をページング付きで取得
      */
-    fun comments(
+    suspend fun comments(
         paging: Paging
     ): CommentGroup {
         val entities = mutableMapOf<CommentsRequest, Pageable<Comment>>()
 
-        runBlocking {
+        coroutineScope {
             requestGroup.requests.map {
                 async { entities[it] = it.comments(paging) }
             }.awaitAll()

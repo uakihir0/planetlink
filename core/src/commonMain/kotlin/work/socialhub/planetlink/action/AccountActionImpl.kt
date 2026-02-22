@@ -32,7 +32,7 @@ abstract class AccountActionImpl(
      * Get User me with cache.
      * キャッシュ付きで自分のユーザーを取得
      */
-    fun userMeWithCache(): User {
+    suspend fun userMeWithCache(): User {
         return me ?: run {
             userMe().also { me = it }
         }

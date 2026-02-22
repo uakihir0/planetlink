@@ -1,15 +1,32 @@
+import org.gradle.api.tasks.compile.JavaCompile
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
+import org.jetbrains.kotlin.gradle.tasks.Kotlin2JsCompile
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlin.cocoapods)
-    id("maven-publish")
+    alias(libs.plugins.swiftpackage)
+    id("module.publications")
 }
 
 kotlin {
-    jvmToolchain(17)
-    jvm { withJava() }
+    jvm {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
+        }
+    }
+
+    js(IR) {
+        nodejs()
+        browser()
+        binaries.library()
+        compilerOptions {
+            target.set("es2015")
+            generateTypeScriptDefinitions()
+        }
+    }
 
     val xcf = XCFramework("planetlink")
     listOf(
@@ -41,24 +58,42 @@ kotlin {
     }
 
     sourceSets {
+        all {
+            languageSettings.apply {
+                optIn("kotlin.js.ExperimentalJsExport")
+            }
+        }
+
         commonMain.dependencies {
             api(project(":core"))
             api(project(":bluesky"))
             api(project(":misskey"))
             api(project(":mastodon"))
             api(project(":tumblr"))
-            implementation(libs.kbsky.core)
-            implementation(libs.kbsky.stream)
         }
 
-        // for test (kotlin/jvm)
         jvmTest.dependencies {
             implementation(kotlin("test"))
-            implementation(libs.kotest.junit5)
-            implementation(libs.kotest.assertions)
+            implementation(libs.coroutines.test)
+            implementation(libs.slf4j.simple)
             implementation(libs.datetime)
             implementation(libs.serialization.json)
         }
+    }
+}
+
+multiplatformSwiftPackage {
+    swiftToolsVersion("5.7")
+    targetPlatforms {
+        iOS { v("15") }
+        macOS { v("12.0") }
+    }
+}
+
+tasks.configureEach {
+    // Fix implicit dependency between XCFramework and FatFramework tasks
+    if (name.contains("assemblePlanetlink") && name.contains("XCFramework")) {
+        mustRunAfter(tasks.matching { it.name.contains("FatFramework") })
     }
 }
 
@@ -68,22 +103,22 @@ tasks.named<Test>("jvmTest") {
 
 tasks.podPublishXCFramework {
     doLast {
-        exec {
+        providers.exec {
             executable = "sh"
-            args = listOf("../tool/rename_podfile.sh")
-        }
+            args = listOf(project.projectDir.path + "/../tool/rename_podfile.sh")
+        }.standardOutput.asText.get()
     }
 }
 
-publishing {
-    repositories {
-        maven {
-            url = uri("https://repo.repsy.io/mvn/uakihir0/public")
-            credentials {
-                username = System.getenv("USERNAME")
-                password = System.getenv("PASSWORD")
-            }
+tasks.withType<JavaCompile>().configureEach {
+    options.release.set(11)
+}
+
+afterEvaluate {
+    tasks.withType<Kotlin2JsCompile>().configureEach {
+        compilerOptions {
+            target.set("es2015")
+            freeCompilerArgs.add("-Xes-long-as-bigint")
         }
     }
 }
-

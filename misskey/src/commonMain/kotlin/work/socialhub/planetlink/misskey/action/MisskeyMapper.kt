@@ -65,7 +65,7 @@ object MisskeyMapper {
             u.iconImageUrl = account.avatarUrl
 
             u.emojis = selectEmojis(emojis, account.name, host)
-            u.avatarColor = color(account.avatarColor)
+            u.avatarColor = color(account.avatarColorObject)
             u.isSimple = (detailed == null)
 
             if (detailed != null) {

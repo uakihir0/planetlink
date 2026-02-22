@@ -21,7 +21,7 @@ interface AccountAction {
      * Get Authorized My Account
      * 認証した自身のユーザー情報を取得
      */
-    fun userMe(): User {
+    suspend fun userMe(): User {
         throw NotImplementedException()
     }
 
@@ -29,7 +29,7 @@ interface AccountAction {
      * Get Specific UserInfo
      * 特定のユーザーを取得
      */
-    fun user(id: Identify): User {
+    suspend fun user(id: Identify): User {
         throw NotImplementedException()
     }
 
@@ -37,7 +37,7 @@ interface AccountAction {
      * Get Specific UserInfo from URL
      * URL からユーザーを取得
      */
-    fun user(url: String): User {
+    suspend fun user(url: String): User {
         throw NotImplementedException()
     }
 
@@ -45,7 +45,7 @@ interface AccountAction {
      * Follow User
      * ユーザーをフォロー
      */
-    fun followUser(id: Identify) {
+    suspend fun followUser(id: Identify) {
         throw NotImplementedException()
     }
 
@@ -53,7 +53,7 @@ interface AccountAction {
      * Unfollow User
      * ユーザーをフォロー解除
      */
-    fun unfollowUser(id: Identify) {
+    suspend fun unfollowUser(id: Identify) {
         throw NotImplementedException()
     }
 
@@ -61,7 +61,7 @@ interface AccountAction {
      * Mute User
      * ユーザーをミュート
      */
-    fun muteUser(id: Identify) {
+    suspend fun muteUser(id: Identify) {
         throw NotImplementedException()
     }
 
@@ -69,7 +69,7 @@ interface AccountAction {
      * Unmute User
      * ユーザーをミュート解除
      */
-    fun unmuteUser(id: Identify) {
+    suspend fun unmuteUser(id: Identify) {
         throw NotImplementedException()
     }
 
@@ -77,7 +77,7 @@ interface AccountAction {
      * Block User
      * ユーザーをブロック
      */
-    fun blockUser(id: Identify) {
+    suspend fun blockUser(id: Identify) {
         throw NotImplementedException()
     }
 
@@ -85,7 +85,7 @@ interface AccountAction {
      * Unblock User
      * ユーザーをブロック解除
      */
-    fun unblockUser(id: Identify) {
+    suspend fun unblockUser(id: Identify) {
         throw NotImplementedException()
     }
 
@@ -93,7 +93,7 @@ interface AccountAction {
      * Get relationship
      * 認証アカウントとの関係を取得
      */
-    fun relationship(id: Identify): Relationship {
+    suspend fun relationship(id: Identify): Relationship {
         throw NotImplementedException()
     }
 
@@ -105,7 +105,7 @@ interface AccountAction {
      * Get Following Account
      * フォローしているユーザー情報を取得
      */
-    fun followingUsers(
+    suspend fun followingUsers(
         id: Identify,
         paging: Paging,
     ): Pageable<User> {
@@ -116,7 +116,7 @@ interface AccountAction {
      * Get Follower Account
      * フォローされているユーザー情報を取得
      */
-    fun followerUsers(
+    suspend fun followerUsers(
         id: Identify,
         paging: Paging,
     ): Pageable<User> {
@@ -127,7 +127,7 @@ interface AccountAction {
      * Search User Account
      * ユーザーアカウントを検索
      */
-    fun searchUsers(
+    suspend fun searchUsers(
         query: String,
         paging: Paging,
     ): Pageable<User> {
@@ -142,7 +142,7 @@ interface AccountAction {
      * Get Home TimeLine
      * ホームタイムラインを取得
      */
-    fun homeTimeLine(
+    suspend fun homeTimeLine(
         paging: Paging,
     ): Pageable<Comment> {
         throw NotImplementedException()
@@ -152,7 +152,7 @@ interface AccountAction {
      * Get Mention TimeLine
      * メンションタイムラインを取得
      */
-    fun mentionTimeLine(
+    suspend fun mentionTimeLine(
         paging: Paging,
     ): Pageable<Comment> {
         throw NotImplementedException()
@@ -162,7 +162,7 @@ interface AccountAction {
      * Get User Comment TimeLine
      * ユーザーの投稿したコメントのタイムラインを取得
      */
-    fun userCommentTimeLine(
+    suspend fun userCommentTimeLine(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
@@ -173,7 +173,7 @@ interface AccountAction {
      * Get User Like TimeLine
      * ユーザーのイイネしたコメントのタイムラインを取得
      */
-    fun userLikeTimeLine(
+    suspend fun userLikeTimeLine(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
@@ -184,7 +184,7 @@ interface AccountAction {
      * Get User Media TimeLine
      * ユーザーのメディア一覧を取得
      */
-    fun userMediaTimeLine(
+    suspend fun userMediaTimeLine(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
@@ -195,7 +195,7 @@ interface AccountAction {
      * Get Search TimeLine
      * 検索タイムラインを取得
      */
-    fun searchTimeLine(
+    suspend fun searchTimeLine(
         query: String,
         paging: Paging,
     ): Pageable<Comment> {
@@ -210,7 +210,7 @@ interface AccountAction {
      * Post Comment
      * コメントを作成
      */
-    fun postComment(
+    suspend fun postComment(
         req: CommentForm
     ) {
         throw NotImplementedException()
@@ -220,7 +220,7 @@ interface AccountAction {
      * Get Comment
      * コメントを取得
      */
-    fun comment(
+    suspend fun comment(
         id: Identify
     ): Comment {
         throw NotImplementedException()
@@ -230,7 +230,7 @@ interface AccountAction {
      * Get Comment from URL
      * URL からコメントを取得
      */
-    fun comment(
+    suspend fun comment(
         url: String
     ): Comment {
         throw NotImplementedException()
@@ -241,7 +241,7 @@ interface AccountAction {
      * コメントにたいしてイイねする
      * (Twitter Mastodon ではお気に入りをする)
      */
-    fun likeComment(
+    suspend fun likeComment(
         id: Identify
     ) {
         throw NotImplementedException()
@@ -252,7 +252,7 @@ interface AccountAction {
      * コメントに対してのイイねを取り消す
      * (Twitter Mastodon ではお気に入りを消す)
      */
-    fun unlikeComment(
+    suspend fun unlikeComment(
         id: Identify
     ) {
         throw NotImplementedException()
@@ -262,7 +262,7 @@ interface AccountAction {
      * Share Comment
      * コメントをシェアする
      */
-    fun shareComment(
+    suspend fun shareComment(
         id: Identify
     ) {
         throw NotImplementedException()
@@ -272,7 +272,7 @@ interface AccountAction {
      * Unshare Comment
      * コメントのシェアを取り消す
      */
-    fun unshareComment(
+    suspend fun unshareComment(
         id: Identify
     ) {
         throw NotImplementedException()
@@ -282,7 +282,7 @@ interface AccountAction {
      * Reaction Comment
      * リアクションする
      */
-    fun reactionComment(
+    suspend fun reactionComment(
         id: Identify,
         reaction: String,
     ) {
@@ -293,7 +293,7 @@ interface AccountAction {
      * UnReaction Comment
      * リアクションを取り消す
      */
-    fun unreactionComment(
+    suspend fun unreactionComment(
         id: Identify,
         reaction: String,
     ) {
@@ -304,7 +304,7 @@ interface AccountAction {
      * Delete Comment
      * 自分のコメントを削除
      */
-    fun deleteComment(
+    suspend fun deleteComment(
         id: Identify
     ) {
         throw NotImplementedException()
@@ -314,7 +314,7 @@ interface AccountAction {
      * Get Comment Contexts
      * コメントについて前後の会話を取得
      */
-    fun commentContexts(
+    suspend fun commentContexts(
         id: Identify
     ): Context {
         throw NotImplementedException()
@@ -345,7 +345,7 @@ interface AccountAction {
      * Get Channels (or Owned Lists)
      * 自分の閲覧可能なチャンネルを取得
      */
-    fun channels(
+    suspend fun channels(
         id: Identify,
         paging: Paging,
     ): Pageable<Channel> {
@@ -356,7 +356,7 @@ interface AccountAction {
      * Get Channels Comments
      * チャンネルでの発言を取得
      */
-    fun channelTimeLine(
+    suspend fun channelTimeLine(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
@@ -367,7 +367,7 @@ interface AccountAction {
      * Get Channels Users
      * チャンネルのユーザーを取得
      */
-    fun channelUsers(
+    suspend fun channelUsers(
         id: Identify,
         paging: Paging,
     ): Pageable<User> {
@@ -382,7 +382,7 @@ interface AccountAction {
      * Get Message Thread
      * メッセージスレッドを取得
      */
-    fun messageThread(
+    suspend fun messageThread(
         paging: Paging,
     ): Pageable<Thread> {
         throw NotImplementedException()
@@ -392,7 +392,7 @@ interface AccountAction {
      * Get Message Thread Comments
      * メッセージスレッドの内容を取得
      */
-    fun messageTimeLine(
+    suspend fun messageTimeLine(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
@@ -403,7 +403,7 @@ interface AccountAction {
      * Post Message to Thread
      * メッセージを送信
      */
-    fun postMessage(
+    suspend fun postMessage(
         req: CommentForm
     ) {
         throw NotImplementedException()
@@ -416,7 +416,7 @@ interface AccountAction {
      * Set Home TimeLine Stream
      * ホームタイムラインのストリームイベントを設定
      */
-    fun setHomeTimeLineStream(
+    suspend fun setHomeTimeLineStream(
         callback: EventCallback
     ): Stream {
         throw NotImplementedException()
@@ -426,7 +426,7 @@ interface AccountAction {
      * Set Notification Stream
      * 通知のストリームイベントを設定
      */
-    fun setNotificationStream(
+    suspend fun setNotificationStream(
         callback: EventCallback
     ): Stream {
         throw NotImplementedException()

@@ -61,7 +61,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun userMe(): User {
+    override suspend fun userMe(): User {
         return proceed {
             val user = validateToken {
                 auth.accessor.user().user()
@@ -96,7 +96,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun user(
+    override suspend fun user(
         id: Identify
     ): User {
         return proceed {
@@ -140,7 +140,7 @@ class TumblrAction(
      * {@inheritDoc}
      * https://www.tumblr.com/uakihiro
      */
-    override fun user(
+    override suspend fun user(
         url: String
     ): User {
         return proceed {
@@ -152,7 +152,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun followUser(
+    override suspend fun followUser(
         id: Identify
     ) {
         proceedUnit {
@@ -169,7 +169,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun unfollowUser(
+    override suspend fun unfollowUser(
         id: Identify
     ) {
         proceedUnit {
@@ -186,7 +186,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun relationship(
+    override suspend fun relationship(
         id: Identify
     ): Relationship {
         return proceed {
@@ -210,7 +210,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun followingUsers(
+    override suspend fun followingUsers(
         id: Identify,
         paging: Paging
     ): Pageable<User> {
@@ -236,7 +236,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun followerUsers(
+    override suspend fun followerUsers(
         id: Identify,
         paging: Paging
     ): Pageable<User> {
@@ -265,7 +265,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun homeTimeLine(
+    override suspend fun homeTimeLine(
         paging: Paging
     ): Pageable<Comment> {
         return proceed {
@@ -291,7 +291,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun userCommentTimeLine(
+    override suspend fun userCommentTimeLine(
         id: Identify,
         paging: Paging
     ): Pageable<Comment> {
@@ -318,7 +318,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun userLikeTimeLine(
+    override suspend fun userLikeTimeLine(
         id: Identify,
         paging: Paging
     ): Pageable<Comment> {
@@ -343,7 +343,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun searchTimeLine(
+    override suspend fun searchTimeLine(
         query: String,
         paging: Paging
     ): Pageable<Comment> {
@@ -370,7 +370,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun postComment(
+    override suspend fun postComment(
         req: CommentForm
     ) {
         proceedUnit {
@@ -412,7 +412,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun comment(
+    override suspend fun comment(
         id: Identify
     ): Comment {
         return proceed {
@@ -447,7 +447,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun likeComment(
+    override suspend fun likeComment(
         id: Identify
     ) {
         proceedUnit {
@@ -470,7 +470,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun unlikeComment(
+    override suspend fun unlikeComment(
         id: Identify
     ) {
         proceedUnit {
@@ -493,7 +493,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun shareComment(
+    override suspend fun shareComment(
         id: Identify
     ) {
         proceedUnit {
@@ -518,7 +518,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun unshareComment(
+    override suspend fun unshareComment(
         id: Identify
     ) {
         throw NotSupportedException()
@@ -527,7 +527,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun reactionComment(
+    override suspend fun reactionComment(
         id: Identify,
         reaction: String
     ) {
@@ -549,7 +549,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun unreactionComment(
+    override suspend fun unreactionComment(
         id: Identify,
         reaction: String
     ) {
@@ -567,7 +567,7 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
-    override fun deleteComment(
+    override suspend fun deleteComment(
         id: Identify
     ) {
         proceed {
@@ -610,8 +610,8 @@ class TumblrAction(
     // Refresh
     // ============================================================== //
 
-    private fun <T> validateToken(
-        func: () -> T
+    private suspend fun <T> validateToken(
+        func: suspend () -> T
     ): T {
         try {
             return func()
@@ -657,7 +657,7 @@ class TumblrAction(
     // ============================================================== //
     // Utils
     // ============================================================== //
-    private fun <T> proceed(runner: () -> T): T {
+    private suspend fun <T> proceed(runner: suspend () -> T): T {
         try {
             return runner()
         } catch (e: Exception) {
@@ -665,7 +665,7 @@ class TumblrAction(
         }
     }
 
-    private fun proceedUnit(runner: () -> Unit) {
+    private suspend fun proceedUnit(runner: suspend () -> Unit) {
         try {
             runner()
         } catch (e: Exception) {

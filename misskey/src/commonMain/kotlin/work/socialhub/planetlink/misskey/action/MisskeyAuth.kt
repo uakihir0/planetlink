@@ -68,7 +68,7 @@ class MisskeyAuth(
      * Request Client Application
      * クライアント情報を申請して設定
      */
-    fun requestClientApplication(
+    suspend fun requestClientApplication(
         appName: String,
         description: String,
         callbackUrl: String,
@@ -92,21 +92,20 @@ class MisskeyAuth(
      * Get Authorization URL
      * Misskey の認証ページの URL を取得
      */
-    val authorizationURL: String
-        get() {
-            val misskey = MisskeyFactory.instance(host)
-            val response = misskey.auth().sessionGenerate(
-                GenerateAuthSessionRequest().also {
-                    it.appSecret = clientSecret
-                })
-            return checkNotNull(response.data.url)
-        }
+    suspend fun authorizationURL(): String {
+        val misskey = MisskeyFactory.instance(host)
+        val response = misskey.auth().sessionGenerate(
+            GenerateAuthSessionRequest().also {
+                it.appSecret = clientSecret
+            })
+        return checkNotNull(response.data.url)
+    }
 
     /**
      * Authentication with Code
      * 認証コードよりアカウントモデルを生成
      */
-    fun accountWithCode(
+    suspend fun accountWithCode(
         verifier: String
     ): Account {
         val misskey = MisskeyFactory.instance(host)

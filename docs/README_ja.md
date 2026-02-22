@@ -8,6 +8,8 @@
 **このライブラリは [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html) に対応したマルチ Social Media (SNS) クライアントライブラリです。**
 このライブラリを用いることで、各 Social Media を透過的な操作で扱うことができます。
 
+本ライブラリは、Java で実装された [SocialHub](https://github.com/uakihir0/SocialHub) の Kotlin Multiplatform 版です。
+
 ## サポートプラットフォーム
 
 - Bluesky (library: [kbksy](https://github.com/uakihir0/kbsky))

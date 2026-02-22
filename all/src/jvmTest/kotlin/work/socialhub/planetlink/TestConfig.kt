@@ -1,15 +1,14 @@
 package work.socialhub.planetlink
 
-import kotlinx.serialization.Serializable
-import work.socialhub.planetlink.config.BlueskyTestConfig
-import work.socialhub.planetlink.config.MastodonTestConfig
-import work.socialhub.planetlink.config.MisskeyTestConfig
-import work.socialhub.planetlink.config.TumblrTestConfig
+/**
+ * Test configuration backed by a flat Map<String, String>.
+ * Keys match the environment variable / GitHub Actions secret names.
+ */
+class TestConfig(
+    private val props: MutableMap<String, String>
+) {
+    operator fun get(key: String): String? = props[key]
+    operator fun set(key: String, value: String) { props[key] = value }
 
-@Serializable
-data class TestConfig(
-    val bluesky: List<BlueskyTestConfig>,
-    val misskey: List<MisskeyTestConfig>,
-    val mastodon: List<MastodonTestConfig>,
-    val tumblr: List<TumblrTestConfig>,
-)
+    fun toMap(): Map<String, String> = props.toMap()
+}

@@ -36,8 +36,6 @@ class MastodonRequest(
                 action::localTimeLine,
                 SerializedRequest(LocalTimeLine)
             )
-
-            request.streamFunction = action::localLineStream
             return request
         }
 
@@ -52,8 +50,6 @@ class MastodonRequest(
                 action::federationTimeLine,
                 SerializedRequest(FederationTimeLine)
             )
-
-            request.streamFunction = action::federationLineStream
             return request
         }
 
@@ -65,10 +61,7 @@ class MastodonRequest(
      */
     val homeTimeLine: CommentsRequest
         get() {
-            val action = account.action as MastodonAction
-            return (super.homeTimeLine() as CommentsRequestImpl).also {
-                it.streamFunction = action::homeTimeLineStream
-            }
+            return super.homeTimeLine() as CommentsRequestImpl
         }
 
     /**

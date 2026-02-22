@@ -1,20 +1,50 @@
+import org.gradle.api.tasks.compile.JavaCompile
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.konan.target.HostManager
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
-    id("maven-publish")
+    id("module.publications")
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvm {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
+        }
+    }
 
-    jvm { withJava() }
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
-    macosX64()
-    macosArm64()
+    js(IR) {
+        nodejs()
+        browser()
+
+        compilerOptions {
+            target.set("es2015")
+        }
+
+        compilations.all {
+            compileTaskProvider.configure {
+                compilerOptions { target.set("es2015") }
+            }
+        }
+    }
+
+    if (HostManager.hostIsMac) {
+        iosX64()
+        iosArm64()
+        iosSimulatorArm64()
+        macosX64()
+        macosArm64()
+    }
 
     sourceSets {
+        all {
+            languageSettings.apply {
+                optIn("kotlin.js.ExperimentalJsExport")
+            }
+        }
+
         commonMain.dependencies {
             implementation(project(":core"))
             implementation(libs.ktor.core)
@@ -23,11 +53,13 @@ kotlin {
             implementation(libs.datetime)
         }
 
-        // for test (kotlin/jvm)
-        jvmTest.dependencies {
+        commonTest.dependencies {
             implementation(kotlin("test"))
-            implementation(libs.kotest.junit5)
-            implementation(libs.kotest.assertions)
+            implementation(libs.coroutines.test)
+        }
+
+        jvmTest.dependencies {
+            implementation(libs.slf4j.simple)
         }
     }
 }
@@ -36,14 +68,6 @@ tasks.named<Test>("jvmTest") {
     useJUnitPlatform()
 }
 
-publishing {
-    repositories {
-        maven {
-            url = uri("https://repo.repsy.io/mvn/uakihir0/public")
-            credentials {
-                username = System.getenv("USERNAME")
-                password = System.getenv("PASSWORD")
-            }
-        }
-    }
+tasks.withType<JavaCompile>().configureEach {
+    options.release.set(11)
 }
