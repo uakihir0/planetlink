@@ -8,8 +8,7 @@ import work.socialhub.planetlink.mastodon.expand.PlanetLinkEx.mastodon
 import work.socialhub.planetlink.misskey.expand.PlanetLinkEx.misskey
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.tumblr.expand.PlanetLinkEx.tumblr
-import java.io.FileReader
-import java.io.FileWriter
+import java.io.File
 import kotlin.test.BeforeTest
 
 open class AbstractTest {
@@ -24,82 +23,82 @@ open class AbstractTest {
         ignoreUnknownKeys = true
     }
 
+    private val secretsFile = File("../secrets.json")
+
     @BeforeTest
     fun setupTest() {
         try {
-            val string = readFile("../secrets.json")
-            config = json.decodeFromString<TestConfig>(string)
+            val jsonStr = secretsFile.readText()
+            val map = json.decodeFromString<Map<String, Map<String, String>>>(jsonStr)
+            map["planetlink"]?.let {
+                config = TestConfig(it.toMutableMap())
+            }
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
     fun writeProps() {
-        val json = json.encodeToString(config!!)
-        writeFile("../secrets.json", json)
+        val c = checkNotNull(config)
+        try {
+            val all = json.decodeFromString<MutableMap<String, Map<String, String>>>(
+                secretsFile.readText()
+            ).toMutableMap()
+            all["planetlink"] = c.toMap()
+            secretsFile.writeText(json.encodeToString(all))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
-    /**  Read File */
-    private fun readFile(file: String): String {
-        return FileReader(file).readText()
-    }
-
-    /**  Write File */
-    private fun writeFile(file: String, text: String) {
-        val writer = FileWriter(file)
-        writer.write(text)
-        writer.close()
-    }
-
-
-    fun bluesky(index: Int = 0): Account {
-        val c = checkNotNull(config).bluesky[index]
+    fun bluesky(): Account {
+        val c = checkNotNull(config)
         return PlanetLink.bluesky(
-            c.apiHost,
-            c.streamHost
+            checkNotNull(c["BLUESKY_API_HOST"]),
+            checkNotNull(c["BLUESKY_STREAM_HOST"]),
         ).accountWithIdentifyAndPassword(
-            c.identify,
-            c.password
+            checkNotNull(c["BLUESKY_IDENTIFY"]),
+            checkNotNull(c["BLUESKY_PASSWORD"]),
         )
     }
 
-    fun misskey(index: Int = 0): Account {
-        val c = checkNotNull(config).misskey[index]
+    fun misskey(): Account {
+        val c = checkNotNull(config)
         return PlanetLink.misskey(
-            c.host
+            checkNotNull(c["MISSKEY_HOST"]),
         ).accountWithAccessToken(
-            c.userToken,
+            checkNotNull(c["MISSKEY_USER_TOKEN"]),
         )
     }
 
-    fun mastodon(index: Int = 0): Account {
-        val c = checkNotNull(config).mastodon[index]
+    fun mastodon(): Account {
+        val c = checkNotNull(config)
         return PlanetLink.mastodon(
-            c.host,
-            c.service,
+            checkNotNull(c["MASTODON_HOST"]),
+            c["MASTODON_SERVICE"] ?: "",
         ).accountWithAccessToken(
-            c.userToken,
+            checkNotNull(c["MASTODON_USER_TOKEN"]),
             null,
             null,
         )
     }
 
-    fun tumblr(index: Int = 0): Account {
-        val c = checkNotNull(config).tumblr[index]
+    fun tumblr(): Account {
+        val c = checkNotNull(config)
         return PlanetLink.tumblr()
             .setConsumerInfo(
-                c.clientId,
-                c.clientSecret,
+                checkNotNull(c["TUMBLR_CLIENT_ID"]),
+                checkNotNull(c["TUMBLR_CLIENT_SECRET"]),
             )
             .setTokenRefreshCallback {
                 println(">> Token Refreshed <<")
-                c.accessToken = it.accessToken!!
-                c.refreshToken = it.refreshToken!!
+                c["TUMBLR_ACCESS_TOKEN"] = it.accessToken!!
+                c["TUMBLR_REFRESH_TOKEN"] = it.refreshToken!!
                 writeProps()
             }
             .accountWithAccessToken(
-                c.accessToken,
-                c.refreshToken,
+                checkNotNull(c["TUMBLR_ACCESS_TOKEN"]),
+                checkNotNull(c["TUMBLR_REFRESH_TOKEN"]),
             )
     }
 

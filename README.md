@@ -10,6 +10,8 @@
 **This library is a multi Social Media (SNS) client library compatible with [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html).**
 By using this library, you can transparently handle various Social Media platforms.
 
+This is a Kotlin Multiplatform port of [SocialHub](https://github.com/uakihir0/SocialHub), which was originally implemented in Java.
+
 ## Supported Platforms
 
 - Bluesky (library: [kbksy](https://github.com/uakihir0/kbsky))

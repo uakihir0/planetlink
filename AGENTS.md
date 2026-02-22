@@ -4,6 +4,8 @@
 
 This repository is a **multi Social Media (SNS) client abstraction library** compatible with [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html). PlanetLink provides a unified interface (`AccountAction`) to interact with multiple social media platforms transparently.
 
+This is a Kotlin Multiplatform port of [SocialHub](https://github.com/uakihir0/SocialHub), which was originally implemented in Java. When implementing new features or modifying existing functionality, refer to the original SocialHub repository for design patterns, architecture decisions, and implementation references.
+
 ### Supported Platforms
 
 | Platform | Library | Module |
