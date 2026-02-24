@@ -77,7 +77,8 @@ object SlackMapper {
         userMe: User?,
         emojis: List<Emoji>?,
         channel: String,
-        service: Service
+        service: Service,
+        token: String? = null,
     ): SlackComment {
         return SlackComment(service).apply {
             id = ID(message.ts ?: "")
@@ -96,25 +97,27 @@ object SlackMapper {
 
             replyCount = message.replyCount ?: 0
 
-            medias = medias(message)
+            medias = medias(message, token)
         }
     }
 
     fun medias(
-        message: Message
+        message: Message,
+        token: String? = null,
     ): List<Media> {
         val medias = mutableListOf<Media>()
 
-        message.file?.let { medias.add(media(it)) }
-        message.files?.forEach { medias.add(media(it)) }
+        message.file?.let { medias.add(media(it, token)) }
+        message.files?.forEach { medias.add(media(it, token)) }
 
         return medias
     }
 
     fun media(
-        file: File
+        file: File,
+        token: String? = null,
     ): Media {
-        return Media().apply {
+        return slackMedia(token).apply {
             sourceUrl = file.urlPrivate
             previewUrl = file.thumb360 ?: file.urlPrivate
 
@@ -201,7 +204,8 @@ object SlackMapper {
         emojis: List<Emoji>?,
         channel: String,
         service: Service,
-        paging: Paging?
+        paging: Paging?,
+        token: String? = null,
     ): Pageable<Comment> {
         val model = Pageable<Comment>()
         model.entities = messages.mapNotNull { msg ->
@@ -210,7 +214,7 @@ object SlackMapper {
             } else {
                 userMap[msg.user]
             }
-            comment(msg, user, userMe, emojis, channel, service)
+            comment(msg, user, userMe, emojis, channel, service, token)
         }.sortedByDescending { it.createAt }
 
         model.paging = SlackPaging.fromPaging(paging)

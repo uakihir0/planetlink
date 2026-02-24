@@ -289,7 +289,7 @@ class SlackAction(
                     }
 
                     val user = m.user?.let { userMap[it] }
-                    val comment = SlackMapper.comment(m, user, userMe, emojis, channelId, service())
+                    val comment = SlackMapper.comment(m, user, userMe, emojis, channelId, service(), auth.accessor.token)
                     val targetList = if (!isProceededMine) context.ancestors else context.descendants
                     (targetList as MutableList).add(comment)
                 }
@@ -536,7 +536,7 @@ class SlackAction(
                     .distinct()
                 val botMap = botIds.associateWith { getBotWithCache(Identify(service(), ID(it))) }
 
-                val pageable = SlackMapper.timeLine(messages, userMap, botMap, userMe, emojis, channel, service(), paging)
+                val pageable = SlackMapper.timeLine(messages, userMap, botMap, userMe, emojis, channel, service(), paging, auth.accessor.token)
 
                 val allComments = pageable.entities + pageable.displayableEntities
                 SlackMapper.setMentionName(allComments, userMap)
