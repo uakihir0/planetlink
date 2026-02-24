@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.action
 
+import kotlinx.coroutines.test.runTest
 import work.socialhub.planetlink.AbstractTest
 import work.socialhub.planetlink.PrintClass.dumpComments
 import work.socialhub.planetlink.model.Account
@@ -8,7 +9,7 @@ import kotlin.test.Test
 
 class UserTimelineTest : AbstractTest() {
 
-    private fun Account.act() {
+    private suspend fun Account.act() {
         dumpComments(
             action.userCommentTimeLine(
                 action.userMe(),
@@ -18,14 +19,14 @@ class UserTimelineTest : AbstractTest() {
     }
 
     @Test
-    fun testBluesky() = bluesky().act()
+    fun testBluesky() = runTest { bluesky().act() }
 
     @Test
-    fun testMisskey() = misskey().act()
+    fun testMisskey() = runTest { misskey().act() }
 
     @Test
-    fun testMastodon() = mastodon().act()
+    fun testMastodon() = runTest { mastodon().act() }
 
     @Test
-    fun testTumblr() = tumblr().act()
+    fun testTumblr() = runTest { tumblr().act() }
 }
