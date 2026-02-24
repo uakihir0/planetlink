@@ -12,6 +12,7 @@ import work.socialhub.kslack.entity.file.File
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.define.emoji.EmojiCategoryType
 import work.socialhub.planetlink.model.*
+import work.socialhub.planetlink.model.paging.DatePaging
 import work.socialhub.planetlink.model.common.AttributedItem
 import work.socialhub.planetlink.model.common.AttributedKind
 import work.socialhub.planetlink.model.common.AttributedString
@@ -226,7 +227,7 @@ object SlackMapper {
             comment(msg, user, userMe, emojis, channel, service, token)
         }.sortedByDescending { it.createAt }
 
-        model.paging = SlackPaging.fromPaging(paging)
+        model.paging = DatePaging.fromPaging(paging)
         return model
     }
 

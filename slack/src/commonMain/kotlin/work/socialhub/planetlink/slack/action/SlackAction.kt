@@ -20,6 +20,7 @@ import work.socialhub.planetlink.action.AccountActionImpl
 import work.socialhub.planetlink.action.RequestAction
 import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.model.*
+import work.socialhub.planetlink.model.paging.DatePaging
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.model.request.CommentForm
@@ -501,16 +502,18 @@ class SlackAction(
     private suspend fun getChannelTimeLine(channel: String, paging: Paging): Pageable<Comment> {
         return proceed<Pageable<Comment>> {
             coroutineScope {
+                val datePaging = if (paging is DatePaging) paging else null
+
                 val responseAsync = async {
                     auth.accessor.slack.conversations().conversationsHistory(
                         ConversationsHistoryRequest(
                             token = auth.accessor.token,
                             channel = channel,
                             cursor = null,
-                            oldest = null,
-                            latest = null,
+                            oldest = datePaging?.oldest,
+                            latest = datePaging?.latest,
                             limit = paging.count ?: 100,
-                            isInclusive = false
+                            isInclusive = datePaging?.inclusive ?: false
                         )
                     )
                 }
