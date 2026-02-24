@@ -145,7 +145,7 @@ class SlackAction(
     }
 
     override suspend fun homeTimeLine(paging: Paging): Pageable<Comment> {
-        return channelTimeLine(Identify(service(), ID(getGeneralChannel())), paging)
+        return channelTimeLine(Identify(service(), ID(loadGeneralChannel())), paging)
     }
 
     override suspend fun mentionTimeLine(paging: Paging): Pageable<Comment> {
@@ -488,10 +488,14 @@ class SlackAction(
     }
 
     fun getGeneralChannel(): String {
-        if (generalChannel == null) {
-            throw SocialHubException("General channel not loaded. Call channels() first.")
-        }
         return generalChannel ?: ""
+    }
+
+    private suspend fun loadGeneralChannel(): String {
+        if (generalChannel == null) {
+            channels(Identify(service()), Paging())
+        }
+        return generalChannel ?: throw SocialHubException("General channel not found.")
     }
 
     private suspend fun getChannelTimeLine(channel: String, paging: Paging): Pageable<Comment> {
