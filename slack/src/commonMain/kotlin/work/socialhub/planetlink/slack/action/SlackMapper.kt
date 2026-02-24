@@ -33,13 +33,22 @@ object SlackMapper {
 
             val profile = user.profile
             if (profile != null) {
-                iconImageUrl = profile.image512 ?: profile.image192 ?: profile.image72
+                iconImageUrl = profile.image512 ?: profile.image192
+                    ?: profile.image72 ?: profile.image48
 
                 if (!profile.title.isNullOrEmpty()) {
                     description = AttributedString.plain(profile.title)
+                    title = profile.title
                 }
                 if (!profile.displayName.isNullOrEmpty()) {
                     displayName = profile.displayName
+                    this.name = profile.displayName!!
+                }
+                if (!profile.email.isNullOrEmpty()) {
+                    email = AttributedString.plain(profile.email)
+                }
+                if (!profile.phone.isNullOrEmpty()) {
+                    phone = AttributedString.plain(profile.phone)
                 }
             }
 
