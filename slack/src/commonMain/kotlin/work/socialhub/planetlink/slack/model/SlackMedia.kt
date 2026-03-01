@@ -7,7 +7,7 @@ import work.socialhub.planetlink.model.Media
  */
 fun slackMedia(token: String? = null): Media {
     return Media().also {
-        if (token != null) {
+        if (!token.isNullOrBlank()) {
             it.requestHeader["Authorization"] = "Bearer $token"
         }
     }

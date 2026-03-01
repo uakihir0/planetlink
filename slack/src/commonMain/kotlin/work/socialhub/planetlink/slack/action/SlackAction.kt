@@ -414,7 +414,12 @@ class SlackAction(
                     }
                 }
 
-                val threads = SlackMapper.threads(response, memberMap, historyMap, emptyMap(), service())
+                val allUserIds = memberMap.values.flatten().distinct()
+                val accountMap = allUserIds.associateWith { uid ->
+                    getUserWithCache(Identify(service(), ID(uid)))
+                }
+
+                val threads = SlackMapper.threads(response, memberMap, historyMap, accountMap, service())
                     .sortedByDescending { it.lastUpdate }
 
                 Pageable<Thread>().also {
@@ -562,7 +567,7 @@ class SlackAction(
             channel = searchMessageChannel(req.replyId!!.value<String>())
         }
 
-        auth.accessor.slack.chat().chatPostMessage(
+        val response = auth.accessor.slack.chat().chatPostMessage(
             ChatPostMessageRequest(
                 token = token,
                 username = null,
@@ -583,6 +588,10 @@ class SlackAction(
                 isReplyBroadcast = false
             )
         )
+
+        if (!response.isOk) {
+            throw SocialHubException(response.error ?: "Failed to send message")
+        }
     }
 
     private suspend fun searchMessageChannel(userId: String): String {

@@ -14,15 +14,15 @@ class PostCommentTest {
         private suspend fun Account.act(
             text: String = "TEST",
             fileData: ByteArray? = null,
-            fineName: String? = null,
+            fileName: String? = null,
         ) {
             action.postComment(
                 CommentForm().also {
                     it.text = text
 
                     // 添付ファイル
-                    if (fileData != null && fineName != null) {
-                        it.images = mutableListOf(MediaForm(fileData, fineName))
+                    if (fileData != null && fileName != null) {
+                        it.images = mutableListOf(MediaForm(fileData, fileName))
                     }
                 })
         }
@@ -41,28 +41,36 @@ class PostCommentTest {
 
         @Test
         fun testTumblr() = runTest { tumblr().act() }
+
+        @Test
+        fun testSlack() = runTest { slack().act() }
     }
 
     @Nested
     inner class WithFile : AbstractTest() {
         @Test
         fun testBluesky() = runTest {
-            bluesky().act(text = "Image", fileData = icon(), fineName = "icon.png")
+            bluesky().act(text = "Image", fileData = icon(), fileName = "icon.png")
         }
 
         @Test
         fun testMisskey() = runTest {
-            misskey().act(text = "Image", fileData = icon(), fineName = "icon.png")
+            misskey().act(text = "Image", fileData = icon(), fileName = "icon.png")
         }
 
         @Test
         fun testMastodon() = runTest {
-            mastodon().act(text = "Image", fileData = icon(), fineName = "icon.png")
+            mastodon().act(text = "Image", fileData = icon(), fileName = "icon.png")
         }
 
         @Test
         fun testTumblr() = runTest {
-            tumblr().act(text = "Image", fileData = icon(), fineName = "icon.png")
+            tumblr().act(text = "Image", fileData = icon(), fileName = "icon.png")
+        }
+
+        @Test
+        fun testSlack() = runTest {
+            slack().act(text = "Image", fileData = icon(), fileName = "icon.png")
         }
     }
 }

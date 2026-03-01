@@ -7,14 +7,11 @@ import work.socialhub.planetlink.action.request.CommentsRequestImpl
 import work.socialhub.planetlink.define.action.TimeLineActionType
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Identify
+import work.socialhub.planetlink.slack.model.SlackComment
 
 class SlackRequest(
     account: Account
 ) : RequestActionImpl(account) {
-
-    companion object {
-        const val CHANNEL_KEY = "channel"
-    }
 
     override fun homeTimeLine(): CommentsRequest {
         val action = account.action as? SlackAction
@@ -25,7 +22,7 @@ class SlackRequest(
             { paging -> account.action.homeTimeLine(paging) },
             SerializedRequest(TimeLineActionType.HomeTimeLine)
         )
-        request.commentFrom().addParam(CHANNEL_KEY, generalChannel)
+        request.commentFrom().addParam(SlackComment.CHANNEL_KEY, generalChannel)
         return request
     }
 
@@ -36,7 +33,7 @@ class SlackRequest(
             SerializedRequest(TimeLineActionType.ChannelTimeLine)
                 .add("id", id.id!!.toSerializedString())
         )
-        request.commentFrom().addParam(CHANNEL_KEY, id.id!!.value())
+        request.commentFrom().addParam(SlackComment.CHANNEL_KEY, id.id!!.value())
         return request
     }
 
@@ -48,7 +45,7 @@ class SlackRequest(
                 .add("id", id.id!!.toSerializedString())
         )
         request.commentFrom()
-            .addParam(CHANNEL_KEY, id.id!!.value())
+            .addParam(SlackComment.CHANNEL_KEY, id.id!!.value())
             .isMessage(true)
         return request
     }

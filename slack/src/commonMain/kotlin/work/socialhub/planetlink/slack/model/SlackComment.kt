@@ -17,7 +17,11 @@ class SlackComment(
     private var _reactions: MutableList<Reaction>? = null
 
     override var webUrl: String
-        get() = "https://app.slack.com/archives/$channelId/p${id?.value<String>()?.replace(".", "")}"
+        get() {
+            val ch = channelId ?: return ""
+            val ts = id?.value<String>()?.replace(".", "") ?: return ""
+            return "https://app.slack.com/archives/$ch/p$ts"
+        }
         set(_) {}
 
     override var reactions: List<Reaction>
@@ -43,7 +47,7 @@ class SlackComment(
                 exist.reacting = true
             }
             if (!reaction.reacting && exist.reacting) {
-                exist.count = (exist.count ?: 0) - 1
+                exist.count = maxOf((exist.count ?: 0) - 1, 0)
                 exist.reacting = false
             }
             return
