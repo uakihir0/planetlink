@@ -13,13 +13,10 @@
 ## サポートプラットフォーム
 
 - Bluesky (library: [kbksy](https://github.com/uakihir0/kbsky))
-
-## サポート予定プラットフォーム
-
-- Mastodon
-- Misskey
-- Slack
-- Tumblr
+- Misskey (library: [kmisskey](https://github.com/uakihir0/kmisskey))
+- Mastodon (library: [kmastodon](https://github.com/uakihir0/kmastodon))
+- Slack (library: [kslack](https://github.com/uakihir0/kslack))
+- Tumblr (library: [ktumblr](https://github.com/uakihir0/ktumblr))
 
 ## 使い方
 
