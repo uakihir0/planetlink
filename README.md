@@ -17,11 +17,8 @@ This is a Kotlin Multiplatform port of [SocialHub](https://github.com/uakihir0/S
 - Bluesky (library: [kbksy](https://github.com/uakihir0/kbsky))
 - Misskey (library: [kmisskey](https://github.com/uakihir0/kmisskey))
 - Mastodon (library: [kmastodon](https://github.com/uakihir0/kmastodon))
+- Slack (library: [kslack](https://github.com/uakihir0/kslack))
 - Tumblr (library: [ktumblr](https://github.com/uakihir0/ktumblr))
-
-## Planned Supported Platforms
-
-- Slack
 
 ## Usage
 

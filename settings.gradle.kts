@@ -18,6 +18,7 @@ include("bluesky")
 include("misskey")
 include("mastodon")
 include("tumblr")
+include("slack")
 
 // exclude "all" on Windows OS
 val osName = System.getProperty("os.name").lowercase(Locale.getDefault())

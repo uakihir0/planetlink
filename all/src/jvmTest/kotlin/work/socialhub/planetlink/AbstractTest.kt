@@ -7,6 +7,7 @@ import work.socialhub.planetlink.bluesky.expand.PlanetLinkEx.bluesky
 import work.socialhub.planetlink.mastodon.expand.PlanetLinkEx.mastodon
 import work.socialhub.planetlink.misskey.expand.PlanetLinkEx.misskey
 import work.socialhub.planetlink.model.Account
+import work.socialhub.planetlink.slack.expand.PlanetLinkEx.slack
 import work.socialhub.planetlink.tumblr.expand.PlanetLinkEx.tumblr
 import java.io.File
 import kotlin.test.BeforeTest
@@ -100,6 +101,16 @@ open class AbstractTest {
                 checkNotNull(c["TUMBLR_ACCESS_TOKEN"]),
                 checkNotNull(c["TUMBLR_REFRESH_TOKEN"]),
             )
+    }
+
+    fun slack(): Account {
+        val c = checkNotNull(config)
+        return PlanetLink.slack(
+            c["SLACK_CLIENT_ID"],
+            c["SLACK_CLIENT_SECRET"],
+        ).getAccountWithToken(
+            checkNotNull(c["SLACK_USER_TOKEN"]),
+        )
     }
 
     fun icon(): ByteArray {

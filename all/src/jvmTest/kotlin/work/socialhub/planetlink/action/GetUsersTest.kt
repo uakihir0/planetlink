@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.action
 
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Nested
 import work.socialhub.planetlink.AbstractTest
 import work.socialhub.planetlink.PrintClass.dumpUsers
@@ -11,20 +12,20 @@ class GetUsersTest {
 
     @Nested
     inner class Followings : AbstractTest() {
-        private fun Account.act() = dumpUsers(
+        private suspend fun Account.act() = dumpUsers(
             action.followingUsers(action.userMe(), Paging(100))
         )
 
         @Test
-        fun testBluesky() = bluesky().act()
+        fun testBluesky() = runTest { bluesky().act() }
 
         @Test
-        fun testMisskey() = misskey().act()
+        fun testMisskey() = runTest { misskey().act() }
 
         @Test
-        fun testMastodon() = mastodon().act()
+        fun testMastodon() = runTest { mastodon().act() }
 
         @Test
-        fun testTumblr() = tumblr().act()
+        fun testTumblr() = runTest { tumblr().act() }
     }
 }
