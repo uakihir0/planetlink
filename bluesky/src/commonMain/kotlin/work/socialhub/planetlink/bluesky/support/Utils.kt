@@ -1,7 +1,7 @@
 package work.socialhub.planetlink.bluesky.support
 
 import work.socialhub.kbsky.auth.BearerTokenAuthProvider
-import work.socialhub.kbsky.internal.share._InternalUtility
+import work.socialhub.kbsky.internal.share.InternalUtility
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -53,6 +53,6 @@ object Utils {
 
         @OptIn(ExperimentalEncodingApi::class)
         val decodedJson = Base64.Default.withPadding(Base64.PaddingOption.PRESENT_OPTIONAL).decode(encodedJson)
-        return _InternalUtility.fromJson<BearerTokenAuthProvider.Jwt>(decodedJson.decodeToString())
+        return InternalUtility.fromJson<BearerTokenAuthProvider.Jwt>(decodedJson.decodeToString())
     }
 }
