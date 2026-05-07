@@ -1,0 +1,30 @@
+[submodule "kbsky"]
+	path = kbsky
+	url = https://github.com/uakihir0/kbsky.git
+[submodule "kgrpc"]
+	path = kgrpc
+	url = https://github.com/uakihir0/kgrpc.git
+[submodule "khttpclient"]
+	path = khttpclient
+	url = https://github.com/uakihir0/khttpclient.git
+[submodule "kmastodon"]
+	path = kmastodon
+	url = https://github.com/uakihir0/kmastodon.git
+[submodule "kmatrix"]
+	path = kmatrix
+	url = https://github.com/uakihir0/kmatrix.git
+[submodule "kmisskey"]
+	path = kmisskey
+	url = https://github.com/uakihir0/kmisskey.git
+[submodule "knostr"]
+	path = knostr
+	url = https://github.com/uakihir0/knostr.git
+[submodule "kslack"]
+	path = kslack
+	url = https://github.com/uakihir0/kslack.git
+[submodule "ktumblr"]
+	path = ktumblr
+	url = https://github.com/uakihir0/ktumblr.git
+[submodule "planetlink"]
+	path = planetlink
+	url = https://github.com/uakihir0/planetlink.git
