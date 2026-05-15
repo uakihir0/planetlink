@@ -11,8 +11,6 @@ pluginManagement {
 
 rootProject.name = "planetlink"
 
-includeBuild("../knostr")
-
 include("core")
 
 // Each social media modules
