@@ -30,4 +30,8 @@ enum class SocialActionType : ActionType {
 
     // Channels
     GetChannels,  //
+
+    // Bookmarks
+    GetUserBookmarks,
+    RemoveBookmark,
 }
