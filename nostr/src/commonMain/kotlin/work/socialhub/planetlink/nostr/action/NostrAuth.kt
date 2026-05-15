@@ -35,7 +35,7 @@ class NostrAuth(
         return Account().also { acc ->
             acc.action = NostrAction(acc, this)
             acc.service = Service("nostr", acc).also {
-                it.apiHost = relays.firstOrNull()
+                it.apiHost = relays.firstOrNull() ?: "nostr"
             }
         }
     }
