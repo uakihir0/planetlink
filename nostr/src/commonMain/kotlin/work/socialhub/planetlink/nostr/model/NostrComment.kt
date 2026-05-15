@@ -37,12 +37,12 @@ class NostrComment(
         }
 
     override fun applyReaction(reaction: Reaction) {
-        if (_reactions == null) {
+        val reactions = _reactions ?: run {
             _reactions = mutableListOf(reaction)
             return
         }
 
-        val exist = _reactions!!.find { it.name == reaction.name }
+        val exist = reactions.find { it.name == reaction.name }
         if (exist != null) {
             if (reaction.reacting && !exist.reacting) {
                 exist.count = (exist.count ?: 0) + 1
@@ -55,7 +55,7 @@ class NostrComment(
             return
         }
 
-        _reactions!!.add(reaction)
+        reactions.add(reaction)
     }
 
     override val replyForm: CommentForm
