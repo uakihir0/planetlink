@@ -70,8 +70,8 @@ object NostrMapper {
 
             reactions = reactions(note.reactions, note.likeCount, note.repostCount, userMe, service)
 
-            if (note.quotedNote != null) {
-                sharedComment = comment(note.quotedNote!!, service, userMe)
+            note.quotedNote?.let { quoted ->
+                sharedComment = comment(quoted, service, userMe)
             }
 
             medias = medias(note)
