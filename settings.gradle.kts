@@ -11,6 +11,8 @@ pluginManagement {
 
 rootProject.name = "planetlink"
 
+includeBuild("../knostr")
+
 include("core")
 
 // Each social media modules
@@ -19,6 +21,7 @@ include("misskey")
 include("mastodon")
 include("tumblr")
 include("slack")
+include("nostr")
 
 // exclude "all" on Windows OS
 val osName = System.getProperty("os.name").lowercase(Locale.getDefault())
