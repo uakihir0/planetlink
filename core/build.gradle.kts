@@ -38,6 +38,10 @@ kotlin {
         macosArm64()
     }
 
+    compilerOptions {
+        freeCompilerArgs.add("-XXLanguage:+JsAllowExportingSuspendFunctions")
+    }
+
     sourceSets {
         all {
             languageSettings.apply {
