@@ -21,11 +21,6 @@ kotlin {
         compilerOptions {
             target.set("es2015")
         }
-        compilations.all {
-            compileTaskProvider.configure {
-                compilerOptions { target.set("es2015") }
-            }
-        }
     }
 
     if (HostManager.hostIsMac) {
