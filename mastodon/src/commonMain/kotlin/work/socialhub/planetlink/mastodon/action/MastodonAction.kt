@@ -16,6 +16,11 @@ import work.socialhub.kmastodon.api.request.accounts.AccountsStatusesRequest
 import work.socialhub.kmastodon.api.request.accounts.AccountsUnblockRequest
 import work.socialhub.kmastodon.api.request.accounts.AccountsUnfollowRequest
 import work.socialhub.kmastodon.api.request.accounts.AccountsUnmuteRequest
+import work.socialhub.kmastodon.api.request.bookmarks.BookmarksGetBookmarksRequest
+import work.socialhub.kmastodon.api.request.bookmarks.BookmarksUnbookmarkRequest
+import work.socialhub.kmastodon.api.request.domainblocks.DomainBlocksBlockDomainRequest
+import work.socialhub.kmastodon.api.request.domainblocks.DomainBlocksGetDomainBlocksRequest
+import work.socialhub.kmastodon.api.request.domainblocks.DomainBlocksUnblockDomainRequest
 import work.socialhub.kmastodon.api.request.favourites.FavouritesFavouritesRequest
 import work.socialhub.kmastodon.api.request.lists.ListsListAccountsRequest
 import work.socialhub.kmastodon.api.request.lists.ListsListsRequest
@@ -24,14 +29,19 @@ import work.socialhub.kmastodon.api.request.notifications.NotificationsNotificat
 import work.socialhub.kmastodon.api.request.notifications.NotificationsNotificationsRequest
 import work.socialhub.kmastodon.api.request.notifications.NotificationsPostSubscriptionRequest
 import work.socialhub.kmastodon.api.request.polls.PollsVotePollRequest
+import work.socialhub.kmastodon.api.request.scheduledstatuses.ScheduledStatusesGetScheduledStatusesRequest
+import work.socialhub.kmastodon.api.request.scheduledstatuses.ScheduledStatusesPatchScheduledStatusRequest
+import work.socialhub.kmastodon.api.request.scheduledstatuses.ScheduledStatusesScheduledStatusRequest
 import work.socialhub.kmastodon.api.request.search.SearchSearchRequest
 import work.socialhub.kmastodon.api.request.statuses.StatusesContextRequest
 import work.socialhub.kmastodon.api.request.statuses.StatusesDeleteStatusRequest
 import work.socialhub.kmastodon.api.request.statuses.StatusesFavouriteRequest
+import work.socialhub.kmastodon.api.request.statuses.StatusesPinRequest
 import work.socialhub.kmastodon.api.request.statuses.StatusesPostStatusRequest
 import work.socialhub.kmastodon.api.request.statuses.StatusesReblogRequest
 import work.socialhub.kmastodon.api.request.statuses.StatusesStatusRequest
 import work.socialhub.kmastodon.api.request.statuses.StatusesUnfavouriteRequest
+import work.socialhub.kmastodon.api.request.statuses.StatusesUnpinRequest
 import work.socialhub.kmastodon.api.request.statuses.StatusesUnreblogRequest
 import work.socialhub.kmastodon.api.request.timelines.TimelinesConversationsRequest
 import work.socialhub.kmastodon.api.request.timelines.TimelinesHashTagTimelineRequest
@@ -1340,6 +1350,302 @@ class MastodonAction(
     }
 
     /**
+     * Get user bookmarks.
+     * お気に入り（ブックマーク）一覧を取得
+     */
+    suspend fun userBookmarks(
+        paging: Paging
+    ): Pageable<Comment> {
+        return proceed {
+            val range = range(paging)
+            val status = auth.accessor.bookmarks().bookmarks(
+                BookmarksGetBookmarksRequest().also {
+                    it.range = range
+                }
+            )
+
+            service().rateLimit.addInfo(
+                SocialActionType.GetUserBookmarks,
+                MastodonMapper.rateLimit(status)
+            )
+
+            MastodonMapper.timeLine(
+                status.data,
+                service(),
+                paging,
+                status.link
+            )
+        }
+    }
+
+    /**
+     * Remove a bookmark.
+     * ブックマークを解除
+     */
+    suspend fun removeBookmark(
+        id: Identify
+    ) {
+        proceedUnit {
+            val response = auth.accessor.bookmarks().unbookmark(
+                BookmarksUnbookmarkRequest().also {
+                    it.id = id.id<String>()
+                }
+            )
+            service().rateLimit.addInfo(
+                SocialActionType.RemoveBookmark,
+                MastodonMapper.rateLimit(response)
+            )
+        }
+    }
+
+    /**
+     * Get scheduled statuses.
+     * 予約投稿一覧を取得
+     */
+    suspend fun scheduledStatuses(
+        paging: Paging
+    ): Pageable<Comment> {
+        return proceed {
+            val range = range(paging)
+            val status = auth.accessor.scheduledStatuses().scheduledStatuses(
+                ScheduledStatusesGetScheduledStatusesRequest().also {
+                    it.range = range
+                }
+            )
+
+            service().rateLimit.addInfo(
+                MastodonActionType.GetScheduledStatuses,
+                MastodonMapper.rateLimit(status)
+            )
+
+            val comments = status.data.map { scheduled ->
+                Comment(service()).also { c ->
+                    c.id = ID(scheduled.id)
+                    c.text = work.socialhub.planetlink.model.common.AttributedString.plain(
+                        scheduled.params?.text ?: ""
+                    )
+                    scheduled.scheduledAt.let {
+                        c.createAt = kotlinx.datetime.Instant.parse(it)
+                    }
+                    c.medias = scheduled.mediaAttachments?.let {
+                        MastodonMapper.medias(it)
+                    } ?: emptyList()
+                }
+            }
+
+            val p = Pageable<Comment>()
+            p.entities = comments
+            val mpg = MastodonPaging.fromPaging(paging)
+            p.paging = MastodonMapper.withLink(mpg, status.link)
+            p
+        }
+    }
+
+    /**
+     * Get a single scheduled status.
+     * 予約投稿を1件取得
+     */
+    suspend fun scheduledStatus(
+        id: Identify
+    ): Comment {
+        return proceed {
+            val response = auth.accessor.scheduledStatuses().scheduledStatus(
+                ScheduledStatusesScheduledStatusRequest().also {
+                    it.id = id.id<String>()
+                }
+            )
+
+            service().rateLimit.addInfo(
+                MastodonActionType.GetScheduledStatus,
+                MastodonMapper.rateLimit(response)
+            )
+
+            val scheduled = response.data
+            Comment(service()).also { c ->
+                c.id = ID(scheduled.id)
+                c.text = work.socialhub.planetlink.model.common.AttributedString.plain(
+                    scheduled.params?.text ?: ""
+                )
+                scheduled.scheduledAt.let {
+                    c.createAt = kotlinx.datetime.Instant.parse(it)
+                }
+                c.medias = scheduled.mediaAttachments?.let {
+                    MastodonMapper.medias(it)
+                } ?: emptyList()
+            }
+        }
+    }
+
+    /**
+     * Update a scheduled status.
+     * 予約投稿を更新
+     */
+    suspend fun patchScheduledStatus(
+        id: Identify,
+        scheduledAt: String
+    ) {
+        proceedUnit {
+            val response = auth.accessor.scheduledStatuses().patchScheduledStatus(
+                ScheduledStatusesPatchScheduledStatusRequest().also {
+                    it.id = id.id<String>()
+                    it.scheduledAt = scheduledAt
+                }
+            )
+
+            service().rateLimit.addInfo(
+                MastodonActionType.PatchScheduledStatus,
+                MastodonMapper.rateLimit(response)
+            )
+        }
+    }
+
+    /**
+     * Delete a scheduled status.
+     * 予約投稿を削除
+     */
+    suspend fun deleteScheduledStatus(
+        id: Identify
+    ) {
+        proceedUnit {
+            val response = auth.accessor.scheduledStatuses().deleteScheduledStatus(
+                ScheduledStatusesScheduledStatusRequest().also {
+                    it.id = id.id<String>()
+                }
+            )
+
+            service().rateLimit.addInfo(
+                MastodonActionType.DeleteScheduledStatus,
+                MastodonMapper.rateLimit(response)
+            )
+        }
+    }
+
+    /**
+     * Get domain blocks.
+     * ドメインブロック一覧を取得
+     */
+    suspend fun domainBlocks(
+        paging: Paging
+    ): List<String> {
+        return proceed {
+            val range = range(paging)
+            val response = auth.accessor.domainBlocks().domainBlocks(
+                DomainBlocksGetDomainBlocksRequest().also {
+                    it.range = range
+                }
+            )
+
+            service().rateLimit.addInfo(
+                MastodonActionType.GetDomainBlocks,
+                MastodonMapper.rateLimit(response)
+            )
+
+            response.data.toList()
+        }
+    }
+
+    /**
+     * Block a domain.
+     * ドメインをブロック
+     */
+    suspend fun blockDomain(
+        domain: String
+    ) {
+        proceedUnit {
+            val response = auth.accessor.domainBlocks().blockDomain(
+                DomainBlocksBlockDomainRequest().also {
+                    it.domain = domain
+                }
+            )
+
+            service().rateLimit.addInfo(
+                MastodonActionType.BlockDomain,
+                MastodonMapper.rateLimit(response)
+            )
+        }
+    }
+
+    /**
+     * Unblock a domain.
+     * ドメインのブロックを解除
+     */
+    suspend fun unblockDomain(
+        domain: String
+    ) {
+        proceedUnit {
+            val response = auth.accessor.domainBlocks().unblockDomain(
+                DomainBlocksUnblockDomainRequest().also {
+                    it.domain = domain
+                }
+            )
+
+            service().rateLimit.addInfo(
+                MastodonActionType.UnblockDomain,
+                MastodonMapper.rateLimit(response)
+            )
+        }
+    }
+
+    /**
+     * Pin a status.
+     * ステータスをピン留め
+     */
+    suspend fun pinComment(
+        id: Identify
+    ) {
+        proceedUnit {
+            val response = auth.accessor.statuses().pin(
+                StatusesPinRequest().also {
+                    it.id = id.id<String>()
+                }
+            )
+
+            service().rateLimit.addInfo(
+                MastodonActionType.PinComment,
+                MastodonMapper.rateLimit(response)
+            )
+        }
+    }
+
+    /**
+     * Unpin a status.
+     * ステータスのピン留めを解除
+     */
+    suspend fun unpinComment(
+        id: Identify
+    ) {
+        proceedUnit {
+            val response = auth.accessor.statuses().unpin(
+                StatusesUnpinRequest().also {
+                    it.id = id.id<String>()
+                }
+            )
+
+            service().rateLimit.addInfo(
+                MastodonActionType.UnpinComment,
+                MastodonMapper.rateLimit(response)
+            )
+        }
+    }
+
+    /**
+     * Direct stream for direct messages.
+     * ダイレクトメッセージのストリーム
+     */
+    suspend fun directStream(
+        callback: EventCallback
+    ): Stream {
+        return proceed {
+            val stream = auth.accessor.stream().directStream()
+            stream.register(
+                DirectMastodonCommentListener(callback, service()),
+                MastodonConnectionListener(callback),
+            )
+            MastodonStream(stream)
+        }
+    }
+
+    /**
      * Register ServiceWorker endpoint.
      * サービスワーカーのエンドポイントを設定
      */
@@ -1430,6 +1736,30 @@ class MastodonAction(
         }
 
         override fun onNotification(notification: MNotification) {}
+    }
+
+    // ダイレクトメッセージに対してのコールバック設定
+    internal class DirectMastodonCommentListener(
+        private val listener: EventCallback,
+        private val service: Service
+    ) : PublicStreamListener {
+
+        override fun onUpdate(
+            status: Status
+        ) {
+            if (listener is UpdateCommentCallback) {
+                val comment = MastodonMapper.comment(status, service)
+                listener.onUpdate(CommentEvent(comment))
+            }
+        }
+
+        override fun onDelete(
+            id: String
+        ) {
+            if (listener is DeleteCommentCallback) {
+                listener.onDelete(IdentifyEvent(id))
+            }
+        }
     }
 
     // 通信に対してのコールバック設定
