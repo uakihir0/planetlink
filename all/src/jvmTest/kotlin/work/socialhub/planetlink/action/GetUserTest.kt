@@ -28,6 +28,9 @@ class GetUserTest {
 
         @Test
         fun testTumblr() = runTest { tumblr().act() }
+
+        @Test
+        fun testNostr() = runTest { nostr().act() }
     }
 
     @Nested
@@ -54,6 +57,15 @@ class GetUserTest {
         fun testTumblr() = runTest {
             tumblr().act("https://www.tumblr.com/uakihiro")
         }
+
+        @Test
+        fun testNostr() = runTest {
+            val c = checkNotNull(config)
+            val profileUrl = c["NOSTR_PROFILE_URL"] ?: ""
+            if (profileUrl.isNotBlank()) {
+                nostr().act(profileUrl)
+            }
+        }
     }
 
     @Nested
@@ -75,5 +87,14 @@ class GetUserTest {
 
         @Test
         fun testTumblr() = runTest { tumblr().act("uakihiro") }
+
+        @Test
+        fun testNostr() = runTest {
+            val c = checkNotNull(config)
+            val pubkey = c["NOSTR_PUBKEY"] ?: ""
+            if (pubkey.isNotBlank()) {
+                nostr().act(pubkey)
+            }
+        }
     }
 }

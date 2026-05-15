@@ -23,4 +23,7 @@ class HomeTimelineTest : AbstractTest() {
 
     @Test
     fun testTumblr() = runTest { tumblr().act() }
+
+    @Test
+    fun testNostr() = runTest { nostr().act() }
 }
