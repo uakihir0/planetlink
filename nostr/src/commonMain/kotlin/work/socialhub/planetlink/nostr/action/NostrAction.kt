@@ -71,7 +71,7 @@ class NostrAction(
                     val response = social.users().getProfile(pubkey)
                     NostrMapper.user(response.data, service())
                 }
-                trimmed.length == 64 && trimmed.all { it.isLowerCase() || it.isDigit() } -> {
+                trimmed.length == 64 && trimmed.all { it in '0'..'9' || it in 'a'..'f' } -> {
                     val response = social.users().getProfile(trimmed)
                     NostrMapper.user(response.data, service())
                 }
@@ -280,7 +280,7 @@ class NostrAction(
                     (entity as? Nip19Entity.NEvent)?.eventId
                         ?: throw SocialHubException("Invalid nevent URL: $url")
                 }
-                trimmed.length == 64 && trimmed.all { it.isLowerCase() || it.isDigit() } -> {
+                trimmed.length == 64 && trimmed.all { it in '0'..'9' || it in 'a'..'f' } -> {
                     trimmed
                 }
                 else -> throw SocialHubException("Invalid nostr comment URL: $url")
