@@ -159,6 +159,7 @@ class MastodonRequest(
                 return when (MastodonActionType.valueOf(action)) {
                     LocalTimeLine -> localTimeLine
                     FederationTimeLine -> federationTimeLine
+                    else -> null
                 }
             }
 

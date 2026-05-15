@@ -5,4 +5,13 @@ import work.socialhub.planetlink.define.action.ActionType
 enum class MastodonActionType : ActionType {
     LocalTimeLine,
     FederationTimeLine,
+    GetScheduledStatuses,
+    GetScheduledStatus,
+    PatchScheduledStatus,
+    DeleteScheduledStatus,
+    GetDomainBlocks,
+    BlockDomain,
+    UnblockDomain,
+    PinComment,
+    UnpinComment,
 }
