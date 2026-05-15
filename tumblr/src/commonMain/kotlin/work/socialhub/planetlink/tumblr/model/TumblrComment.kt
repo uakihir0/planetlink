@@ -22,6 +22,12 @@ class TumblrComment(
     /** Reblog key  */
     var reblogKey: String? = null
 
+    /** Parent post ID for context tracking */
+    var parentId: String? = null
+
+    /** Root post ID for context tracking */
+    var rootId: String? = null
+
     override val displayComment: Comment
         get() = sharedComment ?: this
 

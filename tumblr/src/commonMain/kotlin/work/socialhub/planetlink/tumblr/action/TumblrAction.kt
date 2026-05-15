@@ -186,6 +186,42 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
+    override suspend fun muteUser(
+        id: Identify
+    ) {
+        throw NotSupportedException()
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun unmuteUser(
+        id: Identify
+    ) {
+        throw NotSupportedException()
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun blockUser(
+        id: Identify
+    ) {
+        throw NotSupportedException()
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun unblockUser(
+        id: Identify
+    ) {
+        throw NotSupportedException()
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     override suspend fun relationship(
         id: Identify
     ): Relationship {
@@ -265,6 +301,15 @@ class TumblrAction(
     /**
      * {@inheritDoc}
      */
+    override suspend fun mentionTimeLine(
+        paging: Paging
+    ): Pageable<Comment> {
+        throw NotSupportedException()
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     override suspend fun homeTimeLine(
         paging: Paging
     ): Pageable<Comment> {
@@ -330,6 +375,33 @@ class TumblrAction(
                         it.limit = limit(paging)
                         it.offset = offset(paging)
                     }).data.response?.likedPosts
+            }
+
+            TumblrMapper.timeLine(
+                checkNotNull(posts),
+                service(),
+                paging
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun userMediaTimeLine(
+        id: Identify,
+        paging: Paging
+    ): Pageable<Comment> {
+        return proceed {
+            val posts = validateToken {
+                auth.accessor.blog().blogPosts(
+                    BlogPostsRequest().also {
+                        it.blogName = id.id<String>()
+                        it.limit = limit(paging)
+                        it.offset = offset(paging)
+                        it.reblogInfo = true
+                        it.notesInfo = true
+                    }).data.response?.posts
             }
 
             TumblrMapper.timeLine(
@@ -441,6 +513,33 @@ class TumblrAction(
                     "TupleIdentify required."
                 )
             }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun comment(
+        url: String
+    ): Comment {
+        return proceed {
+            val blogName = url.split("/")[3]
+            val postId = url.split("/").last()
+            val posts = validateToken {
+                auth.accessor.blog().blogPosts(
+                    BlogPostsRequest().also {
+                        it.blogName = blogName
+                        it.id = postId.toInt() // FIXME
+                        it.limit = 1
+                    }).data.response?.posts
+            }
+            checkNotNull(posts)
+            val trails = TumblrMapper.trailMap(posts)
+            TumblrMapper.comment(
+                posts[0],
+                trails,
+                service()
+            )
         }
     }
 
@@ -586,6 +685,130 @@ class TumblrAction(
                 )
             }
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun commentContexts(
+        id: Identify
+    ): work.socialhub.planetlink.model.Context {
+        return proceed {
+            val context = work.socialhub.planetlink.model.Context()
+
+            if (id is TupleIdentify) {
+                val posts = validateToken {
+                    auth.accessor.blog().blogPosts(
+                        BlogPostsRequest().also {
+                            it.blogName = id.subId?.value<String>()
+                            it.id = id.id?.value<String>()?.toInt() // FIXME
+                            it.limit = 1
+                        }).data.response?.posts
+                }
+
+                if (!posts.isNullOrEmpty()) {
+                    val post = posts[0]
+                    val trails = TumblrMapper.trailMap(posts)
+
+                    // Build ancestor chain from parent_post_url chain
+                    val ancestors = mutableListOf<work.socialhub.planetlink.model.Comment>()
+                    var currentParentUrl = post.parentPostUrl
+                    while (currentParentUrl != null) {
+                        val parentParts = currentParentUrl.trim('/').split('/')
+                        if (parentParts.size >= 2) {
+                            val parentBlog = parentParts[0]
+                            val parentId = parentParts.drop(1).lastOrNull()
+                            if (parentId != null) {
+                                val parentPosts = validateToken {
+                                    auth.accessor.blog().blogPosts(
+                                        BlogPostsRequest().also {
+                                            it.blogName = parentBlog
+                                            it.id = parentId.toInt() // FIXME
+                                            it.limit = 1
+                                        }).data.response?.posts
+                                }
+                                if (!parentPosts.isNullOrEmpty()) {
+                                    val parentTrails = TumblrMapper.trailMap(parentPosts)
+                                    ancestors.add(0, TumblrMapper.comment(
+                                        parentPosts[0],
+                                        parentTrails,
+                                        service()
+                                    ))
+                                    currentParentUrl = parentPosts[0].parentPostUrl
+                                } else {
+                                    currentParentUrl = null
+                                }
+                            } else {
+                                currentParentUrl = null
+                            }
+                        } else {
+                            currentParentUrl = null
+                        }
+                    }
+                    context.ancestors = ancestors
+
+                    // Trail data contains only post references, not full post data
+                    // Descendants would require additional API calls to resolve
+                    context.descendants = listOf()
+                }
+            }
+
+            context
+        }
+    }
+
+    // ============================================================== //
+    // Channel (List) API
+    // ============================================================== //
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun channels(
+        id: Identify,
+        paging: Paging
+    ): Pageable<work.socialhub.planetlink.model.Channel> {
+        throw NotSupportedException()
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun channelTimeLine(
+        id: Identify,
+        paging: Paging
+    ): Pageable<Comment> {
+        throw NotSupportedException()
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun channelUsers(
+        id: Identify,
+        paging: Paging
+    ): Pageable<User> {
+        throw NotSupportedException()
+    }
+
+    // ============================================================== //
+    // Stream
+    // ============================================================== //
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun setHomeTimeLineStream(
+        callback: work.socialhub.planetlink.action.callback.EventCallback
+    ): work.socialhub.planetlink.model.Stream {
+        throw NotSupportedException()
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun setNotificationStream(
+        callback: work.socialhub.planetlink.action.callback.EventCallback
+    ): work.socialhub.planetlink.model.Stream {
+        throw NotSupportedException()
     }
 
     // ============================================================== //

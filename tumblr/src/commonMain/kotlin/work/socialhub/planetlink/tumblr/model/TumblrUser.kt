@@ -27,6 +27,12 @@ class TumblrUser(
      */
     var relationship: Relationship? = null
 
+    /** Whether the user is muted */
+    var isMuted: Boolean = false
+
+    /** Whether the user is blocked */
+    var isBlocked: Boolean = false
+
     override val accountIdentify: String
         get() = id!!.value<String>()
 }

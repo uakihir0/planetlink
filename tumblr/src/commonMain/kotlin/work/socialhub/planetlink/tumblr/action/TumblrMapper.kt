@@ -7,6 +7,7 @@ import work.socialhub.ktumblr.entity.post.Post
 import work.socialhub.ktumblr.entity.post.legacy.LegacyPhotoPost
 import work.socialhub.ktumblr.entity.post.legacy.LegacyQuotePost
 import work.socialhub.ktumblr.entity.post.legacy.LegacyTextPost
+import work.socialhub.ktumblr.entity.post.legacy.LegacyVideoPost
 import work.socialhub.ktumblr.entity.post.options.Photo
 import work.socialhub.ktumblr.entity.trail.Trail
 import work.socialhub.ktumblr.entity.user.FollowerUser
@@ -195,10 +196,20 @@ object TumblrMapper {
             if (post.parentPostUrl != null) {
                 it.sharedComment = reblogComment(post, trails, service)
                 it.medias = listOf()
+                val parts = post.parentPostUrl!!.trim('/').split('/')
+                if (parts.isNotEmpty()) {
+                    it.parentId = parts.lastOrNull()
+                }
+                if (post.rebloggedRootId != null) {
+                    it.rootId = post.rebloggedRootId
+                }
 
             } else {
                 // コンテンツを格納
                 setMedia(it, post)
+                if (post.rebloggedRootId != null) {
+                    it.rootId = post.rebloggedRootId
+                }
             }
         }
     }
@@ -207,7 +218,7 @@ object TumblrMapper {
      * コメントマッピング
      * (Handle as shared post)
      */
-    fun reblogComment(
+   fun reblogComment(
         post: Post,
         trails: Map<String, Trail>,
         service: Service
@@ -222,6 +233,9 @@ object TumblrMapper {
 
             it.user = reblogUser(post, trails, service)
             setMedia(it, post)
+            if (post.idString != null) {
+                it.parentId = post.idString
+            }
         }
     }
 
@@ -255,13 +269,11 @@ object TumblrMapper {
             }
         }
 
-        // TODO: VideoType is Duplicated.
-        // if (post is LegacyVideoPost) {
-        //    medias.add(video(post))
-        //    if (model.text == null) {
-        //        textMedia(model, removeSharedBlogLink(post.caption!!))
-        //    }
-        // }
+        if (post is LegacyVideoPost) {
+            if (model.text == null) {
+                textMedia(model, removeSharedBlogLink(post.caption!!))
+            }
+        }
 
         if (post is LegacyQuotePost) {
             if (model.text == null) {
