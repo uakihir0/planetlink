@@ -14,4 +14,5 @@ enum class ServiceType {
     Pleroma,
     PixelFed,
     Bluesky,
+    Nostr,
 }
