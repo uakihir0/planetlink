@@ -10,12 +10,22 @@ import work.socialhub.knostr.social.stream.TimelineStream
 import work.socialhub.planetlink.action.AccountActionImpl
 import work.socialhub.planetlink.action.RequestAction
 import work.socialhub.planetlink.action.callback.EventCallback
+import work.socialhub.planetlink.action.callback.comment.MentionCommentCallback
+import work.socialhub.planetlink.action.callback.comment.NotificationCommentCallback
+import work.socialhub.planetlink.action.callback.comment.UpdateCommentCallback
+import work.socialhub.planetlink.action.callback.lifecycle.ConnectCallback
+import work.socialhub.planetlink.action.callback.lifecycle.DisconnectCallback
+import work.socialhub.planetlink.action.callback.lifecycle.ErrorCallback
+import work.socialhub.planetlink.define.NotificationActionType
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
+import net.socialhub.planetlink.model.event.CommentEvent
+import work.socialhub.planetlink.model.event.NotificationEvent
 import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.nostr.model.NostrComment
 import work.socialhub.planetlink.nostr.model.NostrPaging
+import work.socialhub.planetlink.nostr.model.NostrUser
 
 class NostrAction(
     account: Account,
@@ -424,7 +434,12 @@ class NostrAction(
                         try {
                             val profile = social.users().getProfile(authorPubkey)
                             this.user = NostrMapper.user(profile.data, service())
-                        } catch (_: Exception) {
+                        } catch (e: Exception) {
+                            // Failed to load profile for $authorPubkey, use fallback
+                            this.user = NostrUser(service()).apply {
+                                id = ID(authorPubkey)
+                                name = authorPubkey.take(8)
+                            }
                         }
                     }
                 }
@@ -450,10 +465,15 @@ class NostrAction(
     // ============================================================== //
 
     override suspend fun setHomeTimeLineStream(callback: EventCallback): Stream {
+        val userMe = userMeWithCache()
         val stream = NostrStream(
+            accessor = accessor,
             timelineStream = TimelineStream(nostr).also { ts ->
                 ts.onNoteCallback = { note ->
-                    // callback is EventCallback - we just forward the event
+                    if (callback is UpdateCommentCallback) {
+                        val comment = NostrMapper.comment(note, service(), userMe)
+                        callback.onUpdate(CommentEvent(comment))
+                    }
                 }
             }
         )
@@ -462,11 +482,23 @@ class NostrAction(
     }
 
     override suspend fun setNotificationStream(callback: EventCallback): Stream {
+        val userMe = userMeWithCache()
         val stream = NostrStream(
+            accessor = accessor,
             notificationStream = NotificationStream(nostr).also { ns ->
                 ns.onMentionCallback = { note ->
+                    if (callback is MentionCommentCallback) {
+                        val comment = NostrMapper.comment(note, service(), userMe)
+                        callback.onMention(CommentEvent(comment))
+                    }
                 }
                 ns.onReactionCallback = { reaction ->
+                    if (callback is NotificationCommentCallback) {
+                        val notification = Notification(service()).apply {
+                            action = NotificationActionType.LIKE.code
+                        }
+                        callback.onNotification(NotificationEvent(notification))
+                    }
                 }
             }
         )
