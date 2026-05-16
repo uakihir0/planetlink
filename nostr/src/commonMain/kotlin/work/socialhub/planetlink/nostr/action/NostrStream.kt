@@ -9,6 +9,7 @@ import work.socialhub.knostr.social.stream.TimelineStream
 import work.socialhub.planetlink.model.Stream
 
 class NostrStream(
+    private val accessor: NostrAuth.NostrAccessor,
     private var timelineStream: TimelineStream? = null,
     private var notificationStream: NotificationStream? = null,
 ) : Stream {
@@ -21,6 +22,13 @@ class NostrStream(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override suspend fun open() {
+        timelineStream?.let { ts ->
+            val following = accessor.social.users().getFollowing(accessor.pubkey)
+            ts.start(following.data)
+        }
+        notificationStream?.let { ns ->
+            ns.start(accessor.pubkey)
+        }
         _isOpened = true
     }
 
