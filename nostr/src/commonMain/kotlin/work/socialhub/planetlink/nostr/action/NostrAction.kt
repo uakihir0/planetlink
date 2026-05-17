@@ -392,10 +392,10 @@ class NostrAction(
     override suspend fun messageThread(paging: Paging): Pageable<Thread> {
         return proceed {
             val response = social.messages().getThreads()
-            val threads = response.data.map { dmThread ->
+            val threads = response.data.mapNotNull { dmThread ->
                 val threadId = dmThread.rootNote?.event?.pubkey
                     ?: dmThread.replies.firstOrNull()?.event?.pubkey
-                    ?: ""
+                    ?: return@mapNotNull null
                 Thread(service()).apply {
                     id = ID(threadId)
                     lastUpdate = dmThread.rootNote?.let {
@@ -495,7 +495,12 @@ class NostrAction(
                 ns.onReactionCallback = { reaction ->
                     if (callback is NotificationCommentCallback) {
                         val notification = Notification(service()).apply {
+                            id = ID(reaction.event.id)
                             action = NotificationActionType.LIKE.code
+                            createAt = kotlinx.datetime.Instant.fromEpochSeconds(reaction.createdAt, 0)
+                            reaction.author?.let { author ->
+                                users = listOf(NostrMapper.user(author, service()))
+                            }
                         }
                         callback.onNotification(NotificationEvent(notification))
                     }
