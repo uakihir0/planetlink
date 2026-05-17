@@ -43,6 +43,7 @@ kotlin {
             export(project(":mastodon"))
             export(project(":tumblr"))
             export(project(":slack"))
+            export(project(":nostr"))
             baseName = "planetlink"
             xcf.add(this)
         }
@@ -72,6 +73,7 @@ kotlin {
             api(project(":mastodon"))
             api(project(":tumblr"))
             api(project(":slack"))
+            api(project(":nostr"))
         }
 
         jvmTest.dependencies {

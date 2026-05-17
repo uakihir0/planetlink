@@ -161,6 +161,7 @@ If authentication credentials are required for testing, create `secrets.json` (r
 1. Create a new module directory (e.g., `slack/`)
 2. Create `build.gradle.kts` following the existing module pattern
 3. Add the module to `settings.gradle.kts`
+   - Dependencies on external libraries (kbsky, knostr, etc.) must use **published Maven artifacts** via the version catalog (`gradle/libs.versions.toml`). Do NOT use `includeBuild()` for local composite builds.
 4. Implement the following classes:
 
 | Class | Purpose | Base |

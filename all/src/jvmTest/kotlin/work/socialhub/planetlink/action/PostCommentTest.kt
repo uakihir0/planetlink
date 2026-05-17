@@ -44,6 +44,9 @@ class PostCommentTest {
 
         @Test
         fun testSlack() = runTest { slack().act() }
+
+        @Test
+        fun testNostr() = runTest { nostr().act() }
     }
 
     @Nested
@@ -71,6 +74,12 @@ class PostCommentTest {
         @Test
         fun testSlack() = runTest {
             slack().act(text = "Image", fileData = icon(), fileName = "icon.png")
+        }
+
+        @Test
+        fun testNostr() = runTest {
+            // Nostr file uploads not supported yet
+            nostr().act(text = "Image")
         }
     }
 }

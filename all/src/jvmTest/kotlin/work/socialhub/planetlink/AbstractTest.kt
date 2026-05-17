@@ -7,6 +7,7 @@ import work.socialhub.planetlink.bluesky.expand.PlanetLinkEx.bluesky
 import work.socialhub.planetlink.mastodon.expand.PlanetLinkEx.mastodon
 import work.socialhub.planetlink.misskey.expand.PlanetLinkEx.misskey
 import work.socialhub.planetlink.model.Account
+import work.socialhub.planetlink.nostr.expand.PlanetLinkEx.nostr
 import work.socialhub.planetlink.slack.expand.PlanetLinkEx.slack
 import work.socialhub.planetlink.tumblr.expand.PlanetLinkEx.tumblr
 import java.io.File
@@ -111,6 +112,15 @@ open class AbstractTest {
         ).getAccountWithToken(
             checkNotNull(c["SLACK_USER_TOKEN"]),
         )
+    }
+
+    fun nostr(): Account {
+        val c = checkNotNull(config)
+        val relays = (c["NOSTR_RELAYS"] ?: "").split(",").filter { it.isNotBlank() }
+        return PlanetLink.nostr(
+            relays = relays,
+            nsec = c["NOSTR_NSEC"],
+        ).accountWithPrivateKey()
     }
 
     fun icon(): ByteArray {

@@ -17,4 +17,8 @@ object ServiceEx {
     /** Is Tumblr Account ?  */
     val Service.isTumblr: Boolean
         get() = ("tumblr" == type.lowercase())
+
+    /** Is Nostr Account ?  */
+    val Service.isNostr: Boolean
+        get() = ("nostr" == type.lowercase())
 }
