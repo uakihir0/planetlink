@@ -47,6 +47,9 @@ class PostCommentTest {
 
         @Test
         fun testNostr() = runTest { nostr().act() }
+
+        @Test
+        fun testMatrix() = runTest { matrix().act() }
     }
 
     @Nested
@@ -67,9 +70,16 @@ class PostCommentTest {
         }
 
         @Test
-        fun testTumblr() = runTest {
-            tumblr().act(text = "Image", fileData = icon(), fileName = "icon.png")
+        fun testNostr() = runTest {
+            nostr().act(text = "Image")
         }
+
+        @Test
+        fun testMatrix() = runTest {
+            matrix().act(text = "Image")
+        }
+    }
+}
 
         @Test
         fun testSlack() = runTest {

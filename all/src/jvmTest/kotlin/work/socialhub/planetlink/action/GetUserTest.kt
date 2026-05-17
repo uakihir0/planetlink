@@ -31,6 +31,9 @@ class GetUserTest {
 
         @Test
         fun testNostr() = runTest { nostr().act() }
+
+        @Test
+        fun testMatrix() = runTest { matrix().act() }
     }
 
     @Nested
@@ -66,6 +69,15 @@ class GetUserTest {
                 nostr().act(profileUrl)
             }
         }
+
+        @Test
+        fun testMatrix() = runTest {
+            val c = checkNotNull(config)
+            val userId = c["MATRIX_USER"] ?: ""
+            if (userId.isNotBlank()) {
+                matrix().act(userId)
+            }
+        }
     }
 
     @Nested
@@ -94,6 +106,15 @@ class GetUserTest {
             val pubkey = c["NOSTR_PUBKEY"] ?: ""
             if (pubkey.isNotBlank()) {
                 nostr().act(pubkey)
+            }
+        }
+
+        @Test
+        fun testMatrix() = runTest {
+            val c = checkNotNull(config)
+            val userId = c["MATRIX_USER"] ?: ""
+            if (userId.isNotBlank()) {
+                matrix().act(userId)
             }
         }
     }
