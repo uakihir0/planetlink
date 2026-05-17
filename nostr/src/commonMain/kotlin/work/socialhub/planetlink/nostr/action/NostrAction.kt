@@ -428,7 +428,7 @@ class NostrAction(
                     directMessage = true
 
                     val authorPubkey = dm.senderPubkey
-                    if (authorPubkey == this.pubkey) {
+                    if (authorPubkey == this@NostrAction.pubkey) {
                         this.user = userMe
                     } else {
                         try {
