@@ -21,4 +21,8 @@ object ServiceEx {
     /** Is Nostr Account ?  */
     val Service.isNostr: Boolean
         get() = ("nostr" == type.lowercase())
+
+    /** Is Matrix Account ?  */
+    val Service.isMatrix: Boolean
+        get() = ("matrix" == type.lowercase())
 }
