@@ -121,11 +121,14 @@ open class AbstractTest {
         return PlanetLink.nostr(relays = relays, nsec = c["NOSTR_NSEC"]).accountWithPrivateKey()
     }
 
-    fun matrix(): Account {
+    suspend fun matrix(): Account {
         val c = checkNotNull(config)
-        return PlanetLink.matrix(
-            host = checkNotNull(c["MATRIX_HOST"]),
-        ).accountWithPassword(
+        val host = checkNotNull(c["MATRIX_HOST"])
+        val token = c["MATRIX_ACCESS_TOKEN"]
+        if (!token.isNullOrBlank()) {
+            return PlanetLink.matrix(host).accountWithAccessToken(token)
+        }
+        return PlanetLink.matrix(host).accountWithPassword(
             checkNotNull(c["MATRIX_USER"]),
             checkNotNull(c["MATRIX_PASSWORD"]),
         )
