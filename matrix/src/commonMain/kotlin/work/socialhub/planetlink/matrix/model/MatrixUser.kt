@@ -15,7 +15,7 @@ class MatrixUser(
 
     override var webUrl: String
         get() {
-            val uid = userId?.removePrefix("@")?.removeSuffix(":") ?: return ""
+            val uid = userId?.removePrefix("@") ?: return ""
             return "https://matrix.to/#/$uid"
         }
         set(_) {}

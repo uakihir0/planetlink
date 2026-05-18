@@ -55,9 +55,12 @@ class MatrixComment(
     }
 
     override val replyForm: CommentForm
-        get() = CommentForm().also {
-            it.addParam(ROOM_KEY, roomId ?: "")
-            it.replyId(id)
+        get() {
+            val rid = roomId ?: throw IllegalStateException("roomId is required for Matrix reply")
+            return CommentForm().also {
+                it.addParam(ROOM_KEY, rid)
+                it.replyId(id)
+            }
         }
 
     companion object {
