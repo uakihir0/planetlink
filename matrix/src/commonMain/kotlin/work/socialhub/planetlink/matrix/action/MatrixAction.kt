@@ -263,15 +263,7 @@ class MatrixAction(
             val comment = id as? MatrixComment
                 ?: throw SocialHubException("Not a Matrix comment")
 
-            if (comment.eventId != null) {
-                accessor.rooms().redactEvent(
-                    RoomsRedactEventRequest().apply {
-                        roomId = comment.roomId
-                        eventId = comment.eventId
-                        reason = "Removed reaction"
-                    }
-                )
-            }
+            throw NotSupportedException("Need reaction event lookup before unreaction redact")
         }
     }
 
@@ -404,7 +396,7 @@ class MatrixAction(
             auth.host,
             auth.accessToken ?: ""
         )
-        val stream = MatrixStream(kmatrixStream)
+        val stream = MatrixStream(kmatrixStream, callback)
         stream.open()
         return stream
     }
