@@ -8,10 +8,12 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import work.socialhub.kmatrix.stream.MatrixStream as KmatrixStream
+import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.model.Stream
 
 class MatrixStream(
     private val matrixStream: KmatrixStream,
+    private val callback: EventCallback? = null,
 ) : Stream {
 
     private var scope: CoroutineScope? = null
@@ -21,6 +23,7 @@ class MatrixStream(
         get() = _isOpened
 
     override suspend fun open() {
+        if (_isOpened) return
         _isOpened = true
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         scope!!.launch {
