@@ -5,7 +5,9 @@ import work.socialhub.planetlink.bluesky.expand.PlanetLinkEx as PlanetLinkExBlue
 import work.socialhub.planetlink.misskey.expand.PlanetLinkEx as PlanetLinkExMisskey
 import work.socialhub.planetlink.mastodon.expand.PlanetLinkEx as PlanetLinkExMastodon
 import work.socialhub.planetlink.matrix.expand.PlanetLinkEx as PlanetLinkExMatrix
+import kotlin.js.JsExport
 
+@JsExport
 object Reference {
 
     val references = listOf(
