@@ -19,6 +19,7 @@ This is a Kotlin Multiplatform port of [SocialHub](https://github.com/uakihir0/S
 - Mastodon (library: [kmastodon](https://github.com/uakihir0/kmastodon))
 - Nostr (library: [knostr](https://github.com/uakihir0/knostr))
 - Slack (library: [kslack](https://github.com/uakihir0/kslack))
+- Matrix (library: [kmatrix](https://github.com/uakihir0/kmatrix))
 - Tumblr (library: [ktumblr](https://github.com/uakihir0/ktumblr))
 
 ## Usage
