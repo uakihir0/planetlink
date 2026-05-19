@@ -3,7 +3,9 @@ package work.socialhub.planetlink.model.group
 import work.socialhub.planetlink.action.group.UserGroupAction
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.User
+import kotlin.js.JsExport
 
+@JsExport
 interface UserGroup {
 
     /**

@@ -3,7 +3,9 @@ package work.socialhub.planetlink.model.group
 import work.socialhub.planetlink.action.group.CommentsRequestGroupAction
 import work.socialhub.planetlink.action.group.CommentsRequestGroupActionImpl
 import work.socialhub.planetlink.action.request.CommentsRequest
+import kotlin.js.JsExport
 
+@JsExport
 class CommentsRequestGroupImpl(
     vararg requests: CommentsRequest
 ) : CommentsRequestGroup {
@@ -18,6 +20,7 @@ class CommentsRequestGroupImpl(
     /**
      * {@inheritDoc}
      */
+    @JsExport.Ignore
     override fun addCommentsRequests(request: CommentsRequest) {
         this.requests.add(request)
     }

@@ -7,10 +7,12 @@ import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Paging
+import kotlin.js.JsExport
 
 /**
  * Whole Accounts Comments
  */
+@JsExport
 class CommentGroupImpl(
     /** Comments Request Group  */
     override var requestGroup: CommentsRequestGroup,

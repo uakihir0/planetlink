@@ -4,7 +4,9 @@ import work.socialhub.planetlink.action.group.UserGroupAction
 import work.socialhub.planetlink.action.group.UserGroupActionImpl
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.User
+import kotlin.js.JsExport
 
+@JsExport
 class UserGroupImpl(
     override var entities: Map<Account, User>
 ) : UserGroup {

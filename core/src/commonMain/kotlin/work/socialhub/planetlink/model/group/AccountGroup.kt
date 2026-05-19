@@ -2,11 +2,13 @@ package work.socialhub.planetlink.model.group
 
 import work.socialhub.planetlink.action.group.AccountGroupAction
 import work.socialhub.planetlink.model.Account
+import kotlin.js.JsExport
 
 /**
  * Account Group Model
  * 複数のアカウントを束ねるモデル
  */
+@JsExport
 interface AccountGroup {
 
     /**

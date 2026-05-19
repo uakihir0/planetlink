@@ -3,7 +3,9 @@ package work.socialhub.planetlink.model.group
 import work.socialhub.planetlink.action.group.AccountGroupAction
 import work.socialhub.planetlink.action.group.AccountGroupActionImpl
 import work.socialhub.planetlink.model.Account
+import kotlin.js.JsExport
 
+@JsExport
 class AccountGroupImpl(
     vararg accounts: Account
 ) : AccountGroup {

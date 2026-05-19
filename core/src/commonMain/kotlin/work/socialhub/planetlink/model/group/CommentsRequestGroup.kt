@@ -2,7 +2,9 @@ package work.socialhub.planetlink.model.group
 
 import work.socialhub.planetlink.action.group.CommentsRequestGroupAction
 import work.socialhub.planetlink.action.request.CommentsRequest
+import kotlin.js.JsExport
 
+@JsExport
 interface CommentsRequestGroup {
 
     val requests: MutableList<CommentsRequest>
@@ -10,6 +12,7 @@ interface CommentsRequestGroup {
     /**
      * Add Comments Request
      */
+    @JsExport.Ignore
     fun addCommentsRequests(request: CommentsRequest)
 
     /**
@@ -23,6 +26,7 @@ interface CommentsRequestGroup {
     fun action(): CommentsRequestGroupAction
 
     companion object {
+        @JsExport.Ignore
         fun of(): CommentsRequestGroup {
             return CommentsRequestGroupImpl()
         }
