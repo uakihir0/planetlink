@@ -1,9 +1,12 @@
 package work.socialhub.planetlink.bluesky.define
 
+import kotlin.js.JsExport
+
 /**
  * Bluesky Reaction Type
  * (Action code with alias)
  */
+@JsExport
 enum class BlueskyReactionType(
     vararg codes: String
 ) {

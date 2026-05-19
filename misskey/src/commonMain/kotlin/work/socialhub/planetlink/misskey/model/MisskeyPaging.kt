@@ -2,11 +2,13 @@ package work.socialhub.planetlink.misskey.model
 
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
+import kotlin.js.JsExport
 
 /**
  * Misskey Paging
  * Misskey の特殊ページングに対応
  */
+@JsExport
 class MisskeyPaging : Paging() {
 
     var untilId: String? = null

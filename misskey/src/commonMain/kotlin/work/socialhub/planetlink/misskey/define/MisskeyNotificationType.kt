@@ -2,8 +2,10 @@ package work.socialhub.planetlink.misskey.define
 
 import work.socialhub.kmisskey.entity.constant.NotificationType
 import work.socialhub.planetlink.define.NotificationActionType
+import kotlin.js.JsExport
 
 
+@JsExport
 enum class MisskeyNotificationType(
     val action: NotificationActionType?,
     val code: String

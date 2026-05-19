@@ -2,7 +2,9 @@ package work.socialhub.planetlink.misskey.model
 
 import work.socialhub.planetlink.model.Stream
 import work.socialhub.kmisskey.stream.MisskeyStream as MMisskeyStream
+import kotlin.js.JsExport
 
+@JsExport
 class MisskeyStream(
     val stream: MMisskeyStream
 ) : Stream {

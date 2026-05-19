@@ -1,5 +1,8 @@
 package work.socialhub.planetlink.misskey.define
 
+import kotlin.js.JsExport
+
+@JsExport
 object MisskeyFormKey {
 
     /** Renote の場合  */

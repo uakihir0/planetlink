@@ -8,11 +8,13 @@ import work.socialhub.planetlink.model.Reaction
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.model.request.CommentForm
+import kotlin.js.JsExport
 
 /**
  * Misskey Comment Model
  * Misskey のコメントモデル
  */
+@JsExport
 class MisskeyComment(
     service: Service
 ) : MicroBlogComment(service) {

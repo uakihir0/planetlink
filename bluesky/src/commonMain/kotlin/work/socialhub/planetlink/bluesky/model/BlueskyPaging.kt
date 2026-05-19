@@ -2,7 +2,9 @@ package work.socialhub.planetlink.bluesky.model
 
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
+import kotlin.js.JsExport
 
+@JsExport
 class BlueskyPaging(
     count: Int? = null,
 ) : Paging(count) {
