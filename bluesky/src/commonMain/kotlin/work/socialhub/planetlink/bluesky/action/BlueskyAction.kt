@@ -64,6 +64,7 @@ import work.socialhub.planetlink.bluesky.model.BlueskyComment
 import work.socialhub.planetlink.bluesky.model.BlueskyPaging
 import work.socialhub.planetlink.bluesky.model.BlueskyUser
 import work.socialhub.planetlink.bluesky.support.Utils
+import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Channel
 import work.socialhub.planetlink.model.Comment
@@ -75,6 +76,8 @@ import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Paging
 import work.socialhub.planetlink.model.Relationship
 import work.socialhub.planetlink.model.Service
+import work.socialhub.planetlink.model.Stream
+import work.socialhub.planetlink.model.Thread
 import work.socialhub.planetlink.model.Trend
 import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.error.NotSupportedException
@@ -1034,6 +1037,71 @@ class BlueskyAction(
                 service(),
             )
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun commentContexts(
+        id: Identify
+    ): Context {
+        return commentContext(id)
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun channelUsers(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<User> {
+        throw NotSupportedException()
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun messageThread(
+        paging: Paging,
+    ): Pageable<Thread> {
+        throw NotSupportedException()
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun messageTimeLine(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<Comment> {
+        throw NotSupportedException()
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun postMessage(
+        req: CommentForm
+    ) {
+        throw NotSupportedException()
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun setHomeTimeLineStream(
+        callback: EventCallback
+    ): Stream {
+        throw NotSupportedException()
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun setNotificationStream(
+        callback: EventCallback
+    ): Stream {
+        throw NotSupportedException()
     }
 
     /**

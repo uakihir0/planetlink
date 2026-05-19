@@ -870,6 +870,15 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
+    override suspend fun commentContexts(
+        id: Identify
+    ): Context {
+        return commentContext(id)
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     suspend fun commentContext(
         id: Identify
     ): Context {
@@ -899,6 +908,13 @@ class MastodonAction(
                 c.sort()
             }
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override fun emojis(): List<Emoji> {
+        return emojisCache ?: super.emojis()
     }
 
     /**
@@ -1142,10 +1158,28 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
+    override suspend fun setHomeTimeLineStream(
+        callback: EventCallback
+    ): Stream {
+        return homeTimeLineStream(callback)
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun setNotificationStream(
+        callback: EventCallback
+    ): Stream {
+        return notificationStream(callback)
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     fun notificationStream(
         callback: EventCallback
     ): Stream {
-        TODO("")
+        throw NotSupportedException()
     }
 
     // ============================================================== //

@@ -770,6 +770,13 @@ class MisskeyAction(
     }
 
     /**
+     * {@inheritDoc}
+     */
+    override fun emojis(): List<Emoji> {
+        return emojisCache ?: super.emojis()
+    }
+
+    /**
      * Get List of Emojis
      */
     suspend fun getEmojis(): List<Emoji> {
@@ -790,6 +797,15 @@ class MisskeyAction(
 
             checkNotNull(this.emojisCache)
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun commentContexts(
+        id: Identify
+    ): Context {
+        return commentContext(id)
     }
 
     /**
@@ -1076,6 +1092,24 @@ class MisskeyAction(
             setStreamConnectionCallback(stream, connectionListener)
             work.socialhub.planetlink.misskey.model.MisskeyStream(stream)
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun setHomeTimeLineStream(
+        callback: EventCallback
+    ): Stream {
+        return homeTimeLineStream(callback)
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun setNotificationStream(
+        callback: EventCallback
+    ): Stream {
+        return notificationStream(callback)
     }
 
     /**
