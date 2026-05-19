@@ -2,11 +2,13 @@ package work.socialhub.planetlink.model.common
 
 import work.socialhub.planetlink.define.AttributedType.simple
 import work.socialhub.planetlink.model.Emoji
+import kotlin.js.JsExport
 
 /**
  * String With Attributes
  * 属性付き文字列
  */
+@JsExport
 class AttributedString {
 
     var elements: List<AttributedElement>
@@ -15,6 +17,7 @@ class AttributedString {
      * Make Attributes String with AttributedElements list.
      * 属性付き要素から属性付き文字列を生成
      */
+    @JsExport.Ignore
     constructor(elements: List<AttributedElement>) {
         this.elements = elements
     }
@@ -23,6 +26,7 @@ class AttributedString {
      * Attributed String with plain text and element types.
      * 文字列から属性文字列を作成 (属性を指定)
      */
+    @JsExport.Ignore
     private constructor(text: String, kinds: List<AttributedType>) {
         val model = AttributedItem()
         model.kind = AttributedKind.PLAIN
@@ -208,6 +212,7 @@ class AttributedString {
          * Make Attributed String from plain text.
          * 装飾無しテキストから属性付き文字列を作成
          */
+        @JsExport.Ignore
         fun plain(string: String?): AttributedString {
             return AttributedString(if ((string != null)) string else "", simple())
         }

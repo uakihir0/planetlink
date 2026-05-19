@@ -2,11 +2,13 @@ package work.socialhub.planetlink.model.paging
 
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
+import kotlin.js.JsExport
 
 /**
  * Paging with page number
  * ベージ番号付きページング
  */
+@JsExport
 class IndexPaging : Paging() {
 
     var page: Long? = null

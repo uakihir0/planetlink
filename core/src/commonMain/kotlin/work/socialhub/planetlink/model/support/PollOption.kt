@@ -1,9 +1,12 @@
 package work.socialhub.planetlink.model.support
 
+import kotlin.js.JsExport
+
 /**
  * Poll's Option
  * 投票における選択肢
  */
+@JsExport
 class PollOption(
     var index: Int,
     var title: String = "",

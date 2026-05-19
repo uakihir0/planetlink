@@ -1,5 +1,8 @@
 package work.socialhub.planetlink.model.common
 
+import kotlin.js.JsExport
+
+@JsExport
 enum class AttributedKind {
 
     // STRINGS

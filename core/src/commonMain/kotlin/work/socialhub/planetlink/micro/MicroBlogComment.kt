@@ -3,7 +3,9 @@ package work.socialhub.planetlink.micro
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Service
+import kotlin.js.JsExport
 
+@JsExport
 open class MicroBlogComment(
     service: Service
 ) : Comment(service) {

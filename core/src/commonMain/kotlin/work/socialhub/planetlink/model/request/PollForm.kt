@@ -1,5 +1,8 @@
 package work.socialhub.planetlink.model.request
 
+import kotlin.js.JsExport
+
+@JsExport
 class PollForm {
 
     val options = mutableListOf<String>()
@@ -21,6 +24,7 @@ class PollForm {
     /**
      * Set multiple
      */
+    @JsExport.Ignore
     fun multiple(multiple: Boolean): PollForm {
         this.multiple = multiple
         return this
@@ -29,6 +33,7 @@ class PollForm {
     /**
      * Set expires in (min)
      */
+    @JsExport.Ignore
     fun expiresIn(expiresIn: Int): PollForm {
         this.expiresIn = expiresIn
         return this

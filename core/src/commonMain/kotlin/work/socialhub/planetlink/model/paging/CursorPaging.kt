@@ -2,12 +2,14 @@ package work.socialhub.planetlink.model.paging
 
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
+import kotlin.js.JsExport
 
 /**
  * Paging with cursor
  * カーソル付きページング
  * (Twitter, Slack etc.)
  */
+@JsExport
 class CursorPaging<Type>(
     count: Int? = null,
 ) : Paging(count) {

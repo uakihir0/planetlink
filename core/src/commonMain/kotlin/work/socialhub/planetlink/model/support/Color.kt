@@ -1,9 +1,12 @@
 package work.socialhub.planetlink.model.support
 
+import kotlin.js.JsExport
+
 /**
  * Color Model
  * Initialize with white color.
  */
+@JsExport
 class Color(
     var r: Int = 255,
     var g: Int = 255,
