@@ -1,6 +1,7 @@
 package work.socialhub.planetlink.model
 
 import work.socialhub.planetlink.action.AccountAction
+import kotlin.js.JsExport
 
 /**
  * Account Model
@@ -8,6 +9,7 @@ import work.socialhub.planetlink.action.AccountAction
  * アカウント情報を扱うモデル
  * (各サービス毎のユーザーではない点に注意)
  */
+@JsExport
 class Account {
 
     var tag: String? = null

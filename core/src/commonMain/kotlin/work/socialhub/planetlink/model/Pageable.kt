@@ -1,9 +1,12 @@
 package work.socialhub.planetlink.model
 
+import kotlin.js.JsExport
+
 /**
  * ページング可能レスポンス
  * Pageable Response
  */
+@JsExport
 class Pageable<T : Identify> {
 
     /** Paging Information  */

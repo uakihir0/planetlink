@@ -1,11 +1,13 @@
 package work.socialhub.planetlink.model
 
 import work.socialhub.planetlink.define.MediaType
+import kotlin.js.JsExport
 
 /**
  * Media Model
  * メディアモデル
  */
+@JsExport
 class Media {
 
     /** Type of this media */

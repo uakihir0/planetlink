@@ -6,11 +6,13 @@ import work.socialhub.planetlink.action.CommentActionImpl
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.model.error.NotImplementedException
 import work.socialhub.planetlink.model.request.CommentForm
+import kotlin.js.JsExport
 
 /**
  * SNS コメント情報
  * SNS Comment Model
  */
+@JsExport
 open class Comment(
     service: Service
 ) : Identify(service) {

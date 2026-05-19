@@ -2,7 +2,9 @@ package work.socialhub.planetlink.model
 
 import work.socialhub.planetlink.define.LanguageType
 import work.socialhub.planetlink.model.error.SocialHubError
+import kotlin.js.JsExport
 
+@JsExport
 class Error(
     private val messageForUser: String
 ) : SocialHubError {

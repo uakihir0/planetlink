@@ -1,8 +1,11 @@
 package work.socialhub.planetlink.model
 
+import kotlin.js.JsExport
+
 /**
  * Comment Context
  */
+@JsExport
 class Context {
 
     /**

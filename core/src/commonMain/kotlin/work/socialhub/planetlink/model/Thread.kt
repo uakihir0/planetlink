@@ -1,11 +1,13 @@
 package work.socialhub.planetlink.model
 
 import kotlinx.datetime.Instant
+import kotlin.js.JsExport
 
 /**
  * Thread of Group Messaging
  * グループメッセージスレッド
  */
+@JsExport
 open class Thread(
     service: Service
 ) : Identify(service) {
