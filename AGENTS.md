@@ -13,6 +13,9 @@ This is a Kotlin Multiplatform port of [SocialHub](https://github.com/uakihir0/S
 | Bluesky | [kbsky](https://github.com/uakihir0/kbsky) | `bluesky/` |
 | Misskey | [kmisskey](https://github.com/uakihir0/kmisskey) | `misskey/` |
 | Mastodon | [kmastodon](https://github.com/uakihir0/kmastodon) | `mastodon/` |
+| Nostr | [knostr](https://github.com/uakihir0/knostr) | `nostr/` |
+| Slack | [kslack](https://github.com/uakihir0/kslack) | `slack/` |
+| Matrix | [kmatrix](https://github.com/uakihir0/kmatrix) | `matrix/` |
 | Tumblr | [ktumblr](https://github.com/uakihir0/ktumblr) | `tumblr/` |
 
 ### Kotlin Multiplatform Targets
@@ -37,6 +40,9 @@ PlanetLink Core (core/)
   ├── Bluesky Adapter (bluesky/) → kbsky SDK
   ├── Misskey Adapter (misskey/) → kmisskey SDK
   ├── Mastodon Adapter (mastodon/) → kmastodon SDK
+  ├── Nostr Adapter (nostr/) → knostr SDK
+  ├── Slack Adapter (slack/) → kslack SDK
+  ├── Matrix Adapter (matrix/) → kmatrix SDK
   └── Tumblr Adapter (tumblr/) → ktumblr SDK
 ```
 

@@ -9,7 +9,6 @@ import work.socialhub.kmatrix.api.request.notifications.NotificationsGetRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsGetMessagesRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsRedactEventRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsSendMessageRequest
-import work.socialhub.kmatrix.api.request.sync.SyncRequest
 import work.socialhub.kmatrix.api.request.userdirectory.UserDirectorySearchRequest
 import work.socialhub.kmatrix.api.response.events.EventsGetContextResponse
 import work.socialhub.kmatrix.api.response.events.EventsGetEventResponse
@@ -123,27 +122,7 @@ class MatrixAction(
     }
 
     override suspend fun homeTimeLine(paging: Paging): Pageable<Comment> {
-        return proceed {
-            val syncResponse = accessor.sync().sync(
-                SyncRequest().apply {
-                    timeout = 5000
-                    filter = """{"room":{"timeline":{"limit":30}}}"""
-                }
-            ).data
-
-            val events = mutableListOf<RoomEvent>()
-            syncResponse.rooms?.join?.forEach { (_, joinedRoom) ->
-                joinedRoom.timeline?.events?.forEach { event ->
-                    if (event.type == "m.room.message") {
-                        events.add(event)
-                    }
-                }
-            }
-            events.sortByDescending { it.originServerTs }
-
-            val userMe = userMeWithCache()
-            MatrixMapper.timeLine(events, service(), paging, userMe)
-        }
+        throw NotSupportedException("Matrix does not support home timeline")
     }
 
     override suspend fun mentionTimeLine(paging: Paging): Pageable<Comment> {
