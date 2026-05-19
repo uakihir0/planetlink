@@ -1,7 +1,9 @@
 package work.socialhub.planetlink.action.group
 
 import work.socialhub.planetlink.model.group.CommentGroup
+import kotlin.js.JsExport
 
+@JsExport
 interface CommentsRequestGroupAction {
 
     /**

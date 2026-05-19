@@ -1,10 +1,12 @@
 package work.socialhub.planetlink.bluesky.define
 
 import work.socialhub.planetlink.define.NotificationActionType
+import kotlin.js.JsExport
 
 /**
  * like, repost, follow, mention, reply, quote
  */
+@JsExport
 enum class BlueskyNotificationType(
     val action: NotificationActionType,
     val code: String

@@ -1,5 +1,8 @@
 package work.socialhub.planetlink.define.emoji
 
+import kotlin.js.JsExport
+
+@JsExport
 @Suppress("unused")
 enum class EmojiType(
     val emoji: String,
@@ -1765,6 +1768,7 @@ enum class EmojiType(
     Secret("㊙️", "secret", "Symbols", 11),
     ;
 
+    @JsExport.Ignore
     fun category(): EmojiCategoryType {
         return EmojiCategoryType.of(category)
     }

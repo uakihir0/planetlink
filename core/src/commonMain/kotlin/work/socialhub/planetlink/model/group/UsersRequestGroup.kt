@@ -2,7 +2,9 @@ package work.socialhub.planetlink.model.group
 
 import work.socialhub.planetlink.action.group.UsersRequestGroupAction
 import work.socialhub.planetlink.action.request.UsersRequest
+import kotlin.js.JsExport
 
+@JsExport
 interface UsersRequestGroup {
 
     val requests: MutableList<UsersRequest>
@@ -10,6 +12,7 @@ interface UsersRequestGroup {
     /**
      * Add Users Request
      */
+    @JsExport.Ignore
     fun addUsersRequests(request: UsersRequest)
 
     /**
@@ -23,6 +26,7 @@ interface UsersRequestGroup {
     fun action(): UsersRequestGroupAction
 
     companion object {
+        @JsExport.Ignore
         fun of(): UsersRequestGroup {
             return UsersRequestGroupImpl()
         }

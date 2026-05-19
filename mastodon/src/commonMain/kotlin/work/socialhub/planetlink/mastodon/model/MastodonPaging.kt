@@ -2,11 +2,13 @@ package work.socialhub.planetlink.mastodon.model
 
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
+import kotlin.js.JsExport
 
 /**
  * Mastodon Paging
  * Mastodon の特殊ページングに対応
  */
+@JsExport
 class MastodonPaging : Paging() {
 
     var minId: String? = null

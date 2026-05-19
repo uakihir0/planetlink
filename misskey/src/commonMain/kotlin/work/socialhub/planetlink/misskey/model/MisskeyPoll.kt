@@ -2,7 +2,9 @@ package work.socialhub.planetlink.misskey.model
 
 import work.socialhub.planetlink.model.Poll
 import work.socialhub.planetlink.model.Service
+import kotlin.js.JsExport
 
+@JsExport
 class MisskeyPoll(
     service: Service
 ) : Poll(service) {

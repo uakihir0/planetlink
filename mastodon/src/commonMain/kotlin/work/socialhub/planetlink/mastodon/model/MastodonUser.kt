@@ -7,11 +7,13 @@ import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.common.AttributedFiled
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.model.request.CommentForm
+import kotlin.js.JsExport
 
 /**
  * Mastodon User Model
  * Mastodon のユーザー情報
  */
+@JsExport
 class MastodonUser(
     service: Service
 ) : MicroBlogUser(service) {

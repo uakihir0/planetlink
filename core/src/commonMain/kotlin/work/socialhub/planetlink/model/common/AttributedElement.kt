@@ -1,9 +1,12 @@
 package work.socialhub.planetlink.model.common
 
+import kotlin.js.JsExport
+
 /**
  * Attributes Elements
  * 属性情報
  */
+@JsExport
 interface AttributedElement {
 
     /** Type of element */

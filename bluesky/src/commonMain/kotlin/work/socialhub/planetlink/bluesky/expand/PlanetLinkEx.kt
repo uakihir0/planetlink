@@ -2,7 +2,9 @@ package work.socialhub.planetlink.bluesky.expand
 
 import work.socialhub.planetlink.PlanetLink
 import work.socialhub.planetlink.bluesky.action.BlueskyAuth
+import kotlin.js.JsExport
 
+@JsExport
 object PlanetLinkEx {
 
     /**

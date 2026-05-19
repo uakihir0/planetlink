@@ -2,7 +2,9 @@ package work.socialhub.planetlink.mastodon.model
 
 import work.socialhub.kmastodon.stream.api.EventStream
 import work.socialhub.planetlink.model.Stream
+import kotlin.js.JsExport
 
+@JsExport
 class MastodonStream(
     val stream: EventStream
 ) : Stream {

@@ -3,11 +3,13 @@ package work.socialhub.planetlink.model
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import work.socialhub.planetlink.define.action.ActionType
+import kotlin.js.JsExport
 
 /**
  * SNS レートリミット
  * SNS RateLimit
  */
+@JsExport
 class RateLimit {
 
     private val dictionary = mutableMapOf<ActionType, RateLimitValue>()
@@ -16,6 +18,7 @@ class RateLimit {
      * レートリミット情報を格納
      * Set rate limit info
      */
+    @JsExport.Ignore
     fun addInfo(
         action: ActionType,
         service: String,

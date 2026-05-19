@@ -4,11 +4,13 @@ import work.socialhub.planetlink.define.ReactionType
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Reaction
 import work.socialhub.planetlink.model.Service
+import kotlin.js.JsExport
 
 /**
  * Tumblr Comment Model
  * Tumblr のコメント情報
  */
+@JsExport
 class TumblrComment(
     service: Service
 ) : Comment(service) {

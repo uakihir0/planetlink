@@ -1,6 +1,7 @@
 package work.socialhub.planetlink.model
 
 import work.socialhub.planetlink.model.paging.*
+import kotlin.js.JsExport
 
 /**
  * Paging
@@ -13,6 +14,7 @@ import work.socialhub.planetlink.model.paging.*
  * @see IndexPaging
  * @see OffsetPaging
  */
+@JsExport
 open class Paging(
     var count: Int? = null,
 ) {

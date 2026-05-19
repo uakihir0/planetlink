@@ -3,7 +3,9 @@ package work.socialhub.planetlink.mastodon.model
 import work.socialhub.planetlink.model.Emoji
 import work.socialhub.planetlink.model.Poll
 import work.socialhub.planetlink.model.Service
+import kotlin.js.JsExport
 
+@JsExport
 class MastodonPoll(
     service: Service
 ) : Poll(service) {

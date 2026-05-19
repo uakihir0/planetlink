@@ -2,7 +2,9 @@ package work.socialhub.planetlink.micro
 
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.User
+import kotlin.js.JsExport
 
+@JsExport
 open class MicroBlogUser(
     service: Service
 ) : User(service) {

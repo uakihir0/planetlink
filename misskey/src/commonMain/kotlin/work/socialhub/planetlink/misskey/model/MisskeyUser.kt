@@ -7,11 +7,13 @@ import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.common.AttributedFiled
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.model.support.Color
+import kotlin.js.JsExport
 
 /**
  * Misskey User
  * Misskey のユーザー情報
  */
+@JsExport
 class MisskeyUser(
     service: Service
 ) : MicroBlogUser(service) {

@@ -1,20 +1,25 @@
 package work.socialhub.planetlink.model
 
+import kotlin.js.JsExport
+
 /**
  * Identify
  * 識別
  */
+@JsExport
 open class Identify(
     var service: Service
 ) {
     var id: ID? = null
 
+    @JsExport.Ignore
     inline fun <reified T> id(): T {
         return checkNotNull(id) {
             "id is null."
         }.value<T>()
     }
 
+    @JsExport.Ignore
     constructor(
         service: Service,
         id: ID,

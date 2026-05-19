@@ -1,7 +1,9 @@
 package work.socialhub.planetlink.model.request
 
 import work.socialhub.planetlink.model.ID
+import kotlin.js.JsExport
 
+@JsExport
 class CommentForm {
 
     /** Text  */
@@ -57,6 +59,7 @@ class CommentForm {
     /**
      * Set Text
      */
+    @JsExport.Ignore
     fun text(text: String?): CommentForm {
         this.text = text
         return this
@@ -65,6 +68,7 @@ class CommentForm {
     /**
      * Set Warning
      */
+    @JsExport.Ignore
     fun warning(warning: String?): CommentForm {
         this.warning = warning
         return this
@@ -73,6 +77,7 @@ class CommentForm {
     /**
      * Set Reply (Thread) ID
      */
+    @JsExport.Ignore
     fun replyId(replyId: ID?): CommentForm {
         this.replyId = replyId
         return this
@@ -81,6 +86,7 @@ class CommentForm {
     /**
      * Set Quote ID
      */
+    @JsExport.Ignore
     fun quoteId(quoteId: ID?): CommentForm {
         this.quoteId = quoteId
         return this
@@ -89,6 +95,7 @@ class CommentForm {
     /**
      * Add One File
      */
+    @JsExport.Ignore
     fun addImage(data: ByteArray, name: String): CommentForm {
         return addImage(MediaForm(data, name))
     }
@@ -96,6 +103,7 @@ class CommentForm {
     /**
      * Add One Image
      */
+    @JsExport.Ignore
     fun addImage(req: MediaForm): CommentForm {
         images.add(req)
         return this
@@ -112,6 +120,7 @@ class CommentForm {
     /**
      * Set Sensitive
      */
+    @JsExport.Ignore
     fun isSensitive(isSensitive: Boolean): CommentForm {
         this.isSensitive = isSensitive
         return this
@@ -120,6 +129,7 @@ class CommentForm {
     /**
      * Set Message
      */
+    @JsExport.Ignore
     fun isMessage(isMessage: Boolean): CommentForm {
         this.isMessage = isMessage
         return this
@@ -128,6 +138,7 @@ class CommentForm {
     /**
      * Visibility
      */
+    @JsExport.Ignore
     fun visibility(visibility: String?): CommentForm {
         this.visibility = visibility
         return this
@@ -136,6 +147,7 @@ class CommentForm {
     /**
      * Set Poll
      */
+    @JsExport.Ignore
     fun poll(poll: PollForm?): CommentForm {
         this.poll = poll
         return this

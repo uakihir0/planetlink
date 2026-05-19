@@ -7,11 +7,13 @@ import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Reaction
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.request.CommentForm
+import kotlin.js.JsExport
 
 /**
  * Bluesky Comment Model
  * Bluesky のコメント情報
  */
+@JsExport
 class BlueskyComment(
     service: Service
 ) : MicroBlogComment(service) {

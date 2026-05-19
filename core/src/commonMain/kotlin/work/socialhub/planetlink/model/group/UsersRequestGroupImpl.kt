@@ -3,7 +3,9 @@ package work.socialhub.planetlink.model.group
 import work.socialhub.planetlink.action.group.UsersRequestGroupAction
 import work.socialhub.planetlink.action.group.UsersRequestGroupActionImpl
 import work.socialhub.planetlink.action.request.UsersRequest
+import kotlin.js.JsExport
 
+@JsExport
 class UsersRequestGroupImpl(
     vararg requests: UsersRequest
 ) : UsersRequestGroup {
@@ -18,6 +20,7 @@ class UsersRequestGroupImpl(
     /**
      * {@inheritDoc}
      */
+    @JsExport.Ignore
     override fun addUsersRequests(request: UsersRequest) {
         requests.add(request)
     }

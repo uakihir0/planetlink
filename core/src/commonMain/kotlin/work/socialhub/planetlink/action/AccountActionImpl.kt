@@ -2,11 +2,14 @@ package work.socialhub.planetlink.action
 
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.User
+import kotlin.js.JsExport
 
+@JsExport
 abstract class AccountActionImpl(
     var account: Account
 ) : AccountAction {
 
+    @JsExport.Ignore
     @Suppress("UNCHECKED_CAST")
     fun <T : AccountActionImpl> account(
         account: Account

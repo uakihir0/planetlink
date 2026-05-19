@@ -2,11 +2,13 @@ package work.socialhub.planetlink.tumblr.model
 
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
+import kotlin.js.JsExport
 
 /**
  * Tumblr Paging
  * Tumblr の特殊ページング対応
  */
+@JsExport
 class TumblrPaging : Paging() {
 
     var sinceId: String? = null

@@ -1,10 +1,13 @@
 package work.socialhub.planetlink.model
 
+import kotlin.js.JsExport
+
 /**
  * インスタンス情報
  * Instance Info
  * (for distributed SNS)
  */
+@JsExport
 class Instance(
     var service: Service
 ) {

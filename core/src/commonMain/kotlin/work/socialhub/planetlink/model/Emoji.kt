@@ -2,10 +2,12 @@ package work.socialhub.planetlink.model
 
 import work.socialhub.planetlink.define.emoji.EmojiType
 import work.socialhub.planetlink.define.emoji.EmojiVariationType
+import kotlin.js.JsExport
 
 /**
  * Emoji
  */
+@JsExport
 class Emoji {
 
     /**

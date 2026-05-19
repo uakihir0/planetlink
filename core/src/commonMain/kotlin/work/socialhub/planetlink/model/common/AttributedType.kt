@@ -1,5 +1,8 @@
 package work.socialhub.planetlink.model.common
 
+import kotlin.js.JsExport
+
+@JsExport
 interface AttributedType {
 
     /** 属性の種類を取得 */
@@ -17,6 +20,7 @@ interface AttributedType {
     /**
      * AttributedType のデフォルト実装
      */
+    @JsExport.Ignore
     class CommonAttributedType(
         override val kind: AttributedKind,
         override val regex: Regex,
@@ -24,6 +28,7 @@ interface AttributedType {
         val expand: ((MatchResult) -> String)?,
     ) : AttributedType {
 
+        @JsExport.Ignore
         constructor(
             kind: AttributedKind,
             regex: Regex

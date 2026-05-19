@@ -2,11 +2,13 @@ package work.socialhub.planetlink.model
 
 import kotlinx.datetime.Instant
 import work.socialhub.planetlink.model.support.PollOption
+import kotlin.js.JsExport
 
 /**
  * Poll
  * 投票情報
  */
+@JsExport
 open class Poll(
     service: Service
 ) : Identify(service) {

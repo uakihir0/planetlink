@@ -1,7 +1,9 @@
 package work.socialhub.planetlink.misskey.define
 
 import work.socialhub.kmisskey.entity.constant.Scope
+import kotlin.js.JsExport
 
+@JsExport
 object MisskeyScope {
 
     /**

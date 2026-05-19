@@ -5,11 +5,13 @@ import work.socialhub.planetlink.model.common.AttributedFiled
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.model.error.NotImplementedException
 import work.socialhub.planetlink.model.request.CommentForm
+import kotlin.js.JsExport
 
 /**
  * SNS ユーザーモデル
  * SNS User Model
  */
+@JsExport
 open class User(
     service: Service
 ) : Identify(service) {

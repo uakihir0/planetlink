@@ -4,11 +4,13 @@ import kotlinx.serialization.encodeToString
 import work.socialhub.planetlink.action.SerializedRequest
 import work.socialhub.planetlink.define.action.ActionType
 import work.socialhub.planetlink.utils.SerializeUtil
+import kotlin.js.JsExport
 
 /**
  * Common Request Interface
  * リクエスト汎用インターフェース
  */
+@JsExport
 interface Request {
 
     /**

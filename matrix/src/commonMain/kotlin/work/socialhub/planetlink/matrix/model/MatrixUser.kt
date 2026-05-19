@@ -4,7 +4,9 @@ import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.request.CommentForm
+import kotlin.js.JsExport
 
+@JsExport
 class MatrixUser(
     service: Service
 ) : User(service) {

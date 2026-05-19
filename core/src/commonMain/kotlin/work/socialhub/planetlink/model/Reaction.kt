@@ -1,9 +1,12 @@
 package work.socialhub.planetlink.model
 
+import kotlin.js.JsExport
+
 /**
  * Reaction Model
  * リアクションモデル
  */
+@JsExport
 class Reaction {
 
     var name: String? = null

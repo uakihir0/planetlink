@@ -4,7 +4,9 @@ import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Paging
 import work.socialhub.planetlink.model.Request
 import work.socialhub.planetlink.model.User
+import kotlin.js.JsExport
 
+@JsExport
 interface UsersRequest : Request {
 
     /**

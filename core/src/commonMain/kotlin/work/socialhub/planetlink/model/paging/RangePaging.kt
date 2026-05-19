@@ -3,11 +3,13 @@ package work.socialhub.planetlink.model.paging
 import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
+import kotlin.js.JsExport
 
 /**
  * ID の開始と終了を指定するページング
  * (start,end の片方のみを指定する)
  */
+@JsExport
 class RangePaging(
     count: Int? = null,
 ) : Paging(count) {

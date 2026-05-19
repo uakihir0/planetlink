@@ -2,11 +2,13 @@ package work.socialhub.planetlink.model
 
 import kotlinx.datetime.Instant
 import work.socialhub.planetlink.define.NotificationActionType
+import kotlin.js.JsExport
 
 /**
  * Notification
  * 通知
  */
+@JsExport
 open class Notification(
     service: Service
 ) : Identify(service) {

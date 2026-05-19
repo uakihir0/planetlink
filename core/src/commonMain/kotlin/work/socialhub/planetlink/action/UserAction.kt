@@ -2,7 +2,9 @@ package work.socialhub.planetlink.action
 
 import work.socialhub.planetlink.model.Relationship
 import work.socialhub.planetlink.model.User
+import kotlin.js.JsExport
 
+@JsExport
 interface UserAction {
 
     /**

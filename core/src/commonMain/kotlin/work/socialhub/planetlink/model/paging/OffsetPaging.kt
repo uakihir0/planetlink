@@ -2,7 +2,9 @@ package work.socialhub.planetlink.model.paging
 
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
+import kotlin.js.JsExport
 
+@JsExport
 class OffsetPaging : Paging() {
 
     var offset: Int? = null

@@ -2,12 +2,14 @@ package work.socialhub.planetlink.model.paging
 
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
+import kotlin.js.JsExport
 
 /**
  * Paging with max and since
  * Max Since 管理のページング
  * (Twitter, Mastodon etc.)
  */
+@JsExport
 class BorderPaging(
     count: Int? = null,
 ) : Paging(count) {

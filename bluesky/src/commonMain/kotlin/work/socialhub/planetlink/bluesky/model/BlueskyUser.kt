@@ -2,11 +2,13 @@ package work.socialhub.planetlink.bluesky.model
 
 import work.socialhub.planetlink.micro.MicroBlogUser
 import work.socialhub.planetlink.model.Service
+import kotlin.js.JsExport
 
 /**
  * Bluesky User Model
  * Bluesky のユーザー情報
  */
+@JsExport
 class BlueskyUser(
     service: Service
 ) : MicroBlogUser(service) {

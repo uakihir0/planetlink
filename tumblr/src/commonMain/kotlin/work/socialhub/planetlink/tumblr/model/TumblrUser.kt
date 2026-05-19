@@ -3,8 +3,10 @@ package work.socialhub.planetlink.tumblr.model
 import work.socialhub.planetlink.model.Relationship
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.User
+import kotlin.js.JsExport
 
 
+@JsExport
 class TumblrUser(
     service: Service
 ) : User(service) {

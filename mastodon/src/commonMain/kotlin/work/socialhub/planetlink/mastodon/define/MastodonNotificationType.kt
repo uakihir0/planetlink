@@ -1,7 +1,9 @@
 package work.socialhub.planetlink.mastodon.define
 
 import work.socialhub.planetlink.define.NotificationActionType
+import kotlin.js.JsExport
 
+@JsExport
 enum class MastodonNotificationType(
     val action: NotificationActionType?,
     val code: String

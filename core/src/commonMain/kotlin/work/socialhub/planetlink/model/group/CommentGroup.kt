@@ -5,7 +5,9 @@ import work.socialhub.planetlink.action.group.CommentGroupAction
 import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Pageable
+import kotlin.js.JsExport
 
+@JsExport
 interface CommentGroup {
 
     /**

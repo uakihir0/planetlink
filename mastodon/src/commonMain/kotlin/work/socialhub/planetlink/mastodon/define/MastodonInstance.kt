@@ -1,9 +1,12 @@
 package work.socialhub.planetlink.mastodon.define
 
+import kotlin.js.JsExport
+
 /**
  * Famous Mastodon Instances
  * 有名 Mastodon インスタンスプリセット
  */
+@JsExport
 object MastodonInstance {
 
     // Mastodon

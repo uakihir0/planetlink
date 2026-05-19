@@ -2,12 +2,14 @@ package work.socialhub.planetlink.model.paging
 
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
+import kotlin.js.JsExport
 
 /**
  * Paging with date range
  * 時間範囲指定
  * (Slack)
  */
+@JsExport
 class DatePaging : Paging() {
 
     var latest: String? = null

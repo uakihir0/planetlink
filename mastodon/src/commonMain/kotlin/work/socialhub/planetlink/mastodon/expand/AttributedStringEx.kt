@@ -6,7 +6,9 @@ import work.socialhub.planetlink.model.common.AttributedElement
 import work.socialhub.planetlink.model.common.AttributedItem
 import work.socialhub.planetlink.model.common.AttributedKind
 import work.socialhub.planetlink.model.common.AttributedString
+import kotlin.js.JsExport
 
+@JsExport
 object AttributedStringEx {
 
     data class Tag(

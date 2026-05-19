@@ -1,6 +1,11 @@
 package work.socialhub.planetlink.model.error
 
+import kotlin.js.JsExport
+
+@JsExport
 class NotSupportedException : SocialHubException {
+    @JsExport.Ignore
     constructor() : super()
+    @JsExport.Ignore
     constructor(message: String) : super(message)
 }

@@ -2,7 +2,9 @@ package work.socialhub.planetlink.mastodon.expand
 
 import work.socialhub.planetlink.PlanetLink
 import work.socialhub.planetlink.mastodon.action.MastodonAuth
+import kotlin.js.JsExport
 
+@JsExport
 object PlanetLinkEx {
 
     /**

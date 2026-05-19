@@ -2,7 +2,9 @@ package work.socialhub.planetlink.misskey.model
 
 import work.socialhub.planetlink.model.Notification
 import work.socialhub.planetlink.model.Service
+import kotlin.js.JsExport
 
+@JsExport
 class MisskeyNotification(
     service: Service
 ) : Notification(service) {

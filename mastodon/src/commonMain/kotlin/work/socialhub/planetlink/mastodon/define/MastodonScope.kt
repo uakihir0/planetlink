@@ -1,10 +1,13 @@
 package work.socialhub.planetlink.mastodon.define
 
+import kotlin.js.JsExport
+
 
 /**
  * Mastodon Authorization Scopes
  * Mastodon 認証用スコープリスト
  */
+@JsExport
 object MastodonScope {
     const val READ: String = "read"
     const val WRITE: String = "write"

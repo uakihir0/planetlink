@@ -1,6 +1,9 @@
 package work.socialhub.planetlink.model.common
 
+import kotlin.js.JsExport
 
+
+@JsExport
 class AttributedBucket : AttributedElement {
 
     override var kind = AttributedKind.OTHER
