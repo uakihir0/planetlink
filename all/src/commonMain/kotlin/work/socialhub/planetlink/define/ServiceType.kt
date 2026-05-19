@@ -15,4 +15,5 @@ enum class ServiceType {
     PixelFed,
     Bluesky,
     Nostr,
+    Matrix,
 }

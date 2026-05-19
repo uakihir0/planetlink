@@ -7,6 +7,7 @@ import work.socialhub.planetlink.bluesky.expand.PlanetLinkEx.bluesky
 import work.socialhub.planetlink.mastodon.expand.PlanetLinkEx.mastodon
 import work.socialhub.planetlink.misskey.expand.PlanetLinkEx.misskey
 import work.socialhub.planetlink.model.Account
+import work.socialhub.planetlink.matrix.expand.PlanetLinkEx.matrix
 import work.socialhub.planetlink.nostr.expand.PlanetLinkEx.nostr
 import work.socialhub.planetlink.slack.expand.PlanetLinkEx.slack
 import work.socialhub.planetlink.tumblr.expand.PlanetLinkEx.tumblr
@@ -117,10 +118,20 @@ open class AbstractTest {
     fun nostr(): Account {
         val c = checkNotNull(config)
         val relays = (c["NOSTR_RELAYS"] ?: "").split(",").filter { it.isNotBlank() }
-        return PlanetLink.nostr(
-            relays = relays,
-            nsec = c["NOSTR_NSEC"],
-        ).accountWithPrivateKey()
+        return PlanetLink.nostr(relays = relays, nsec = c["NOSTR_NSEC"]).accountWithPrivateKey()
+    }
+
+    suspend fun matrix(): Account {
+        val c = checkNotNull(config)
+        val host = checkNotNull(c["MATRIX_HOST"])
+        val token = c["MATRIX_ACCESS_TOKEN"]
+        if (!token.isNullOrBlank()) {
+            return PlanetLink.matrix(host).accountWithAccessToken(token)
+        }
+        return PlanetLink.matrix(host).accountWithPassword(
+            checkNotNull(c["MATRIX_USER"]),
+            checkNotNull(c["MATRIX_PASSWORD"]),
+        )
     }
 
     fun icon(): ByteArray {

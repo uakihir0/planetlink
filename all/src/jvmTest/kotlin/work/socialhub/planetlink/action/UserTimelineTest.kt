@@ -32,4 +32,7 @@ class UserTimelineTest : AbstractTest() {
 
     @Test
     fun testNostr() = runTest { nostr().act() }
+
+    @Test
+    fun testMatrix() = runTest { matrix().act() }
 }
