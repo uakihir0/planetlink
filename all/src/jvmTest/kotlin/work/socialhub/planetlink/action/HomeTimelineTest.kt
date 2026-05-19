@@ -5,6 +5,7 @@ import work.socialhub.planetlink.AbstractTest
 import work.socialhub.planetlink.PrintClass.dumpComments
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Paging
+import work.socialhub.planetlink.model.error.NotSupportedException
 import kotlin.test.Test
 
 class HomeTimelineTest : AbstractTest() {
@@ -26,4 +27,16 @@ class HomeTimelineTest : AbstractTest() {
 
     @Test
     fun testNostr() = runTest { nostr().act() }
+
+    @Test
+    fun testSlack() = runTest { slack().act() }
+
+    @Test
+    fun testMatrix() = runTest {
+        try {
+            matrix().act()
+        } catch (_: NotSupportedException) {
+            // matrix does not support home timeline
+        }
+    }
 }
