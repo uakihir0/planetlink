@@ -1,11 +1,13 @@
 package work.socialhub.planetlink.define
 
 import work.socialhub.planetlink.model.error.SocialHubError
+import kotlin.js.JsExport
 
 /**
  * Special Error for fur
  * 特殊対応を行う場合のエラーメッセージを追加
  */
+@JsExport
 enum class ErrorType(
     private val messageEn: String,
     private val messageJa: String

@@ -1,5 +1,8 @@
 package work.socialhub.planetlink.define.emoji
 
+import kotlin.js.JsExport
+
+@JsExport
 @Suppress("unused")
 enum class EmojiVariationType(
     val emoji: String,
@@ -1367,6 +1370,7 @@ enum class EmojiVariationType(
     WritingHandSkinTone6("✍🏿", "writing_hand::skin-tone-6", "People & Body", null),
     ;
 
+    @JsExport.Ignore
     fun category(): EmojiCategoryType {
         return EmojiCategoryType.of(category)
     }

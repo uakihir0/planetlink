@@ -1,8 +1,11 @@
 package work.socialhub.planetlink.define
 
+import kotlin.js.JsExport
+
 /**
  * Notification Action Types
  */
+@JsExport
 enum class NotificationActionType(
     val code: String
 ) {

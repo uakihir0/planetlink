@@ -7,7 +7,9 @@ import work.socialhub.planetlink.define.AttributedType.Regex.SIMPLE_PHONE_REGEX
 import work.socialhub.planetlink.model.common.AttributedKind
 import work.socialhub.planetlink.model.common.AttributedType
 import work.socialhub.planetlink.model.common.AttributedType.CommonAttributedType
+import kotlin.js.JsExport
 
+@JsExport
 object AttributedType {
 
     // Commons

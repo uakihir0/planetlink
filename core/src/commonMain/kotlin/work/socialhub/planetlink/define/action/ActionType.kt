@@ -1,5 +1,7 @@
 package work.socialhub.planetlink.define.action
 
+import kotlin.js.JsExport
+
 /**
  * SNS アクション一覧
  * SNS Actions
@@ -8,4 +10,5 @@ package work.socialhub.planetlink.define.action
  * @see SocialActionType
  * @see UsersActionType
  */
+@JsExport
 interface ActionType 

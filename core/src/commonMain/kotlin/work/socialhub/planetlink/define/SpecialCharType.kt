@@ -1,11 +1,14 @@
 package work.socialhub.planetlink.define
 
+import kotlin.js.JsExport
+
 /**
  * Special char for xml
  * XHTML 内の特殊文字定義
  *
  * @link http://www.w3.org/TR/html4/charset.html
  */
+@JsExport
 enum class SpecialCharType(
     val entityRepl: String,
     val numberRepl: String,

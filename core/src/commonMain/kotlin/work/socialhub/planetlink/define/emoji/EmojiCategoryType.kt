@@ -1,5 +1,8 @@
 package work.socialhub.planetlink.define.emoji
 
+import kotlin.js.JsExport
+
+@JsExport
 enum class EmojiCategoryType(
     val code: String
 ) {
