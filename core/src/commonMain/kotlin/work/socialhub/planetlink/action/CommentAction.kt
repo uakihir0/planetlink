@@ -2,7 +2,9 @@ package work.socialhub.planetlink.action
 
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Context
+import kotlin.js.JsExport
 
+@JsExport
 interface CommentAction {
 
     /**

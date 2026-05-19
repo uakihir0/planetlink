@@ -4,7 +4,9 @@ import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.action.request.UsersRequest
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Request
+import kotlin.js.JsExport
 
+@JsExport
 interface RequestAction {
 
     // ============================================================== //

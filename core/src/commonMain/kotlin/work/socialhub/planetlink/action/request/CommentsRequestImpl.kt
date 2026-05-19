@@ -6,7 +6,9 @@ import work.socialhub.planetlink.define.action.ActionType
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.request.CommentForm
+import kotlin.js.JsExport
 
+@JsExport
 class CommentsRequestImpl : CommentsRequest {
 
     var commentsFunction: (suspend (Paging) -> Pageable<Comment>)? = null

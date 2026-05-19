@@ -7,7 +7,9 @@ import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Paging
 import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.error.NotSupportedException
+import kotlin.js.JsExport
 
+@JsExport
 class UsersRequestImpl : UsersRequest {
 
     var usersFunction: (suspend (Paging) -> Pageable<User>)? = null

@@ -3,7 +3,9 @@ package work.socialhub.planetlink.action.request
 import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.request.CommentForm
+import kotlin.js.JsExport
 
+@JsExport
 interface CommentsRequest : Request {
 
     /**

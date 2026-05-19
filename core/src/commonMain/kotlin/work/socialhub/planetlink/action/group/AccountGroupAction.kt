@@ -2,7 +2,9 @@ package work.socialhub.planetlink.action.group
 
 import work.socialhub.planetlink.model.group.CommentGroup
 import work.socialhub.planetlink.model.group.UserGroup
+import kotlin.js.JsExport
 
+@JsExport
 interface AccountGroupAction {
 
     /**

@@ -6,11 +6,13 @@ import work.socialhub.planetlink.define.emoji.EmojiVariationType
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.error.NotImplementedException
 import work.socialhub.planetlink.model.request.CommentForm
+import kotlin.js.JsExport
 
 /**
  * Account Actions
  * (全てのアクションを定義)
  */
+@JsExport
 interface AccountAction {
 
     // ============================================================== //
@@ -37,6 +39,7 @@ interface AccountAction {
      * Get Specific UserInfo from URL
      * URL からユーザーを取得
      */
+    @JsExport.Ignore
     suspend fun user(url: String): User {
         throw NotImplementedException()
     }
@@ -230,6 +233,7 @@ interface AccountAction {
      * Get Comment from URL
      * URL からコメントを取得
      */
+    @JsExport.Ignore
     suspend fun comment(
         url: String
     ): Comment {
