@@ -28,6 +28,7 @@ import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Paging
 import work.socialhub.planetlink.model.Relationship
 import work.socialhub.planetlink.model.Service
+import work.socialhub.planetlink.model.Thread
 import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
@@ -298,6 +299,17 @@ class TumblrAction(
     // ============================================================== //
     // TimeLine
     // ============================================================== //
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun searchUsers(
+        query: String,
+        paging: Paging
+    ): Pageable<User> {
+        throw NotSupportedException()
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -787,6 +799,37 @@ class TumblrAction(
         id: Identify,
         paging: Paging
     ): Pageable<User> {
+        throw NotSupportedException()
+    }
+
+    // ============================================================== //
+    // Message API
+    // ============================================================== //
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun messageThread(
+        paging: Paging
+    ): Pageable<Thread> {
+        throw NotSupportedException()
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun messageTimeLine(
+        id: Identify,
+        paging: Paging
+    ): Pageable<Comment> {
+        throw NotSupportedException()
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun postMessage(
+        req: CommentForm
+    ) {
         throw NotSupportedException()
     }
 
