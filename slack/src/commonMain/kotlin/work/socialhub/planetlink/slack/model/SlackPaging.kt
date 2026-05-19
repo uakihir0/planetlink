@@ -1,7 +1,9 @@
 package work.socialhub.planetlink.slack.model
 
 import work.socialhub.planetlink.model.Paging
+import kotlin.js.JsExport
 
+@JsExport
 class SlackPaging : Paging() {
 
     var cursor: String? = null

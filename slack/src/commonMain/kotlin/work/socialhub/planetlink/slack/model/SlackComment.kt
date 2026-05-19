@@ -5,7 +5,9 @@ import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Reaction
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.request.CommentForm
+import kotlin.js.JsExport
 
+@JsExport
 class SlackComment(
     service: Service
 ) : Comment(service) {

@@ -2,7 +2,9 @@ package work.socialhub.planetlink.slack.model
 
 import work.socialhub.planetlink.model.Channel
 import work.socialhub.planetlink.model.Service
+import kotlin.js.JsExport
 
+@JsExport
 class SlackChannel(
     service: Service
 ) : Channel(service) {

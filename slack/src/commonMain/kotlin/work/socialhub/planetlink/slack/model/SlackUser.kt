@@ -6,7 +6,9 @@ import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.common.AttributedFiled
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.model.request.CommentForm
+import kotlin.js.JsExport
 
+@JsExport
 class SlackUser(
     service: Service
 ) : User(service) {

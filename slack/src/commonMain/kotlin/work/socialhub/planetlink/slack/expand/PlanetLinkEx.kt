@@ -2,7 +2,9 @@ package work.socialhub.planetlink.slack.expand
 
 import work.socialhub.planetlink.PlanetLink
 import work.socialhub.planetlink.slack.action.SlackAuth
+import kotlin.js.JsExport
 
+@JsExport
 object PlanetLinkEx {
 
     fun PlanetLink.Companion.slack(

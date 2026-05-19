@@ -8,7 +8,9 @@ import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.tumblr.expand.AttributedStringEx.StateType.ByClose
 import work.socialhub.planetlink.tumblr.expand.AttributedStringEx.StateType.ByOpen
 import work.socialhub.planetlink.tumblr.expand.AttributedStringEx.StateType.Init
+import kotlin.js.JsExport
 
+@JsExport
 object AttributedStringEx {
 
     enum class StateType {

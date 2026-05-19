@@ -9,11 +9,13 @@ import work.socialhub.planetlink.model.Poll
 import work.socialhub.planetlink.model.Reaction
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.common.AttributedString
+import kotlin.js.JsExport
 
 /**
  * Mastodon Comment Model
  * Mastodon のコメント情報
  */
+@JsExport
 class MastodonComment(
     service: Service
 ) : MicroBlogComment(service) {

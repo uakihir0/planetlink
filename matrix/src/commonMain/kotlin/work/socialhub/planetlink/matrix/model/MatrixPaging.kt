@@ -1,7 +1,9 @@
 package work.socialhub.planetlink.matrix.model
 
 import work.socialhub.planetlink.model.Paging
+import kotlin.js.JsExport
 
+@JsExport
 class MatrixPaging : Paging() {
 
     var from: String? = null

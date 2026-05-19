@@ -3,7 +3,9 @@ package work.socialhub.planetlink.mastodon.model
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.Thread
+import kotlin.js.JsExport
 
+@JsExport
 class MastodonThread(
     service: Service
 ) : Thread(service) {

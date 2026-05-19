@@ -1,7 +1,9 @@
 package work.socialhub.planetlink.nostr.model
 
 import work.socialhub.planetlink.model.Paging
+import kotlin.js.JsExport
 
+@JsExport
 class NostrPaging : Paging() {
 
     var since: Long? = null
