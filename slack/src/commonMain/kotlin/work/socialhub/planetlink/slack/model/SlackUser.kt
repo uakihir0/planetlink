@@ -37,7 +37,7 @@ class SlackUser(
 
     override val messageForm: CommentForm
         get() = CommentForm().also {
-            it.replyId(id as? ID)
+            it.replyId(id)
             it.isMessage(true)
         }
 

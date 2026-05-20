@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package work.socialhub.planetlink.slack.action
 
 import kotlinx.datetime.Instant
@@ -258,13 +259,13 @@ object SlackMapper {
             description = c.purpose?.value ?: ""
             createAt = c.created?.let { Instant.fromEpochSeconds(it.toLong(), 0) }
 
-            isChannel = c.isChannel ?: false
-            isGroup = c.isGroup ?: false
-            isIm = c.isIm ?: false
-            isMpim = c.isMpim ?: false
-            isPrivate = c.isPrivate ?: false
-            isArchived = c.isArchived ?: false
-            isGeneral = c.isGeneral ?: false
+            isChannel = c.isChannel
+            isGroup = c.isGroup
+            isIm = c.isIm
+            isMpim = c.isMpim
+            isPrivate = c.isPrivate
+            isArchived = c.isArchived
+            isGeneral = c.isGeneral
             isPublic = !isPrivate
 
             creator = c.creator
@@ -320,7 +321,7 @@ object SlackMapper {
     fun getReplayUserIds(comments: List<Comment>): List<String> {
         return comments.flatMap { c ->
             c.text?.elements?.filter { it.kind == AttributedKind.ACCOUNT }
-                ?.mapNotNull { it.displayText?.substring(1) }
+                ?.mapNotNull { it.displayText.substring(1) }
                 ?.filter { n -> n != "here" && n != "all" && n != "channel" }
                 ?: emptyList()
         }.distinct()
@@ -330,7 +331,7 @@ object SlackMapper {
         comments.forEach { c ->
             c.text?.elements?.filter { it.kind == AttributedKind.ACCOUNT }
                 ?.forEach { elem ->
-                    val userId = elem.displayText?.substring(1) ?: return@forEach
+                    val userId = elem.displayText.substring(1)
                     if (elem is AttributedItem && userMap.containsKey(userId)) {
                         elem.displayText = "@${userMap[userId]!!.name}"
                         elem.expandedText = userId

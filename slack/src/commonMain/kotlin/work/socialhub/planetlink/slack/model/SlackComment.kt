@@ -62,7 +62,7 @@ class SlackComment(
         get() = CommentForm().also {
             it.addParam(CHANNEL_KEY, channelId ?: "")
             it.isMessage(directMessage)
-            it.replyId(id as? ID)
+            it.replyId(id)
         }
 
     companion object {

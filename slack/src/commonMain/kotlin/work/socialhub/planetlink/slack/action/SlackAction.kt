@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package work.socialhub.planetlink.slack.action
 
 import kotlinx.coroutines.async
@@ -141,7 +142,7 @@ class SlackAction(
         val teamObj = loadTeam()
         response.members?.forEach { u ->
             val user = SlackMapper.user(u, teamObj, service())
-            user?.let { userCache[it.id!!.value<String>()] = it }
+            user.let { userCache[it.id!!.value<String>()] = it }
         }
     }
 
