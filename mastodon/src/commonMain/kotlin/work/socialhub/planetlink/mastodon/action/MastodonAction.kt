@@ -1,7 +1,7 @@
-@file:Suppress("DEPRECATION")
 package work.socialhub.planetlink.mastodon.action
 
 
+import kotlin.time.Instant
 import net.socialhub.planetlink.model.event.CommentEvent
 import work.socialhub.kmastodon.MastodonException
 import work.socialhub.kmastodon.api.request.Page
@@ -1460,8 +1460,7 @@ class MastodonAction(
                         scheduled.params?.text ?: ""
                     )
                     scheduled.scheduledAt.let {
-                        @Suppress("DEPRECATION")
-                        c.createAt = kotlinx.datetime.Instant.parse(it)
+                        c.createAt = Instant.parse(it)
                     }
                     c.medias = scheduled.mediaAttachments?.let {
                         MastodonMapper.medias(it)
@@ -1503,8 +1502,7 @@ class MastodonAction(
                     scheduled.params?.text ?: ""
                 )
                 scheduled.scheduledAt.let {
-                    @Suppress("DEPRECATION")
-                    c.createAt = kotlinx.datetime.Instant.parse(it)
+                    c.createAt = Instant.parse(it)
                 }
                 c.medias = scheduled.mediaAttachments?.let {
                     MastodonMapper.medias(it)

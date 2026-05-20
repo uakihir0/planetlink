@@ -1,9 +1,7 @@
-@file:Suppress("DEPRECATION")
 package work.socialhub.planetlink.mastodon.action
 
 import io.ktor.http.*
-import kotlinx.datetime.Instant
-import kotlinx.datetime.toInstant
+import kotlin.time.Instant
 import work.socialhub.kmastodon.api.response.Response
 import work.socialhub.kmastodon.api.response.ResponseUnit
 import work.socialhub.kmastodon.entity.Account
@@ -427,12 +425,10 @@ object MastodonMapper {
     // ============================================================== //
     // Support
     // ============================================================== //
-    @Suppress("DEPRECATION")
     private fun parseDate(
         str: String
     ): Instant {
-        // TODO: 動作確認
-        return str.toInstant()
+        return Instant.parse(str)
     }
 
     fun rateLimit(

@@ -129,7 +129,6 @@ class MastodonRequest(
         request.commentsFunction = { paging ->
             account.action.messageTimeLine(id, paging).also { pg ->
                 // 最新の投稿の ID を取得してコメント対象に設定
-                @Suppress("DEPRECATION")
                 val max = pg.entities.maxBy { it.createAt!!.toEpochMilliseconds() }
                 request.commentForm!!.replyId = max.id
             }
