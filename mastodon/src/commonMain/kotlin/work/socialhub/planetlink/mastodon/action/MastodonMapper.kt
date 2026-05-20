@@ -1,6 +1,7 @@
 package work.socialhub.planetlink.mastodon.action
 
 import io.ktor.http.*
+import kotlinx.datetime.toStdlibInstant
 import kotlin.time.Instant
 import work.socialhub.kmastodon.api.response.Response
 import work.socialhub.kmastodon.api.response.ResponseUnit
@@ -441,7 +442,7 @@ object MastodonMapper {
                 "Mastodon",
                 it.limit,
                 it.remaining,
-                it.reset,
+                it.reset?.toStdlibInstant(),
             )
         }
         return null
@@ -457,7 +458,7 @@ object MastodonMapper {
                 "Mastodon",
                 it.limit,
                 it.remaining,
-                it.reset,
+                it.reset?.toStdlibInstant(),
             )
         }
         return null
