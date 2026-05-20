@@ -1,8 +1,7 @@
-@file:Suppress("DEPRECATION")
 package work.socialhub.planetlink.tumblr.action
 
 import io.ktor.http.*
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import work.socialhub.ktumblr.entity.blog.Blog
 import work.socialhub.ktumblr.entity.post.Post
 import work.socialhub.ktumblr.entity.post.legacy.LegacyPhotoPost
