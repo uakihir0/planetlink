@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package work.socialhub.planetlink.tumblr.action
 
 import io.ktor.http.*
