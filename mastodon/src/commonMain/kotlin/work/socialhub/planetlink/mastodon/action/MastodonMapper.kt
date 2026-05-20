@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package work.socialhub.planetlink.mastodon.action
 
 import io.ktor.http.*
@@ -426,6 +427,7 @@ object MastodonMapper {
     // ============================================================== //
     // Support
     // ============================================================== //
+    @Suppress("DEPRECATION")
     private fun parseDate(
         str: String
     ): Instant {

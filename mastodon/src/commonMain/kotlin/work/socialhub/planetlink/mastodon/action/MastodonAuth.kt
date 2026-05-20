@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package work.socialhub.planetlink.mastodon.action
 
 import kotlinx.datetime.Clock
@@ -154,6 +155,7 @@ class MastodonAuth(
         )
     }
 
+    @Suppress("DEPRECATION")
     private fun expireAt(
         expireInSec: Int
     ): Instant {

@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package work.socialhub.planetlink.mastodon.action
 
 
@@ -1459,6 +1460,7 @@ class MastodonAction(
                         scheduled.params?.text ?: ""
                     )
                     scheduled.scheduledAt.let {
+                        @Suppress("DEPRECATION")
                         c.createAt = kotlinx.datetime.Instant.parse(it)
                     }
                     c.medias = scheduled.mediaAttachments?.let {
@@ -1501,6 +1503,7 @@ class MastodonAction(
                     scheduled.params?.text ?: ""
                 )
                 scheduled.scheduledAt.let {
+                    @Suppress("DEPRECATION")
                     c.createAt = kotlinx.datetime.Instant.parse(it)
                 }
                 c.medias = scheduled.mediaAttachments?.let {
@@ -1860,7 +1863,6 @@ class MastodonAction(
                             return
                         }
 
-                        else -> throw IllegalStateException()
                     }
                 }
             }
