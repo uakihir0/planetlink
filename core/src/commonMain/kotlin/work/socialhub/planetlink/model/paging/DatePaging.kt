@@ -26,7 +26,7 @@ class DatePaging : Paging() {
         newPage.count = count
 
         if (entities.isNotEmpty()) {
-            val first = entities[0].id as String?
+            val first = entities[0].id?.value<String>()
             newPage.inclusive = false
             newPage.oldest = first
             return newPage
@@ -53,7 +53,7 @@ class DatePaging : Paging() {
 
         if (entities.isNotEmpty()) {
             val index = (entities.size - 1)
-            val last = entities[index].id as String?
+            val last = entities[index].id?.value<String>()
 
             newPage.inclusive = false
             newPage.latest = last

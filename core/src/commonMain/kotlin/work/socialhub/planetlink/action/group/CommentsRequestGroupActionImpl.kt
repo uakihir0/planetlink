@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package work.socialhub.planetlink.action.group
 
 import kotlinx.coroutines.async
