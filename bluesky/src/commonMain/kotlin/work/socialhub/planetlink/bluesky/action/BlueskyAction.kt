@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package work.socialhub.planetlink.bluesky.action
 
 import kotlinx.coroutines.Deferred
@@ -1225,7 +1226,9 @@ class BlueskyAction(
 
                     // 次ページをみるためカーソルを作成
                     val last = list[list.size - 1]
+                    @Suppress("DEPRECATION")
                     val date = last.indexedAt.toInstant()
+                    @Suppress("DEPRECATION")
                     cursor = "${date.toEpochMilliseconds()}::${last.cid}"
 
                     // 追加に要素を追加

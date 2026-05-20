@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package work.socialhub.planetlink.bluesky.model
 
 import work.socialhub.planetlink.model.Identify

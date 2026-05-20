@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package work.socialhub.planetlink.bluesky.action
 
 import io.ktor.utils.io.charsets.*
@@ -169,6 +170,7 @@ object BlueskyMapper {
                 id = ID(post.uri!!)
                 cid = post.cid
                 user = user(repost.by!!, service)
+                @Suppress("DEPRECATION")
                 createAt = repost.indexedAt!!.toInstant()
 
                 medias = mutableListOf()
@@ -192,6 +194,7 @@ object BlueskyMapper {
             id = ID(post.uri!!)
             cid = post.cid
             user = user(post.author!!, service)
+            @Suppress("DEPRECATION")
             createAt = post.indexedAt!!.toInstant()
 
             // TODO: Labels
@@ -280,6 +283,7 @@ object BlueskyMapper {
             id = ID(post.uri!!)
             cid = post.cid
             user = user(post.author!!, service)
+            @Suppress("DEPRECATION")
             createAt = post.indexedAt!!.toInstant()
 
             liked = false
@@ -332,7 +336,7 @@ object BlueskyMapper {
                         val afterLen = max(0, (bytes.size - len))
                         bytes = bytes.copyOfRange(len, len + afterLen)
 
-                        val str = String(beforeBytes)
+                        val str = beforeBytes.decodeToString()
                         val element = AttributedItem()
                         element.kind = AttributedKind.PLAIN
                         element.expandedText = str
@@ -353,7 +357,7 @@ object BlueskyMapper {
                     bytes = bytes.copyOfRange(len, len + afterLen)
 
                     if (union is RichtextFacetMention) {
-                        val str = String(targetByte)
+                        val str = targetByte.decodeToString()
                         val element = AttributedItem()
                         element.kind = AttributedKind.ACCOUNT
                         element.expandedText = union.did
@@ -361,7 +365,7 @@ object BlueskyMapper {
                         elements.add(element)
 
                     } else if (union is RichtextFacetLink) {
-                        val str = String(targetByte)
+                        val str = targetByte.decodeToString()
                         val element = AttributedItem()
                         element.kind = AttributedKind.LINK
                         element.expandedText = union.uri
@@ -369,7 +373,7 @@ object BlueskyMapper {
                         elements.add(element)
                     } else {
                         // その他の場合はプレーンテキストとして取得
-                        val str = String(targetByte)
+                        val str = targetByte.decodeToString()
                         val element = AttributedItem()
                         element.kind = AttributedKind.PLAIN
                         element.expandedText = str
@@ -385,7 +389,7 @@ object BlueskyMapper {
         }
 
         if (bytes.isNotEmpty()) {
-            val str = String(bytes)
+            val str = bytes.decodeToString()
             val element = AttributedItem()
             element.kind = AttributedKind.PLAIN
             element.expandedText = str
@@ -446,6 +450,7 @@ object BlueskyMapper {
     ): Notification {
         return Notification(service).apply {
             id = ID(notification.uri)
+            @Suppress("DEPRECATION")
             createAt = notification.indexedAt.toInstant()
 
             val type = BlueskyNotificationType.of(notification.reason)
@@ -486,6 +491,7 @@ object BlueskyMapper {
 
             name = generator.displayName
             description = generator.description
+            @Suppress("DEPRECATION")
             createAt = generator.indexedAt!!.toInstant()
 
             owner = user(generator.creator!!, service)
