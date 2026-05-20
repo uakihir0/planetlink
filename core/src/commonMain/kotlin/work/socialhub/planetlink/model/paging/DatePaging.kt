@@ -27,21 +27,22 @@ class DatePaging : Paging() {
 
         if (entities.isNotEmpty()) {
             val first = entities[0].id?.value<String>()
-            newPage.inclusive = false
-            newPage.oldest = first
-            return newPage
-
-        } else {
-            // デフォルト動作
-            if (latest != null && inclusive != null) {
-                newPage.inclusive = !inclusive!!
-                newPage.oldest = latest
+            if (first != null) {
+                newPage.inclusive = false
+                newPage.oldest = first
                 return newPage
             }
-
-            // 上記以外は再度リクエスト
-            return this.copy()
         }
+
+        // デフォルト動作
+        if (latest != null && inclusive != null) {
+            newPage.inclusive = !inclusive!!
+            newPage.oldest = latest
+            return newPage
+        }
+
+        // 上記以外は再度リクエスト
+        return this.copy()
     }
 
     /**
@@ -55,21 +56,22 @@ class DatePaging : Paging() {
             val index = (entities.size - 1)
             val last = entities[index].id?.value<String>()
 
-            newPage.inclusive = false
-            newPage.latest = last
-            return newPage
-        } else {
-
-            // デフォルト動作
-            if (oldest != null && inclusive != null) {
-                newPage.inclusive = !inclusive!!
-                newPage.latest = oldest
+            if (last != null) {
+                newPage.inclusive = false
+                newPage.latest = last
                 return newPage
             }
-
-            // 上記以外は再度リクエスト
-            return this.copy()
         }
+
+        // デフォルト動作
+        if (oldest != null && inclusive != null) {
+            newPage.inclusive = !inclusive!!
+            newPage.latest = oldest
+            return newPage
+        }
+
+        // 上記以外は再度リクエスト
+        return this.copy()
     }
 
     /**
