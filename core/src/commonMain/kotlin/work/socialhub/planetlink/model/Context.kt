@@ -1,4 +1,3 @@
-@file:Suppress("DEPRECATION")
 package work.socialhub.planetlink.model
 
 import kotlin.js.JsExport

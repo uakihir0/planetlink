@@ -1,8 +1,6 @@
-@file:Suppress("DEPRECATION")
-
 package work.socialhub.planetlink.model
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.js.JsExport
 
 /**

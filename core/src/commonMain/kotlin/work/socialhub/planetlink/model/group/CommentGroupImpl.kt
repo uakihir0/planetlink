@@ -1,8 +1,6 @@
-@file:Suppress("DEPRECATION")
-
 package work.socialhub.planetlink.model.group
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import work.socialhub.planetlink.action.group.CommentGroupAction
 import work.socialhub.planetlink.action.group.CommentGroupActionImpl
 import work.socialhub.planetlink.action.request.CommentsRequest
