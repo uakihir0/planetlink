@@ -62,7 +62,7 @@ class NostrComment(
 
     override val replyForm: CommentForm
         get() = CommentForm().also {
-            it.replyId(id as? ID)
+            it.replyId(id)
         }
 
     companion object {

@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package work.socialhub.planetlink.nostr.action
 
 import kotlinx.datetime.Instant
