@@ -5,6 +5,8 @@
 ![badge][badge-ios]
 ![badge][badge-mac]
 
+![Maven metadata URL](https://img.shields.io/maven-metadata/v?metadataUrl=https%3A%2F%2Frepo.repsy.io%2Fmvn%2Fuakihir0%2Fpublic%2Fwork%2Fsocialhub%2Fplanetlink%2Fall%2Fmaven-metadata.xml)
+
 **このライブラリは [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html) に対応したマルチ Social Media (SNS) クライアントライブラリです。**
 このライブラリを用いることで、各 Social Media を透過的な操作で扱うことができます。
 
@@ -12,7 +14,7 @@
 
 ## サポートプラットフォーム
 
-- Bluesky (library: [kbksy](https://github.com/uakihir0/kbsky))
+- Bluesky (library: [kbsky](https://github.com/uakihir0/kbsky))
 - Misskey (library: [kmisskey](https://github.com/uakihir0/kmisskey))
 - Mastodon (library: [kmastodon](https://github.com/uakihir0/kmastodon))
 - Nostr (library: [knostr](https://github.com/uakihir0/knostr))
