@@ -1,7 +1,6 @@
-@file:Suppress("DEPRECATION")
 package work.socialhub.planetlink.nostr.action
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import work.socialhub.knostr.social.model.NostrNote
 import work.socialhub.knostr.social.model.NostrReaction
 import work.socialhub.knostr.social.model.NostrRelationship
