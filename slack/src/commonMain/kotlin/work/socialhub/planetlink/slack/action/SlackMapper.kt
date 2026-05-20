@@ -1,7 +1,6 @@
-@file:Suppress("DEPRECATION")
 package work.socialhub.planetlink.slack.action
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import work.socialhub.kslack.api.methods.response.bots.BotsInfoResponse
 import work.socialhub.kslack.api.methods.response.conversations.ConversationsListResponse
 import work.socialhub.kslack.api.methods.response.emoji.EmojiListResponse

@@ -1,9 +1,8 @@
-@file:Suppress("DEPRECATION")
 package work.socialhub.planetlink.slack.action
 
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import work.socialhub.kslack.api.methods.request.auth.AuthTestRequest
 import work.socialhub.kslack.api.methods.request.bots.BotsInfoRequest
 import work.socialhub.kslack.api.methods.request.chat.ChatDeleteRequest
