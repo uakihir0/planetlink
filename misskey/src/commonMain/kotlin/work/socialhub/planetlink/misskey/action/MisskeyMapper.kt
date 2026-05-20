@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package work.socialhub.planetlink.misskey.action
 
 import io.ktor.http.*
@@ -117,6 +118,7 @@ object MisskeyMapper {
 
             c.id = ID(note.id)
             c.user = user(note.user, host, service)
+            @Suppress("DEPRECATION")
             c.createAt = note.createdAt.toInstant()
             c.visibility = MisskeyVisibility.Public
 
@@ -238,6 +240,7 @@ object MisskeyMapper {
         return Channel(service).also {
             it.id = ID(list.id!!)
             it.name = list.name
+            @Suppress("DEPRECATION")
             it.createAt = list.createdAt?.toInstant()
             it.isPublic = false
         }
@@ -259,6 +262,7 @@ object MisskeyMapper {
             n.reaction = notification.reaction
 
             // アンテナの通知などは時刻が含まれないので確認
+            @Suppress("DEPRECATION")
             n.createAt = notification.createdAt.toInstant()
 
             // ローカルアイコンの取得
@@ -312,6 +316,7 @@ object MisskeyMapper {
             p.noteId = note.id
 
             if (poll.expiresAt != null) {
+                @Suppress("DEPRECATION")
                 p.expireAt = poll.expiresAt!!.toInstant()
                 p.isExpired = p.expireAt!! < Clock.System.now()
             } else {
