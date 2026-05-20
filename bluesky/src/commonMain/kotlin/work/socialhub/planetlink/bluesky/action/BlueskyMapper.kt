@@ -1,9 +1,8 @@
-@file:Suppress("DEPRECATION")
 package work.socialhub.planetlink.bluesky.action
 
 import io.ktor.utils.io.charsets.*
 import io.ktor.utils.io.core.*
-import kotlinx.datetime.toInstant
+import kotlin.time.Instant
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewBasic
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
@@ -170,8 +169,7 @@ object BlueskyMapper {
                 id = ID(post.uri!!)
                 cid = post.cid
                 user = user(repost.by!!, service)
-                @Suppress("DEPRECATION")
-                createAt = repost.indexedAt!!.toInstant()
+                createAt = Instant.parse(repost.indexedAt!!)
 
                 medias = mutableListOf()
                 sharedComment = comment(
@@ -194,8 +192,7 @@ object BlueskyMapper {
             id = ID(post.uri!!)
             cid = post.cid
             user = user(post.author!!, service)
-            @Suppress("DEPRECATION")
-            createAt = post.indexedAt!!.toInstant()
+            createAt = Instant.parse(post.indexedAt!!)
 
             // TODO: Labels
             possiblySensitive = false
@@ -283,8 +280,7 @@ object BlueskyMapper {
             id = ID(post.uri!!)
             cid = post.cid
             user = user(post.author!!, service)
-            @Suppress("DEPRECATION")
-            createAt = post.indexedAt!!.toInstant()
+            createAt = Instant.parse(post.indexedAt!!)
 
             liked = false
             shared = false
@@ -450,8 +446,7 @@ object BlueskyMapper {
     ): Notification {
         return Notification(service).apply {
             id = ID(notification.uri)
-            @Suppress("DEPRECATION")
-            createAt = notification.indexedAt.toInstant()
+            createAt = Instant.parse(notification.indexedAt)
 
             val type = BlueskyNotificationType.of(notification.reason)
             if (type != null) {
@@ -491,8 +486,7 @@ object BlueskyMapper {
 
             name = generator.displayName
             description = generator.description
-            @Suppress("DEPRECATION")
-            createAt = generator.indexedAt!!.toInstant()
+            createAt = Instant.parse(generator.indexedAt!!)
 
             owner = user(generator.creator!!, service)
             likeCount = generator.likeCount ?: 0
