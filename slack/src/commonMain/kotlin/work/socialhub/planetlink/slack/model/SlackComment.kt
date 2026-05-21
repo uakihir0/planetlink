@@ -7,6 +7,7 @@ import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.request.CommentForm
 import kotlin.js.JsExport
 
+/** Slack コメントモデル */
 @JsExport
 class SlackComment(
     service: Service
@@ -58,6 +59,7 @@ class SlackComment(
         _reactions!!.add(reaction)
     }
 
+    /** {@inheritDoc} */
     override val replyForm: CommentForm
         get() = CommentForm().also {
             it.addParam(CHANNEL_KEY, channelId ?: "")

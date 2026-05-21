@@ -26,6 +26,7 @@ import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.slack.model.*
 
+/** Slack プラットフォームのアクション実装 */
 class SlackAction(
     account: Account,
     val auth: SlackAuth

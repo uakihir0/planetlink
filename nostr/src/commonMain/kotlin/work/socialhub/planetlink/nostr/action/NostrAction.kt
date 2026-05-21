@@ -27,6 +27,7 @@ import work.socialhub.planetlink.nostr.model.NostrComment
 import work.socialhub.planetlink.nostr.model.NostrPaging
 import work.socialhub.planetlink.nostr.model.NostrUser
 
+/** Nostr プラットフォームのアクション実装 */
 class NostrAction(
     account: Account,
     val auth: NostrAuth,

@@ -18,8 +18,10 @@ import work.socialhub.planetlink.model.common.AttributedKind
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.slack.model.*
 
+/** Slack エンティティのマッピング */
 object SlackMapper {
 
+    /** ユーザーマッピング */
     fun user(
         user: work.socialhub.kslack.entity.user.User,
         team: SlackTeam?,
@@ -57,6 +59,7 @@ object SlackMapper {
         }
     }
 
+    /** ユーザーレスポンスからマッピング */
     fun user(
         response: UsersInfoResponse,
         team: SlackTeam?,
@@ -65,6 +68,7 @@ object SlackMapper {
         return response.user?.let { user(it, team, service) }
     }
 
+    /** ボットユーザーマッピング */
     fun bots(
         response: BotsInfoResponse,
         service: Service
@@ -81,6 +85,7 @@ object SlackMapper {
         }
     }
 
+    /** コメントマッピング */
     fun comment(
         message: Message,
         user: User?,
@@ -111,6 +116,7 @@ object SlackMapper {
         }
     }
 
+    /** メディアリストマッピング */
     fun medias(
         message: Message,
         token: String? = null,
@@ -123,6 +129,7 @@ object SlackMapper {
         return medias
     }
 
+    /** メディアマッピング */
     fun media(
         file: File,
         token: String? = null,
@@ -140,6 +147,7 @@ object SlackMapper {
         }
     }
 
+    /** 絵文字リストマッピング */
     fun emojis(
         response: EmojiListResponse
     ): List<Emoji> {
@@ -170,6 +178,7 @@ object SlackMapper {
         return result
     }
 
+    /** リアクションマッピング */
     fun reactions(
         message: Message,
         userMe: User?,
@@ -206,6 +215,7 @@ object SlackMapper {
         return models
     }
 
+    /** タイムラインマッピング */
     fun timeLine(
         messages: List<Message>,
         userMap: Map<String, User>,
@@ -231,6 +241,7 @@ object SlackMapper {
         return model
     }
 
+    /** チャンネルリストマッピング */
     fun channels(
         response: ConversationsListResponse,
         service: Service
@@ -248,6 +259,7 @@ object SlackMapper {
         return model
     }
 
+    /** チャンネルマッピング */
     fun channel(
         c: Conversation,
         service: Service
@@ -265,7 +277,7 @@ object SlackMapper {
             isPrivate = c.isPrivate
             isArchived = c.isArchived
             isGeneral = c.isGeneral
-            isPublic = !isPrivate
+            isPublic = !c.isPrivate
 
             creator = c.creator
             topic = c.topic?.value
@@ -274,6 +286,7 @@ object SlackMapper {
         }
     }
 
+    /** スレッドマッピング */
     fun threads(
         response: ConversationsListResponse,
         memberMap: Map<String, List<String>>,
@@ -296,6 +309,7 @@ object SlackMapper {
         } ?: emptyList()
     }
 
+    /** チームマッピング */
     fun team(
         response: TeamInfoResponse
     ): SlackTeam? {
@@ -311,12 +325,14 @@ object SlackMapper {
         }
     }
 
+    /** タイムスタンプ文字列から Instant に変換 */
     fun getDateFromTimeStamp(ts: String?): Instant? {
         if (ts.isNullOrEmpty()) return null
         val unixTime = ts.split(".")[0].toLongOrNull() ?: return null
         return Instant.fromEpochSeconds(unixTime, 0)
     }
 
+    /** コメント内のメンションユーザー ID を取得 */
     fun getReplayUserIds(comments: List<Comment>): List<String> {
         return comments.flatMap { c ->
             c.text?.elements?.filter { it.kind == AttributedKind.ACCOUNT }
@@ -326,6 +342,7 @@ object SlackMapper {
         }.distinct()
     }
 
+    /** メンションの表示名を設定 */
     fun setMentionName(comments: List<Comment>, userMap: Map<String, User>) {
         comments.forEach { c ->
             c.text?.elements?.filter { it.kind == AttributedKind.ACCOUNT }

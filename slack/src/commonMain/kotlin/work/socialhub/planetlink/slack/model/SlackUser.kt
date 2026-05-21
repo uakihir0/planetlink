@@ -8,6 +8,7 @@ import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.model.request.CommentForm
 import kotlin.js.JsExport
 
+/** Slack ユーザーモデル */
 @JsExport
 class SlackUser(
     service: Service
@@ -35,6 +36,7 @@ class SlackUser(
             return if (teamName != null) "$teamName:$screenName" else screenName ?: ""
         }
 
+    /** {@inheritDoc} */
     override val messageForm: CommentForm
         get() = CommentForm().also {
             it.replyId(id)

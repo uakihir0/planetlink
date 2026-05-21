@@ -56,6 +56,7 @@ class MisskeyComment(
                 }
         }
 
+    /** {@inheritDoc} */
     override var webUrl: String = ""
         get() = ("https://"
                 + requesterHost

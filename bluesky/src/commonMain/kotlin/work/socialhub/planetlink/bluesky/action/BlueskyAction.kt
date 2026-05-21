@@ -87,6 +87,7 @@ import work.socialhub.planetlink.utils.CollectionUtil.takeUntil
 import kotlin.math.min
 import work.socialhub.planetlink.bluesky.action.BlueskyMapper as Mapper
 
+/** Bluesky プラットフォームのアクション実装 */
 class BlueskyAction(
     account: Account,
     val auth: BlueskyAuth,

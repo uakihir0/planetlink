@@ -94,6 +94,7 @@ import work.socialhub.planetlink.model.paging.OffsetPaging
 import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.kmastodon.entity.Notification as MNotification
 
+/** Mastodon プラットフォームのアクション実装 */
 class MastodonAction(
     account: Account,
     val auth: MastodonAuth,
