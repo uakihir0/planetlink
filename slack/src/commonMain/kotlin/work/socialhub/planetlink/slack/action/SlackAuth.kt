@@ -75,7 +75,6 @@ class SlackAuth(
             "Slack accessor is not initialized."
         }
 
-    @JsExport
     class SlackAccessor(
         val slack: work.socialhub.kslack.Slack,
         val token: String

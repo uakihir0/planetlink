@@ -79,13 +79,12 @@ class MisskeyRequest(
     /**
      * {@inheritDoc}
      */
-    val homeTimeLine: CommentsRequest
-        get() {
-            val action = account.action as MisskeyAction
-            return (super.homeTimeLine() as CommentsRequestImpl).also {
-                it.streamFunction = { cb -> toBlocking { action.homeTimeLineStream(cb) } }
-            }
+    override fun homeTimeLine(): CommentsRequest {
+        val action = account.action as MisskeyAction
+        return (super.homeTimeLine() as CommentsRequestImpl).also {
+            it.streamFunction = { cb -> toBlocking { action.homeTimeLineStream(cb) } }
         }
+    }
 
     /**
      * {@inheritDoc}

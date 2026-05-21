@@ -56,7 +56,6 @@ class NostrAuth(
         }
     }
 
-    @JsExport
     class NostrAccessor(
         val nostr: Nostr,
         val social: NostrSocial,
