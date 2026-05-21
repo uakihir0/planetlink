@@ -437,11 +437,14 @@ object MastodonMapper {
 
         // PixelFed は RateLimit に未対応
         response.limit?.let {
+            val reset = it.reset?.let { r ->
+                Instant.fromEpochSeconds(r.epochSeconds, r.nanosecondsOfSecond)
+            }
             return RateLimit.RateLimitValue(
                 "Mastodon",
                 it.limit,
                 it.remaining,
-                it.reset,
+                reset,
             )
         }
         return null
@@ -453,11 +456,14 @@ object MastodonMapper {
 
         // PixelFed は RateLimit に未対応
         response.limit?.let {
+            val reset = it.reset?.let { r ->
+                Instant.fromEpochSeconds(r.epochSeconds, r.nanosecondsOfSecond)
+            }
             return RateLimit.RateLimitValue(
                 "Mastodon",
                 it.limit,
                 it.remaining,
-                it.reset,
+                reset,
             )
         }
         return null
