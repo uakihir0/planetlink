@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.matrix.action
 
+import kotlin.js.JsExport
 import work.socialhub.kmatrix.Matrix
 import work.socialhub.kmatrix.MatrixFactory
 import work.socialhub.kmatrix.api.request.login.LoginPasswordRequest
@@ -7,6 +8,7 @@ import work.socialhub.planetlink.action.ServiceAuth
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Service
 
+@JsExport
 class MatrixAuth(
     var host: String,
     var accessToken: String? = null,

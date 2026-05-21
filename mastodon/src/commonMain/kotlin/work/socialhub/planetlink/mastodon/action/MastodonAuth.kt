@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.mastodon.action
 
+import kotlin.js.JsExport
 import kotlin.time.Clock
 import kotlin.time.Instant
 import work.socialhub.kmastodon.Mastodon
@@ -16,6 +17,7 @@ import work.socialhub.planetlink.model.Service as PLService
 /**
  * Mastodon Authorization Functions
  */
+@JsExport
 class MastodonAuth(
     var host: String,
     val type: String,

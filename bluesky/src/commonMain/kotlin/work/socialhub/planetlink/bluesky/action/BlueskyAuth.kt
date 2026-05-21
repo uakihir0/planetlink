@@ -6,7 +6,9 @@ import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.planetlink.action.ServiceAuth
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Service
+import kotlin.js.JsExport
 
+@JsExport
 class BlueskyAuth(
     var apiHost: String,
     var streamHost: String,

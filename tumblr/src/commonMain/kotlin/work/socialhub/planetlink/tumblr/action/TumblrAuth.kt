@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.tumblr.action
 
+import kotlin.js.JsExport
 import work.socialhub.ktumblr.Tumblr
 import work.socialhub.ktumblr.TumblrFactory
 import work.socialhub.ktumblr.api.request.auth.AuthAuthorizeUrlRequest
@@ -8,6 +9,7 @@ import work.socialhub.planetlink.action.ServiceAuth
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Service
 
+@JsExport
 class TumblrAuth : ServiceAuth<Tumblr> {
 
     var consumerKey: String? = null
@@ -16,6 +18,7 @@ class TumblrAuth : ServiceAuth<Tumblr> {
     var refreshToken: String? = null
 
     /** it calls when token is refreshed. */
+    @JsExport.Ignore
     var tokenRefreshCallback: (TumblrAuth) -> Unit = {}
 
     override val accessor: Tumblr
@@ -99,6 +102,7 @@ class TumblrAuth : ServiceAuth<Tumblr> {
         )
     }
 
+    @JsExport.Ignore
     fun setTokenRefreshCallback(callback: (TumblrAuth) -> Unit) =
         also { it.tokenRefreshCallback = callback }
 }

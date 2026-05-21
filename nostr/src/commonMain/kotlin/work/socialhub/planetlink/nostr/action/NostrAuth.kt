@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.nostr.action
 
+import kotlin.js.JsExport
 import work.socialhub.knostr.Nostr
 import work.socialhub.knostr.NostrFactory
 import work.socialhub.knostr.entity.Nip19Entity
@@ -9,6 +10,7 @@ import work.socialhub.planetlink.action.ServiceAuth
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Service
 
+@JsExport
 class NostrAuth(
     var relays: List<String> = listOf(),
     var nsec: String? = null,
@@ -54,6 +56,7 @@ class NostrAuth(
         }
     }
 
+    @JsExport
     class NostrAccessor(
         val nostr: Nostr,
         val social: NostrSocial,
