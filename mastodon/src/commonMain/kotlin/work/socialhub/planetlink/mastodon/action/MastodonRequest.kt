@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.mastodon.action
 
+import kotlin.js.JsExport
 import work.socialhub.planetlink.action.RequestActionImpl
 import work.socialhub.planetlink.action.SerializedRequest
 import work.socialhub.planetlink.action.request.CommentsRequest
@@ -18,6 +19,7 @@ import work.socialhub.planetlink.model.Request
 import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.request.CommentForm
 
+@JsExport
 class MastodonRequest(
     account: Account
 ) : RequestActionImpl(account) {

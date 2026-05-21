@@ -1,6 +1,6 @@
 package work.socialhub.planetlink.misskey.action
 
-
+import kotlin.js.JsExport
 import work.socialhub.planetlink.action.RequestActionImpl
 import work.socialhub.planetlink.action.SerializedRequest
 import work.socialhub.planetlink.action.request.CommentsRequest
@@ -19,6 +19,7 @@ import work.socialhub.planetlink.model.Request
 import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.utils.toBlocking
 
+@JsExport
 class MisskeyRequest(
     account: Account
 ) : RequestActionImpl(account) {
