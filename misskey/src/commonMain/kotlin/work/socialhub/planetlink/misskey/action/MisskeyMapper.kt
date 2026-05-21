@@ -1,14 +1,12 @@
 package work.socialhub.planetlink.misskey.action
 
 import io.ktor.http.*
-import kotlinx.datetime.TimeZone
 import kotlin.time.Clock
 import kotlin.time.Instant
 import work.socialhub.kmisskey.entity.File
 import work.socialhub.kmisskey.entity.Note
 import work.socialhub.kmisskey.entity.NoteList
 import work.socialhub.kmisskey.entity.Relation
-import work.socialhub.kmpcommon.DateFormatter
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.misskey.define.MisskeyNotificationType
 import work.socialhub.planetlink.misskey.define.MisskeyVisibility
@@ -31,17 +29,7 @@ import work.socialhub.kmisskey.entity.user.User as MUser
 
 object MisskeyMapper {
 
-    private const val DATE_FORMAT = "yyyy-MM-ddTHH:mm:ss.SSSZ"
 
-    // ============================================================== //
-    /** 時間のパーサーオブジェクト  */
-    var dateParser: DateFormatter? = null
-        get() {
-            if (field == null) {
-                field = DateFormatter(DATE_FORMAT, TimeZone.UTC)
-            }
-            return field
-        }
 
     // ============================================================== //
     // Single Object Mapper
