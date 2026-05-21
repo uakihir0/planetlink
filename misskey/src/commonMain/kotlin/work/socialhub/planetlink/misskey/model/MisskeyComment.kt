@@ -56,11 +56,12 @@ class MisskeyComment(
                 }
         }
 
+    /** {@inheritDoc} */
     override var webUrl: String = ""
         get() = ("https://"
                 + requesterHost
                 + "/notes/"
-                + id<String>().toString())
+                + id<String>())
 
 
     override val displayComment: Comment

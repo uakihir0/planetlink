@@ -1,6 +1,7 @@
 package work.socialhub.planetlink.mastodon.action
 
 
+import kotlin.time.Instant
 import net.socialhub.planetlink.model.event.CommentEvent
 import work.socialhub.kmastodon.MastodonException
 import work.socialhub.kmastodon.api.request.Page
@@ -93,6 +94,7 @@ import work.socialhub.planetlink.model.paging.OffsetPaging
 import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.kmastodon.entity.Notification as MNotification
 
+/** Mastodon プラットフォームのアクション実装 */
 class MastodonAction(
     account: Account,
     val auth: MastodonAuth,
@@ -1459,7 +1461,7 @@ class MastodonAction(
                         scheduled.params?.text ?: ""
                     )
                     scheduled.scheduledAt.let {
-                        c.createAt = kotlinx.datetime.Instant.parse(it)
+                        c.createAt = Instant.parse(it)
                     }
                     c.medias = scheduled.mediaAttachments?.let {
                         MastodonMapper.medias(it)
@@ -1501,7 +1503,7 @@ class MastodonAction(
                     scheduled.params?.text ?: ""
                 )
                 scheduled.scheduledAt.let {
-                    c.createAt = kotlinx.datetime.Instant.parse(it)
+                    c.createAt = Instant.parse(it)
                 }
                 c.medias = scheduled.mediaAttachments?.let {
                     MastodonMapper.medias(it)
@@ -1860,7 +1862,6 @@ class MastodonAction(
                             return
                         }
 
-                        else -> throw IllegalStateException()
                     }
                 }
             }

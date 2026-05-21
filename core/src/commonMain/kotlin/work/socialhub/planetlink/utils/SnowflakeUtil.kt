@@ -1,6 +1,6 @@
 package work.socialhub.planetlink.utils
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * Snowflake IDs

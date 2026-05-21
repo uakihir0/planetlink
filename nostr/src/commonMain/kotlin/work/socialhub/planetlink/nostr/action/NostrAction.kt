@@ -1,6 +1,6 @@
 package work.socialhub.planetlink.nostr.action
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import work.socialhub.knostr.entity.Nip19Entity
 import work.socialhub.knostr.social.model.NostrDirectMessage
 import work.socialhub.knostr.social.model.NostrNote
@@ -27,6 +27,7 @@ import work.socialhub.planetlink.nostr.model.NostrComment
 import work.socialhub.planetlink.nostr.model.NostrPaging
 import work.socialhub.planetlink.nostr.model.NostrUser
 
+/** Nostr プラットフォームのアクション実装 */
 class NostrAction(
     account: Account,
     val auth: NostrAuth,
@@ -399,7 +400,7 @@ class NostrAction(
                 Thread(service()).apply {
                     id = ID(threadId)
                     lastUpdate = dmThread.rootNote?.let {
-                        kotlinx.datetime.Instant.fromEpochSeconds(it.createdAt, 0)
+                        Instant.fromEpochSeconds(it.createdAt, 0)
                     }
                 }
             }
@@ -411,11 +412,11 @@ class NostrAction(
     }
 
     override suspend fun messageTimeLine(
-        identify: Identify,
+        id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
         return proceed {
-            val pubkey = identify.id!!.value<String>()
+            val pubkey = id.id!!.value<String>()
             val response = social.messages().getConversation(pubkey)
             val userMe = userMeWithCache()
 
@@ -437,7 +438,7 @@ class NostrAction(
                         } catch (e: Exception) {
                             // Failed to load profile for $authorPubkey, use fallback
                             this.user = NostrUser(service()).apply {
-                                id = ID(authorPubkey)
+                                this.id = ID(authorPubkey)
                                 name = authorPubkey.take(8)
                             }
                         }
@@ -497,7 +498,7 @@ class NostrAction(
                         val notification = Notification(service()).apply {
                             id = ID(reaction.event.id)
                             action = NotificationActionType.LIKE.code
-                            createAt = kotlinx.datetime.Instant.fromEpochSeconds(reaction.createdAt, 0)
+                            createAt = Instant.fromEpochSeconds(reaction.createdAt, 0)
                             reaction.author?.let { author ->
                                 users = listOf(NostrMapper.user(author, service()))
                             }

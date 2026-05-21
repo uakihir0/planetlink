@@ -3,7 +3,7 @@ package work.socialhub.planetlink.action.group
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Pageable

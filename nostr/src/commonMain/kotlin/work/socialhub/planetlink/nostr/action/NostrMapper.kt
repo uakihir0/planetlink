@@ -1,6 +1,6 @@
 package work.socialhub.planetlink.nostr.action
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import work.socialhub.knostr.social.model.NostrNote
 import work.socialhub.knostr.social.model.NostrReaction
 import work.socialhub.knostr.social.model.NostrRelationship
@@ -20,8 +20,10 @@ import work.socialhub.planetlink.nostr.model.NostrComment
 import work.socialhub.planetlink.nostr.model.NostrPaging
 import work.socialhub.planetlink.nostr.model.NostrUser
 
+/** Nostr エンティティのマッピング */
 object NostrMapper {
 
+    /** ユーザーマッピング */
     fun user(
         knostrUser: KnostrUser,
         service: Service,
@@ -46,6 +48,7 @@ object NostrMapper {
         }
     }
 
+    /** コメントマッピング */
     fun comment(
         note: NostrNote,
         service: Service,
@@ -130,6 +133,7 @@ object NostrMapper {
         }
     }
 
+    /** タイムラインマッピング */
     fun timeLine(
         notes: List<NostrNote>,
         service: Service,
@@ -145,6 +149,7 @@ object NostrMapper {
         return model
     }
 
+    /** リレーションシップマッピング */
     fun relationship(
         rel: NostrRelationship,
     ): Relationship {
@@ -155,6 +160,7 @@ object NostrMapper {
         }
     }
 
+    /** ユーザーリストをページング可能なリストに変換 */
     fun usersToPageable(
         users: List<KnostrUser>,
         service: Service,

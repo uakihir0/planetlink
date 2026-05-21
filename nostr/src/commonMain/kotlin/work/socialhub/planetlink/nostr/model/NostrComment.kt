@@ -7,6 +7,7 @@ import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.request.CommentForm
 import kotlin.js.JsExport
 
+/** Nostr コメントモデル */
 @JsExport
 class NostrComment(
     service: Service
@@ -60,9 +61,10 @@ class NostrComment(
         reactions.add(reaction)
     }
 
+    /** {@inheritDoc} */
     override val replyForm: CommentForm
         get() = CommentForm().also {
-            it.replyId(id as? ID)
+            it.replyId(id)
         }
 
     companion object {

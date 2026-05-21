@@ -3,8 +3,8 @@ package work.socialhub.planetlink.bluesky.action
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.datetime.Clock
-import kotlinx.datetime.toInstant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import work.socialhub.kbsky.BlueskyException
 import work.socialhub.kbsky.BlueskyTypes
 import work.socialhub.kbsky.api.entity.app.bsky.actor.ActorGetPreferencesRequest
@@ -87,6 +87,7 @@ import work.socialhub.planetlink.utils.CollectionUtil.takeUntil
 import kotlin.math.min
 import work.socialhub.planetlink.bluesky.action.BlueskyMapper as Mapper
 
+/** Bluesky プラットフォームのアクション実装 */
 class BlueskyAction(
     account: Account,
     val auth: BlueskyAuth,
@@ -1225,7 +1226,7 @@ class BlueskyAction(
 
                     // 次ページをみるためカーソルを作成
                     val last = list[list.size - 1]
-                    val date = last.indexedAt.toInstant()
+                    val date = Instant.parse(last.indexedAt)
                     cursor = "${date.toEpochMilliseconds()}::${last.cid}"
 
                     // 追加に要素を追加

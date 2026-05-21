@@ -1,14 +1,12 @@
 package work.socialhub.planetlink.misskey.action
 
 import io.ktor.http.*
-import kotlinx.datetime.Clock
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toInstant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import work.socialhub.kmisskey.entity.File
 import work.socialhub.kmisskey.entity.Note
 import work.socialhub.kmisskey.entity.NoteList
 import work.socialhub.kmisskey.entity.Relation
-import work.socialhub.kmpcommon.DateFormatter
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.misskey.define.MisskeyNotificationType
 import work.socialhub.planetlink.misskey.define.MisskeyVisibility
@@ -31,17 +29,7 @@ import work.socialhub.kmisskey.entity.user.User as MUser
 
 object MisskeyMapper {
 
-    private const val DATE_FORMAT = "yyyy-MM-ddTHH:mm:ss.SSSZ"
 
-    // ============================================================== //
-    /** 時間のパーサーオブジェクト  */
-    var dateParser: DateFormatter? = null
-        get() {
-            if (field == null) {
-                field = DateFormatter(DATE_FORMAT, TimeZone.UTC)
-            }
-            return field
-        }
 
     // ============================================================== //
     // Single Object Mapper
@@ -117,7 +105,7 @@ object MisskeyMapper {
 
             c.id = ID(note.id)
             c.user = user(note.user, host, service)
-            c.createAt = note.createdAt.toInstant()
+            c.createAt = Instant.parse(note.createdAt)
             c.visibility = MisskeyVisibility.Public
 
             c.shareCount = note.renoteCount
@@ -238,7 +226,7 @@ object MisskeyMapper {
         return Channel(service).also {
             it.id = ID(list.id!!)
             it.name = list.name
-            it.createAt = list.createdAt?.toInstant()
+            it.createAt = list.createdAt?.let { d -> Instant.parse(d) }
             it.isPublic = false
         }
     }
@@ -259,7 +247,7 @@ object MisskeyMapper {
             n.reaction = notification.reaction
 
             // アンテナの通知などは時刻が含まれないので確認
-            n.createAt = notification.createdAt.toInstant()
+            n.createAt = Instant.parse(notification.createdAt)
 
             // ローカルアイコンの取得
             n.iconUrl = emojis.firstOrNull {
@@ -312,7 +300,7 @@ object MisskeyMapper {
             p.noteId = note.id
 
             if (poll.expiresAt != null) {
-                p.expireAt = poll.expiresAt!!.toInstant()
+                p.expireAt = Instant.parse(poll.expiresAt!!)
                 p.isExpired = p.expireAt!! < Clock.System.now()
             } else {
                 // 無期限の投票の場合

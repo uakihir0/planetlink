@@ -1,6 +1,6 @@
 package work.socialhub.planetlink.model
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import work.socialhub.planetlink.model.support.PollOption
 import kotlin.js.JsExport
 

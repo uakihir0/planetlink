@@ -8,6 +8,7 @@ import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.model.request.CommentForm
 import kotlin.js.JsExport
 
+/** Nostr ユーザーモデル */
 @JsExport
 class NostrUser(
     service: Service
@@ -42,9 +43,10 @@ class NostrUser(
             return fields
         }
 
+    /** {@inheritDoc} */
     override val messageForm: CommentForm
         get() = CommentForm().also {
-            it.replyId(id as? ID)
+            it.replyId(id)
             it.isMessage(true)
         }
 }

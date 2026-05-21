@@ -1,6 +1,6 @@
 package work.socialhub.planetlink.matrix.action
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import work.socialhub.kmatrix.api.request.rooms.RoomsGetMessagesRequest
 import work.socialhub.kmatrix.api.response.rooms.RoomEvent
 import work.socialhub.kmatrix.api.response.rooms.RoomsGetJoinedMembersResponse

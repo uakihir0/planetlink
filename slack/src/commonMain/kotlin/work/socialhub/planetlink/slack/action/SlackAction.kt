@@ -2,7 +2,7 @@ package work.socialhub.planetlink.slack.action
 
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import work.socialhub.kslack.api.methods.request.auth.AuthTestRequest
 import work.socialhub.kslack.api.methods.request.bots.BotsInfoRequest
 import work.socialhub.kslack.api.methods.request.chat.ChatDeleteRequest
@@ -26,6 +26,7 @@ import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.slack.model.*
 
+/** Slack プラットフォームのアクション実装 */
 class SlackAction(
     account: Account,
     val auth: SlackAuth
@@ -141,7 +142,7 @@ class SlackAction(
         val teamObj = loadTeam()
         response.members?.forEach { u ->
             val user = SlackMapper.user(u, teamObj, service())
-            user?.let { userCache[it.id!!.value<String>()] = it }
+            user.let { userCache[it.id!!.value<String>()] = it }
         }
     }
 

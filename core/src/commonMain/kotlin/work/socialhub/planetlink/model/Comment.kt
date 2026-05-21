@@ -1,6 +1,6 @@
 package work.socialhub.planetlink.model
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import work.socialhub.planetlink.action.CommentAction
 import work.socialhub.planetlink.action.CommentActionImpl
 import work.socialhub.planetlink.model.common.AttributedString

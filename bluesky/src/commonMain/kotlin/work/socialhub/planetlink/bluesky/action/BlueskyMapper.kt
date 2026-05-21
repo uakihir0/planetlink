@@ -2,7 +2,7 @@ package work.socialhub.planetlink.bluesky.action
 
 import io.ktor.utils.io.charsets.*
 import io.ktor.utils.io.core.*
-import kotlinx.datetime.toInstant
+import kotlin.time.Instant
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewBasic
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
@@ -169,7 +169,7 @@ object BlueskyMapper {
                 id = ID(post.uri!!)
                 cid = post.cid
                 user = user(repost.by!!, service)
-                createAt = repost.indexedAt!!.toInstant()
+                createAt = Instant.parse(repost.indexedAt!!)
 
                 medias = mutableListOf()
                 sharedComment = comment(
@@ -192,7 +192,7 @@ object BlueskyMapper {
             id = ID(post.uri!!)
             cid = post.cid
             user = user(post.author!!, service)
-            createAt = post.indexedAt!!.toInstant()
+            createAt = Instant.parse(post.indexedAt!!)
 
             // TODO: Labels
             possiblySensitive = false
@@ -280,7 +280,7 @@ object BlueskyMapper {
             id = ID(post.uri!!)
             cid = post.cid
             user = user(post.author!!, service)
-            createAt = post.indexedAt!!.toInstant()
+            createAt = Instant.parse(post.indexedAt!!)
 
             liked = false
             shared = false
@@ -332,7 +332,7 @@ object BlueskyMapper {
                         val afterLen = max(0, (bytes.size - len))
                         bytes = bytes.copyOfRange(len, len + afterLen)
 
-                        val str = String(beforeBytes)
+                        val str = beforeBytes.decodeToString()
                         val element = AttributedItem()
                         element.kind = AttributedKind.PLAIN
                         element.expandedText = str
@@ -353,7 +353,7 @@ object BlueskyMapper {
                     bytes = bytes.copyOfRange(len, len + afterLen)
 
                     if (union is RichtextFacetMention) {
-                        val str = String(targetByte)
+                        val str = targetByte.decodeToString()
                         val element = AttributedItem()
                         element.kind = AttributedKind.ACCOUNT
                         element.expandedText = union.did
@@ -361,7 +361,7 @@ object BlueskyMapper {
                         elements.add(element)
 
                     } else if (union is RichtextFacetLink) {
-                        val str = String(targetByte)
+                        val str = targetByte.decodeToString()
                         val element = AttributedItem()
                         element.kind = AttributedKind.LINK
                         element.expandedText = union.uri
@@ -369,7 +369,7 @@ object BlueskyMapper {
                         elements.add(element)
                     } else {
                         // その他の場合はプレーンテキストとして取得
-                        val str = String(targetByte)
+                        val str = targetByte.decodeToString()
                         val element = AttributedItem()
                         element.kind = AttributedKind.PLAIN
                         element.expandedText = str
@@ -385,7 +385,7 @@ object BlueskyMapper {
         }
 
         if (bytes.isNotEmpty()) {
-            val str = String(bytes)
+            val str = bytes.decodeToString()
             val element = AttributedItem()
             element.kind = AttributedKind.PLAIN
             element.expandedText = str
@@ -446,7 +446,7 @@ object BlueskyMapper {
     ): Notification {
         return Notification(service).apply {
             id = ID(notification.uri)
-            createAt = notification.indexedAt.toInstant()
+            createAt = Instant.parse(notification.indexedAt)
 
             val type = BlueskyNotificationType.of(notification.reason)
             if (type != null) {
@@ -486,7 +486,7 @@ object BlueskyMapper {
 
             name = generator.displayName
             description = generator.description
-            createAt = generator.indexedAt!!.toInstant()
+            createAt = Instant.parse(generator.indexedAt!!)
 
             owner = user(generator.creator!!, service)
             likeCount = generator.likeCount ?: 0
