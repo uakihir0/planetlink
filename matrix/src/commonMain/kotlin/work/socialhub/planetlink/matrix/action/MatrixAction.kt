@@ -26,7 +26,9 @@ import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.matrix.model.MatrixComment
 import work.socialhub.planetlink.matrix.model.MatrixPaging
 import work.socialhub.planetlink.matrix.model.MatrixUser
+import kotlin.js.JsExport
 
+@JsExport
 class MatrixAction(
     account: Account,
     val auth: MatrixAuth,

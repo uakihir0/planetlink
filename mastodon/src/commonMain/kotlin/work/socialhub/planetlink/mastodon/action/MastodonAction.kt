@@ -92,9 +92,11 @@ import work.socialhub.planetlink.model.event.UserEvent
 import work.socialhub.planetlink.model.paging.BorderPaging
 import work.socialhub.planetlink.model.paging.OffsetPaging
 import work.socialhub.planetlink.model.request.CommentForm
+import kotlin.js.JsExport
 import work.socialhub.kmastodon.entity.Notification as MNotification
 
 /** Mastodon プラットフォームのアクション実装 */
+@JsExport
 class MastodonAction(
     account: Account,
     val auth: MastodonAuth,

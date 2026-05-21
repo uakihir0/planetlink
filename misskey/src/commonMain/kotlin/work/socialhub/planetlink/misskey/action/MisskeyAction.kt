@@ -80,9 +80,11 @@ import work.socialhub.planetlink.model.event.NotificationEvent
 import work.socialhub.planetlink.model.event.UserEvent
 import work.socialhub.planetlink.model.paging.OffsetPaging
 import work.socialhub.planetlink.model.request.CommentForm
+import kotlin.js.JsExport
 import work.socialhub.kmisskey.entity.Notification as MNotification
 import work.socialhub.kmisskey.entity.user.User as MUser
 
+@JsExport
 class MisskeyAction(
     account: Account,
     val auth: MisskeyAuth,
