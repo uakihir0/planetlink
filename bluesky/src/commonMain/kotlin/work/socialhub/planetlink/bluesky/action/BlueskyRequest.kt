@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.bluesky.action
 
+import kotlin.js.JsExport
 import work.socialhub.planetlink.action.RequestActionImpl
 import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.action.request.CommentsRequestImpl
@@ -12,6 +13,7 @@ import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Request
 import work.socialhub.planetlink.model.User
 
+@JsExport
 class BlueskyRequest(
     account: Account,
 ) : RequestActionImpl(account) {

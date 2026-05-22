@@ -26,8 +26,10 @@ import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.nostr.model.NostrComment
 import work.socialhub.planetlink.nostr.model.NostrPaging
 import work.socialhub.planetlink.nostr.model.NostrUser
+import kotlin.js.JsExport
 
 /** Nostr プラットフォームのアクション実装 */
+@JsExport
 class NostrAction(
     account: Account,
     val auth: NostrAuth,

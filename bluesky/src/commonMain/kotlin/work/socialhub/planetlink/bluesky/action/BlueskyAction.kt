@@ -84,10 +84,12 @@ import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.utils.CollectionUtil.takeUntil
+import kotlin.js.JsExport
 import kotlin.math.min
 import work.socialhub.planetlink.bluesky.action.BlueskyMapper as Mapper
 
 /** Bluesky プラットフォームのアクション実装 */
+@JsExport
 class BlueskyAction(
     account: Account,
     val auth: BlueskyAuth,

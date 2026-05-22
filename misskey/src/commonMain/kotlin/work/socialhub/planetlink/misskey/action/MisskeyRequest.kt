@@ -1,6 +1,6 @@
 package work.socialhub.planetlink.misskey.action
 
-
+import kotlin.js.JsExport
 import work.socialhub.planetlink.action.RequestActionImpl
 import work.socialhub.planetlink.action.SerializedRequest
 import work.socialhub.planetlink.action.request.CommentsRequest
@@ -19,6 +19,7 @@ import work.socialhub.planetlink.model.Request
 import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.utils.toBlocking
 
+@JsExport
 class MisskeyRequest(
     account: Account
 ) : RequestActionImpl(account) {
@@ -78,13 +79,12 @@ class MisskeyRequest(
     /**
      * {@inheritDoc}
      */
-    val homeTimeLine: CommentsRequest
-        get() {
-            val action = account.action as MisskeyAction
-            return (super.homeTimeLine() as CommentsRequestImpl).also {
-                it.streamFunction = { cb -> toBlocking { action.homeTimeLineStream(cb) } }
-            }
+    override fun homeTimeLine(): CommentsRequest {
+        val action = account.action as MisskeyAction
+        return (super.homeTimeLine() as CommentsRequestImpl).also {
+            it.streamFunction = { cb -> toBlocking { action.homeTimeLineStream(cb) } }
         }
+    }
 
     /**
      * {@inheritDoc}

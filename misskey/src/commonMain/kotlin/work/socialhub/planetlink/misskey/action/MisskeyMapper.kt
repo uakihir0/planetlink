@@ -47,7 +47,7 @@ object MisskeyMapper {
             val detailed = account.asUserDetailedNotMe
 
             u.id = ID(account.id)
-            u.name = account.name!!
+            u.name = account.name ?: account.username
             u.host = account.host ?: host
             u.screenName = account.username
             u.iconImageUrl = account.avatarUrl

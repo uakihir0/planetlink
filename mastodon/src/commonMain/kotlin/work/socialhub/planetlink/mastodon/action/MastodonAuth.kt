@@ -1,5 +1,7 @@
 package work.socialhub.planetlink.mastodon.action
 
+import kotlin.js.JsExport
+import kotlin.js.JsName
 import kotlin.time.Clock
 import kotlin.time.Instant
 import work.socialhub.kmastodon.Mastodon
@@ -16,6 +18,7 @@ import work.socialhub.planetlink.model.Service as PLService
 /**
  * Mastodon Authorization Functions
  */
+@JsExport
 class MastodonAuth(
     var host: String,
     val type: String,
@@ -139,6 +142,7 @@ class MastodonAuth(
      * Refresh AccessToken with RefreshToken.
      * トークン情報を更新
      */
+    @JsName("refreshAccessToken")
     suspend fun refreshToken(): Account {
         val accessToken = accessor.oauth().refreshAccessToken(
             OAuthRefreshAccessTokenRequest().also {

@@ -25,8 +25,10 @@ import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.slack.model.*
+import kotlin.js.JsExport
 
 /** Slack プラットフォームのアクション実装 */
+@JsExport
 class SlackAction(
     account: Account,
     val auth: SlackAuth

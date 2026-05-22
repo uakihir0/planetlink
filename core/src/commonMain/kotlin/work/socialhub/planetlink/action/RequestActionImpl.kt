@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.action
 
+import kotlin.js.JsExport
 import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.action.request.CommentsRequestImpl
 import work.socialhub.planetlink.action.request.UsersRequest
@@ -10,6 +11,7 @@ import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.utils.SerializeUtil
 
+@JsExport
 open class RequestActionImpl(
     var account: Account
 ) : RequestAction {
@@ -228,6 +230,7 @@ open class RequestActionImpl(
         }
     }
 
+    @JsExport.Ignore
     fun isTypeIncluded(
         members: Collection<Enum<*>>,
         action: String
@@ -238,7 +241,8 @@ open class RequestActionImpl(
     // ============================================================== //
     // Support
     // ============================================================== //
-    private fun getUsersRequest(
+    @JsExport.Ignore
+    fun getUsersRequest(
         type: ActionType,
         usersFunction: suspend (Paging) -> Pageable<User>,
         raw: SerializedRequest
@@ -251,6 +255,7 @@ open class RequestActionImpl(
         }
     }
 
+    @JsExport.Ignore
     fun getCommentsRequest(
         type: ActionType,
         commentsFunction: suspend (Paging) -> Pageable<Comment>,

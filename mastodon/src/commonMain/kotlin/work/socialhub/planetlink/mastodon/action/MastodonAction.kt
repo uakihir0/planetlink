@@ -92,9 +92,12 @@ import work.socialhub.planetlink.model.event.UserEvent
 import work.socialhub.planetlink.model.paging.BorderPaging
 import work.socialhub.planetlink.model.paging.OffsetPaging
 import work.socialhub.planetlink.model.request.CommentForm
+import kotlin.js.JsExport
+import kotlin.js.JsName
 import work.socialhub.kmastodon.entity.Notification as MNotification
 
 /** Mastodon プラットフォームのアクション実装 */
+@JsExport
 class MastodonAction(
     account: Account,
     val auth: MastodonAuth,
@@ -1271,6 +1274,7 @@ class MastodonAction(
      * Get Notification (Single)
      * 通知情報を取得
      */
+    @JsName("notificationById")
     suspend fun notification(
         identify: Identify
     ): Notification {

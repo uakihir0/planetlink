@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.misskey.action
 
+import kotlin.js.JsExport
 import work.socialhub.kmisskey.Misskey
 import work.socialhub.kmisskey.MisskeyFactory
 import work.socialhub.kmisskey.api.request.CreateAppRequest
@@ -12,6 +13,7 @@ import work.socialhub.planetlink.model.Service
 /**
  * Misskey Authorization Functions
  */
+@JsExport
 class MisskeyAuth(
     var host: String
 ) : ServiceAuth<Misskey> {

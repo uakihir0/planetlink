@@ -39,7 +39,9 @@ import work.socialhub.planetlink.tumblr.define.TumblrReactionType
 import work.socialhub.planetlink.tumblr.model.TumblrComment
 import work.socialhub.planetlink.tumblr.model.TumblrPaging
 import work.socialhub.planetlink.tumblr.model.TumblrUser
+import kotlin.js.JsExport
 
+@JsExport
 class TumblrAction(
     account: Account,
     val auth: TumblrAuth,

@@ -1,11 +1,13 @@
 package work.socialhub.planetlink.slack.action
 
+import kotlin.js.JsExport
 import work.socialhub.kslack.SlackFactory
 import work.socialhub.kslack.api.methods.request.oauth.OAuthV2AccessRequest
 import work.socialhub.planetlink.action.ServiceAuth
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Service
 
+@JsExport
 class SlackAuth(
     var clientId: String? = null,
     var clientSecret: String? = null,

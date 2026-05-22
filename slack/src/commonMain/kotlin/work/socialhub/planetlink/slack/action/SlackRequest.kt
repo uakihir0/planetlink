@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.slack.action
 
+import kotlin.js.JsExport
 import work.socialhub.planetlink.action.RequestActionImpl
 import work.socialhub.planetlink.action.SerializedRequest
 import work.socialhub.planetlink.action.request.CommentsRequest
@@ -9,6 +10,7 @@ import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.slack.model.SlackComment
 
+@JsExport
 class SlackRequest(
     account: Account
 ) : RequestActionImpl(account) {
