@@ -39,12 +39,39 @@ class NostrAction(
     private val social get() = accessor.social
     private val nostr get() = accessor.nostr
     private val pubkey get() = accessor.pubkey
+    private var relayConnected = false
+
+    private suspend fun ensureRelayConnected() {
+        if (!relayConnected) {
+            // Launch relay connections in background (non-blocking)
+            // Using same pattern as knostr's AbstractTest.connectRelays()
+            val scope = kotlinx.coroutines.CoroutineScope(
+                kotlinx.coroutines.Dispatchers.Default + kotlinx.coroutines.SupervisorJob()
+            )
+            val config = nostr.config()
+            for (url in config.relayUrls) {
+                nostr.relayPool().addRelay(url, config)
+            }
+            nostr.relayPool().connectAll(scope)
+
+            // Wait for at least one relay to connect (max 5s)
+            repeat(25) {
+                if (nostr.relays().getConnectedRelays().isNotEmpty()) {
+                    relayConnected = true
+                    return
+                }
+                kotlinx.coroutines.delay(200)
+            }
+            relayConnected = true
+        }
+    }
 
     // ============================================================== //
     // Account API
     // ============================================================== //
 
     override suspend fun userMe(): User {
+        ensureRelayConnected()
         return proceed {
             val response = social.users().getProfile(pubkey)
             val user = NostrMapper.user(response.data, service())
@@ -175,6 +202,7 @@ class NostrAction(
     // ============================================================== //
 
     override suspend fun homeTimeLine(paging: Paging): Pageable<Comment> {
+        ensureRelayConnected()
         return proceed {
             val np = NostrPaging.fromPaging(paging)
             val response = social.feed().getHomeFeed(
@@ -187,6 +215,7 @@ class NostrAction(
     }
 
     override suspend fun mentionTimeLine(paging: Paging): Pageable<Comment> {
+        ensureRelayConnected()
         return proceed {
             val np = NostrPaging.fromPaging(paging)
             val response = social.feed().getMentions(
