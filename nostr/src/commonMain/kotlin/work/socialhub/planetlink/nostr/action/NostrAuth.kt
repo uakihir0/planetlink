@@ -42,6 +42,15 @@ class NostrAuth(
         }
     }
 
+    /**
+     * Establish relay connections.
+     * Must be called after accountWithPrivateKey() before making any API calls.
+     */
+    suspend fun connect() {
+        val nostr = accessor.nostr
+        nostr.relays().connect()
+    }
+
     private fun createNostr(relays: List<String>, nsec: String): Nostr {
         val hexKey = decodeNsecToHex(nsec)
         return NostrFactory.instance(hexKey, relays)
