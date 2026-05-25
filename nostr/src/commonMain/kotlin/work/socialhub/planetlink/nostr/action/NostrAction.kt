@@ -29,7 +29,7 @@ import work.socialhub.planetlink.nostr.model.NostrPaging
 import work.socialhub.planetlink.nostr.model.NostrUser
 import kotlin.js.JsExport
 
-/** Nostr プラットフォームのアクション実装 */
+/** Action implementation for the Nostr platform */
 @JsExport
 class NostrAction(
     account: Account,
@@ -40,7 +40,6 @@ class NostrAction(
     private val social get() = accessor.social
     private val nostr get() = accessor.nostr
     private val pubkey get() = accessor.pubkey
-    @Volatile
     private var relayConnected = false
     private val relayMutex = kotlinx.coroutines.sync.Mutex()
 
