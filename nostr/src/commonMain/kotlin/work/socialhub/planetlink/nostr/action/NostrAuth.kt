@@ -43,8 +43,9 @@ class NostrAuth(
     }
 
     /**
-     * Establish relay connections.
-     * Must be called after accountWithPrivateKey() before making any API calls.
+     * Explicitly establish relay connections.
+     * Optional: NostrAction auto-connects lazily on first API call.
+     * Call this if you want to pre-warm connections before making requests.
      */
     suspend fun connect() {
         val nostr = accessor.nostr
