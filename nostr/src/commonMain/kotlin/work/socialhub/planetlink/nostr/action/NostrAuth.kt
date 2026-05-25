@@ -10,6 +10,7 @@ import work.socialhub.planetlink.action.ServiceAuth
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Service
 
+/** Nostr の認証とアカウント生成を管理するクラス */
 @JsExport
 class NostrAuth(
     var relays: List<String> = listOf(),
@@ -21,6 +22,7 @@ class NostrAuth(
     override val accessor: NostrAccessor
         get() = checkNotNull(_accessor) { "Nostr accessor is not initialized." }
 
+    /** 秘密鍵からアカウントを生成する */
     fun accountWithPrivateKey(nsec: String? = null): Account {
         val key = nsec ?: this.nsec
             ?: throw IllegalArgumentException("nsec is required for accountWithPrivateKey")
@@ -66,6 +68,7 @@ class NostrAuth(
         }
     }
 
+    /** Nostr API へのアクセスに必要なオブジェクトを保持する */
     class NostrAccessor(
         val nostr: Nostr,
         val social: NostrSocial,
