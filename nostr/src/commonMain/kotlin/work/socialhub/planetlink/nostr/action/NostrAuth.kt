@@ -10,6 +10,7 @@ import work.socialhub.planetlink.action.ServiceAuth
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Service
 
+/** Manages Nostr authentication and account creation */
 @JsExport
 class NostrAuth(
     var relays: List<String> = listOf(),
@@ -21,6 +22,7 @@ class NostrAuth(
     override val accessor: NostrAccessor
         get() = checkNotNull(_accessor) { "Nostr accessor is not initialized." }
 
+    /** Create an account from a private key (nsec) */
     fun accountWithPrivateKey(nsec: String? = null): Account {
         val key = nsec ?: this.nsec
             ?: throw IllegalArgumentException("nsec is required for accountWithPrivateKey")
@@ -43,8 +45,9 @@ class NostrAuth(
     }
 
     /**
-     * Establish relay connections.
-     * Must be called after accountWithPrivateKey() before making any API calls.
+     * Explicitly establish relay connections.
+     * Optional: NostrAction auto-connects lazily on first API call.
+     * Call this if you want to pre-warm connections before making requests.
      */
     suspend fun connect() {
         val nostr = accessor.nostr
@@ -65,6 +68,7 @@ class NostrAuth(
         }
     }
 
+    /** Holds objects required for Nostr API access */
     class NostrAccessor(
         val nostr: Nostr,
         val social: NostrSocial,

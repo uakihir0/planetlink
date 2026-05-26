@@ -1,6 +1,7 @@
 package work.socialhub.planetlink.action
 
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import work.socialhub.planetlink.AbstractTest
 import work.socialhub.planetlink.PrintClass.dumpComments
 import work.socialhub.planetlink.model.Paging
@@ -16,12 +17,12 @@ class NostrRelayTest : AbstractTest() {
 
     @Test
     fun testNostrHomeTimeline() = runBlocking {
-        // nostr() creates account without relay connect (original bug scenario)
-        // ensureRelayConnected() in NostrAction should auto-connect
-        val account = nostr()
-        val result = account.action.homeTimeLine(Paging(20))
-        dumpComments(result)
-        println("Nostr homeTimeLine: ${result.entities.size} posts")
-        assertTrue(true, "homeTimeLine completed (auto-connect worked)")
+        withTimeout(30_000) {
+            val account = nostr()
+            val result = account.action.homeTimeLine(Paging(20))
+            dumpComments(result)
+            println("Nostr homeTimeLine: ${result.entities.size} posts")
+            assertTrue(true, "homeTimeLine completed (auto-connect worked)")
+        }
     }
 }

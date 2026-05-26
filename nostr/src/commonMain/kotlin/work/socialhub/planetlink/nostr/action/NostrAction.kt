@@ -1,6 +1,7 @@
 package work.socialhub.planetlink.nostr.action
 
 import kotlin.time.Instant
+import kotlinx.coroutines.sync.withLock
 import work.socialhub.knostr.entity.Nip19Entity
 import work.socialhub.knostr.social.model.NostrDirectMessage
 import work.socialhub.knostr.social.model.NostrNote
@@ -28,7 +29,7 @@ import work.socialhub.planetlink.nostr.model.NostrPaging
 import work.socialhub.planetlink.nostr.model.NostrUser
 import kotlin.js.JsExport
 
-/** Nostr プラットフォームのアクション実装 */
+/** Action implementation for the Nostr platform */
 @JsExport
 class NostrAction(
     account: Account,
@@ -40,11 +41,12 @@ class NostrAction(
     private val nostr get() = accessor.nostr
     private val pubkey get() = accessor.pubkey
     private var relayConnected = false
+    private val relayMutex = kotlinx.coroutines.sync.Mutex()
 
     private suspend fun ensureRelayConnected() {
-        if (!relayConnected) {
-            // Launch relay connections in background (non-blocking)
-            // Using same pattern as knostr's AbstractTest.connectRelays()
+        if (relayConnected) return
+        relayMutex.withLock {
+            if (relayConnected) return
             val scope = kotlinx.coroutines.CoroutineScope(
                 kotlinx.coroutines.Dispatchers.Default + kotlinx.coroutines.SupervisorJob()
             )
@@ -54,7 +56,6 @@ class NostrAction(
             }
             nostr.relayPool().connectAll(scope)
 
-            // Wait for at least one relay to connect (max 5s)
             repeat(25) {
                 if (nostr.relays().getConnectedRelays().isNotEmpty()) {
                     relayConnected = true
@@ -62,7 +63,7 @@ class NostrAction(
                 }
                 kotlinx.coroutines.delay(200)
             }
-            relayConnected = true
+            throw SocialHubException("Failed to connect to any Nostr relay within 5 seconds")
         }
     }
 
