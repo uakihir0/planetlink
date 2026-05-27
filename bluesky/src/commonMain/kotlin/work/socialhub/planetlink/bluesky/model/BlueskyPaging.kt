@@ -84,7 +84,7 @@ class BlueskyPaging(
     override fun setMarkPagingEnd(
         entities: List<*>
     ) {
-        if (isHasPast && cursor == null && cursorHint == null) {
+        if (isHasPast && cursorHint == null) {
             isHasPast = false
         }
     }
