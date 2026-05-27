@@ -534,6 +534,7 @@ object BlueskyMapper {
      */
     fun timelineByFeeds(
         feed: List<FeedDefsFeedViewPost>,
+        cursor: String?,
         paging: Paging,
         service: Service,
     ): Pageable<Comment> {
@@ -556,6 +557,7 @@ object BlueskyMapper {
         val model = Pageable<Comment>()
         model.entities = feedList.map { comment(it, service) }
         model.paging = BlueskyPaging.fromPaging(paging)
+            .also { it.cursorHint = cursor }
         return model
     }
 
@@ -564,6 +566,7 @@ object BlueskyMapper {
      */
     fun timelineByPosts(
         posts: List<FeedDefsPostView>,
+        cursor: String?,
         paging: Paging?,
         service: Service
     ): Pageable<Comment> {
@@ -586,6 +589,7 @@ object BlueskyMapper {
         val model = Pageable<Comment>()
         model.entities = postList.map { simpleComment(it, service) }
         model.paging = BlueskyPaging.fromPaging(paging)
+            .also { it.cursorHint = cursor }
         return model
     }
 

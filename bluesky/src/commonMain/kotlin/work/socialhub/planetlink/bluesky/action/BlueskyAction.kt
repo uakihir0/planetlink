@@ -357,6 +357,7 @@ class BlueskyAction(
 
             Mapper.timelineByFeeds(
                 response.data.feed,
+                response.data.cursor,
                 paging,
                 service()
             )
@@ -392,6 +393,7 @@ class BlueskyAction(
             val results = Mapper.timelineByPosts(
                 postViews(subjects),
                 null,
+                null,
                 service(),
             )
 
@@ -425,6 +427,7 @@ class BlueskyAction(
                 )
             Mapper.timelineByFeeds(
                 response.data.feed,
+                response.data.cursor,
                 paging,
                 service(),
             )
@@ -476,6 +479,7 @@ class BlueskyAction(
 
             val results = Mapper.timelineByPosts(
                 postViews(subjects),
+                null,
                 null,
                 service(),
             )
@@ -537,6 +541,7 @@ class BlueskyAction(
             }
             Mapper.timelineByFeeds(
                 feeds,
+                cursor,
                 paging,
                 service()
             )
@@ -560,6 +565,7 @@ class BlueskyAction(
 
             Mapper.timelineByPosts(
                 response.data.posts,
+                response.data.cursor,
                 paging,
                 service()
             )
@@ -1036,6 +1042,7 @@ class BlueskyAction(
             )
             Mapper.timelineByFeeds(
                 response.data.feed,
+                response.data.cursor,
                 paging,
                 service(),
             )
@@ -1374,7 +1381,7 @@ class BlueskyAction(
         limit: Int,
     ): Paging {
         if (paging != null) {
-            if (paging.count != null) {
+            if (paging.count == null) {
                 paging.count = limit
                 return paging
             }

@@ -79,6 +79,17 @@ class BlueskyPaging(
     }
 
     /**
+     * {@inheritDoc}
+     */
+    override fun setMarkPagingEnd(
+        entities: List<*>
+    ) {
+        if (isHasPast && cursorHint == null) {
+            isHasPast = false
+        }
+    }
+
+    /**
      * オブジェクトコピー
      */
     override fun copy(): BlueskyPaging {
