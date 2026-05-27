@@ -1374,7 +1374,7 @@ class BlueskyAction(
         limit: Int,
     ): Paging {
         if (paging != null) {
-            if (paging.count != null) {
+            if (paging.count == null) {
                 paging.count = limit
                 return paging
             }
