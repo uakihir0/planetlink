@@ -1,5 +1,6 @@
 .idea
 .kotlin
+.kiro
 secrets.json
 
 .gradle
