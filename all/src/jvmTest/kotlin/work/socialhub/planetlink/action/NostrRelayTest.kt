@@ -6,6 +6,7 @@ import work.socialhub.planetlink.AbstractTest
 import work.socialhub.planetlink.PrintClass.dumpComments
 import work.socialhub.planetlink.model.Paging
 import kotlin.test.Test
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -17,12 +18,21 @@ class NostrRelayTest : AbstractTest() {
 
     @Test
     fun testNostrHomeTimeline() = runBlocking {
-        withTimeout(30_000) {
+        withTimeout(60_000) {
             val account = nostr()
             val result = account.action.homeTimeLine(Paging(20))
             dumpComments(result)
             println("Nostr homeTimeLine: ${result.entities.size} posts")
-            assertTrue(true, "homeTimeLine completed (auto-connect worked)")
+
+            assertNotNull(result, "homeTimeLine result should not be null")
+            assertNotNull(result.entities, "entities should not be null")
+
+            if (result.entities.isNotEmpty()) {
+                result.entities.forEach { comment ->
+                    assertNotNull(comment.id, "comment id should not be null")
+                    assertNotNull(comment.text, "comment text should not be null")
+                }
+            }
         }
     }
 }
