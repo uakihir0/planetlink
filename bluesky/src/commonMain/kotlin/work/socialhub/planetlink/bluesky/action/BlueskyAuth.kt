@@ -67,6 +67,34 @@ class BlueskyAuth(
         }
     }
 
+    /**
+     * Create account with existing session token.
+     * Password is still required for token refresh when the session expires.
+     * 既存のセッショントークンを使ってアカウントを生成
+     */
+    fun accountWithSession(
+        identifier: String,
+        password: String,
+        accessJwt: String,
+        did: String,
+    ): Account {
+
+        this.identifier = identifier
+        this.password = password
+        this.bluesky = BlueskyFactory.instance(apiHost)
+
+        return Account().also { acc ->
+            val action = BlueskyAction(acc, this)
+            action.restoreSession(accessJwt, did)
+            acc.action = action
+            acc.service = Service("bluesky", acc)
+                .also {
+                    it.apiHost = apiHost
+                    it.streamHost = streamHost
+                }
+        }
+    }
+
 
     override val accessor: Bluesky
         get() {

@@ -95,9 +95,12 @@ class BlueskyAction(
     val auth: BlueskyAuth,
 ) : AccountActionImpl(account) {
 
-    private var accessJwt: String? = null
-    private var expireAt: Long? = null
-    private var did: String? = null
+    var accessJwt: String? = null
+        private set
+    var expireAt: Long? = null
+        private set
+    var did: String? = null
+        private set
 
     // ============================================================== //
     // Account
@@ -1395,6 +1398,21 @@ class BlueskyAction(
     // ============================================================== //
     // Session
     // ============================================================== //
+
+    /**
+     * Restore session from previously saved token.
+     * 保存されたトークンからセッションを復元
+     */
+    fun restoreSession(
+        accessJwt: String,
+        did: String,
+    ) {
+        this.accessJwt = accessJwt
+        this.did = did
+        val jwt = Utils.jwt(accessJwt)
+        this.expireAt = jwt.exp.toLong()
+    }
+
     private suspend fun createSession() {
         val response = auth.accessor.server().createSession(
             ServerCreateSessionRequest().also {
