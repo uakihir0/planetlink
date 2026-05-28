@@ -21,11 +21,11 @@ class NostrRelayTest : AbstractTest() {
         withTimeout(60_000) {
             val account = nostr()
             val result = account.action.homeTimeLine(Paging(20))
-            dumpComments(result)
-            println("Nostr homeTimeLine: ${result.entities.size} posts")
-
             assertNotNull(result, "homeTimeLine result should not be null")
             assertNotNull(result.entities, "entities should not be null")
+
+            dumpComments(result)
+            println("Nostr homeTimeLine: ${result.entities.size} posts")
 
             if (result.entities.isNotEmpty()) {
                 result.entities.forEach { comment ->
