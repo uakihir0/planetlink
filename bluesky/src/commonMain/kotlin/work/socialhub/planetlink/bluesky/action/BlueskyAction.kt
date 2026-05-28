@@ -4,7 +4,6 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlin.time.Clock
-import kotlin.time.Instant
 import work.socialhub.kbsky.BlueskyException
 import work.socialhub.kbsky.BlueskyTypes
 import work.socialhub.kbsky.api.entity.app.bsky.actor.ActorGetPreferencesRequest
@@ -1136,7 +1135,7 @@ class BlueskyAction(
             // 取得する通知の種類を指定
             val types = listOf("like", "repost", "follow")
 
-            if (paging.count != null) paging.count = 20
+            if (paging.count == null) paging.count = 20
             paging.count = min(paging.count!!, 20)
 
             val model = notifications(paging, types)
@@ -1233,10 +1232,8 @@ class BlueskyAction(
                         stop = true
                     }
 
-                    // 次ページをみるためカーソルを作成
-                    val last = list[list.size - 1]
-                    val date = Instant.parse(last.indexedAt)
-                    cursor = "${date.toEpochMilliseconds()}::${last.cid}"
+                    // API レスポンスのカーソルを使用
+                    cursor = response.data.cursor
 
                     // 追加に要素を追加
                     notifications.addAll(list)
