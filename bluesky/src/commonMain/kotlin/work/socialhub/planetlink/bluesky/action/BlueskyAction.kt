@@ -1127,8 +1127,7 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
-    @Suppress("unused")
-    suspend fun notification(
+    override suspend fun notification(
         paging: Paging
     ): Pageable<Notification> {
         return proceed {
