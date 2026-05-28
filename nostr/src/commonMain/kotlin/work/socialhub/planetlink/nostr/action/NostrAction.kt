@@ -2,7 +2,9 @@ package work.socialhub.planetlink.nostr.action
 
 import kotlin.time.Instant
 import kotlinx.coroutines.sync.withLock
+import work.socialhub.knostr.EventKind
 import work.socialhub.knostr.entity.Nip19Entity
+import work.socialhub.knostr.entity.NostrFilter
 import work.socialhub.knostr.social.model.NostrDirectMessage
 import work.socialhub.knostr.social.model.NostrNote
 import work.socialhub.knostr.social.model.NostrUser as KnostrUser
@@ -225,6 +227,39 @@ class NostrAction(
             )
             val userMe = userMeWithCache()
             NostrMapper.timeLine(response.data, service(), paging, userMe)
+        }
+    }
+
+    override suspend fun notification(paging: Paging): Pageable<Notification> {
+        ensureRelayConnected()
+        return proceed {
+            val np = NostrPaging.fromPaging(paging)
+
+            val filter = NostrFilter(
+                pTags = listOf(pubkey),
+                kinds = listOf(EventKind.REACTION),
+                until = np.until,
+                limit = paging.count ?: 50,
+            )
+            val response = nostr.events().queryEvents(listOf(filter))
+
+            val notifications = response.data.map { event ->
+                Notification(service()).apply {
+                    id = ID(event.id)
+                    action = NotificationActionType.LIKE.code
+                    type = "reaction"
+                    createAt = Instant.fromEpochSeconds(event.createdAt, 0)
+                    users = listOf(User(service()).apply {
+                        id = ID(event.pubkey)
+                        name = event.pubkey.take(8)
+                    })
+                }
+            }.sortedByDescending { it.createAt }
+
+            Pageable<Notification>().also { p ->
+                p.entities = notifications
+                p.paging = NostrPaging.fromPaging(paging)
+            }
         }
     }
 
