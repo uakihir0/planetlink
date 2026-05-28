@@ -81,6 +81,20 @@ class NostrAction(
         }
     }
 
+    private suspend fun fetchUserMe(): User {
+        ensureRelayConnected()
+        return proceed {
+            val response = social.users().getProfile(pubkey)
+            val user = NostrMapper.user(response.data, service())
+            me = user
+            user
+        }
+    }
+
+    override suspend fun userMeWithCache(): User {
+        return me ?: fetchUserMe()
+    }
+
     override suspend fun user(id: Identify): User {
         val key = id.id!!.value<String>()
         if (key == pubkey && me != null) return me!!
