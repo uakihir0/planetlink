@@ -145,6 +145,18 @@ class MatrixAction(
         }
     }
 
+    override suspend fun notification(paging: Paging): Pageable<Notification> {
+        return proceed {
+            val response = accessor.notifications().getNotifications(
+                NotificationsGetRequest().apply {
+                    limit = paging.count ?: 50
+                }
+            ).data
+
+            MatrixMapper.notifications(response.notifications, service(), paging)
+        }
+    }
+
     override suspend fun userCommentTimeLine(id: Identify, paging: Paging): Pageable<Comment> {
         throw NotSupportedException("Matrix does not support user comment timeline")
     }

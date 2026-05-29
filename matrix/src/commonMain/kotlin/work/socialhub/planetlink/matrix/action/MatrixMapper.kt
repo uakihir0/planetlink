@@ -2,6 +2,7 @@ package work.socialhub.planetlink.matrix.action
 
 import kotlin.time.Instant
 import work.socialhub.kmatrix.api.request.rooms.RoomsGetMessagesRequest
+import work.socialhub.kmatrix.api.response.notifications.NotificationsGetResponse
 import work.socialhub.kmatrix.api.response.rooms.RoomEvent
 import work.socialhub.kmatrix.api.response.rooms.RoomsGetJoinedMembersResponse
 import work.socialhub.kmatrix.api.response.profile.ProfileGetProfileResponse
@@ -10,6 +11,7 @@ import work.socialhub.planetlink.model.Channel
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Media
+import work.socialhub.planetlink.model.Notification
 import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Paging
 import work.socialhub.planetlink.model.Service
@@ -140,5 +142,31 @@ object MatrixMapper {
         }
         model.paging = MatrixPaging.fromPaging(paging)
         return model
+    }
+
+    fun notification(
+        notification: NotificationsGetResponse.Notification,
+        service: Service,
+    ): Notification {
+        return Notification(service).apply {
+            id = ID(notification.event.eventId)
+            createAt = Instant.fromEpochMilliseconds(notification.ts)
+            type = notification.event.type
+            users = listOf(User(service).apply {
+                id = ID(notification.event.sender)
+                name = notification.event.sender
+            })
+        }
+    }
+
+    fun notifications(
+        notifications: Array<NotificationsGetResponse.Notification>,
+        service: Service,
+        paging: Paging?,
+    ): Pageable<Notification> {
+        return Pageable<Notification>().also { p ->
+            p.entities = notifications.map { notification(it, service) }
+            p.paging = MatrixPaging.fromPaging(paging)
+        }
     }
 }
