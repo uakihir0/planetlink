@@ -206,6 +206,20 @@ interface AccountAction {
     }
 
     // ============================================================== //
+    // Notification API
+    // 通知関連 API
+    // ============================================================== //
+    /**
+     * Get Notifications
+     * 通知一覧を取得
+     */
+    suspend fun notification(
+        paging: Paging,
+    ): Pageable<Notification> {
+        throw NotImplementedException()
+    }
+
+    // ============================================================== //
     // Comment API
     // コメント関連 API
     // ============================================================== //
