@@ -58,12 +58,22 @@ class NostrAction(
             }
             nostr.relayPool().connectAll(scope)
 
+            val totalRelays = config.relayUrls.size
             repeat(25) {
-                if (nostr.relays().getConnectedRelays().isNotEmpty()) {
+                val connected = nostr.relays().getConnectedRelays().size
+                if (connected >= totalRelays) {
+                    relayConnected = true
+                    return
+                }
+                if (connected > 0 && it >= 10) {
                     relayConnected = true
                     return
                 }
                 kotlinx.coroutines.delay(200)
+            }
+            if (nostr.relays().getConnectedRelays().isNotEmpty()) {
+                relayConnected = true
+                return
             }
             throw SocialHubException("Failed to connect to any Nostr relay within 5 seconds")
         }
@@ -98,6 +108,7 @@ class NostrAction(
     }
 
     override suspend fun user(id: Identify): User {
+        ensureRelayConnected()
         val key = id.id!!.value<String>()
         if (key == pubkey && me != null) return me!!
 
@@ -108,6 +119,7 @@ class NostrAction(
     }
 
     override suspend fun user(url: String): User {
+        ensureRelayConnected()
         return proceed {
             val trimmed = url.trim()
             when {
@@ -278,6 +290,7 @@ class NostrAction(
     }
 
     override suspend fun userCommentTimeLine(id: Identify, paging: Paging): Pageable<Comment> {
+        ensureRelayConnected()
         return proceed {
             val np = NostrPaging.fromPaging(paging)
             val response = social.feed().getUserFeed(
@@ -291,6 +304,7 @@ class NostrAction(
     }
 
     override suspend fun userLikeTimeLine(id: Identify, paging: Paging): Pageable<Comment> {
+        ensureRelayConnected()
         return proceed {
             val np = NostrPaging.fromPaging(paging)
             val response = social.feed().getUserLikesFeed(
@@ -304,6 +318,7 @@ class NostrAction(
     }
 
     override suspend fun userMediaTimeLine(id: Identify, paging: Paging): Pageable<Comment> {
+        ensureRelayConnected()
         return proceed {
             val np = NostrPaging.fromPaging(paging)
             val response = social.feed().getUserMediaFeed(
@@ -317,6 +332,7 @@ class NostrAction(
     }
 
     override suspend fun searchTimeLine(query: String, paging: Paging): Pageable<Comment> {
+        ensureRelayConnected()
         return proceed {
             val response = social.search().searchNotes(query)
             val userMe = userMeWithCache()
@@ -350,6 +366,7 @@ class NostrAction(
     }
 
     override suspend fun comment(id: Identify): Comment {
+        ensureRelayConnected()
         return proceed {
             val eventId = id.id!!.value<String>()
             val response = social.feed().getNote(eventId)
@@ -359,6 +376,7 @@ class NostrAction(
     }
 
     override suspend fun comment(url: String): Comment {
+        ensureRelayConnected()
         return proceed {
             val trimmed = url.trim()
             val eventId = when {
