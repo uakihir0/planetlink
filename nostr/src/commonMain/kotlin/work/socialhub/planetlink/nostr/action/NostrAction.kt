@@ -263,24 +263,56 @@ class NostrAction(
 
             val filter = NostrFilter(
                 pTags = listOf(pubkey),
-                kinds = listOf(EventKind.REACTION),
+                kinds = listOf(
+                    EventKind.TEXT_NOTE,
+                    EventKind.REPOST,
+                    EventKind.REACTION,
+                    EventKind.ZAP_RECEIPT,
+                ),
                 until = np.until,
                 limit = paging.count ?: 50,
             )
             val response = nostr.events().queryEvents(listOf(filter))
 
-            val notifications = response.data.map { event ->
-                Notification(service()).apply {
-                    id = ID(event.id)
-                    action = NotificationActionType.LIKE.code
-                    type = "reaction"
-                    createAt = Instant.fromEpochSeconds(event.createdAt, 0)
-                    users = listOf(User(service()).apply {
-                        id = ID(event.pubkey)
-                        name = event.pubkey.take(8)
-                    })
-                }
-            }.sortedByDescending { it.createAt }
+            val notifications = response.data
+                .filter { it.pubkey != pubkey }
+                .map { event ->
+                    Notification(service()).apply {
+                        id = ID(event.id)
+                        createAt = Instant.fromEpochSeconds(event.createdAt, 0)
+
+                        when (event.kind) {
+                            EventKind.TEXT_NOTE -> {
+                                action = NotificationActionType.MENTION.code
+                                type = "mention"
+                                comments = listOf(
+                                    NostrComment(service()).apply {
+                                        id = ID(event.id)
+                                        createAt = Instant.fromEpochSeconds(event.createdAt, 0)
+                                        text = work.socialhub.planetlink.model.common.AttributedString.plain(event.content)
+                                    }
+                                )
+                            }
+                            EventKind.REPOST -> {
+                                action = NotificationActionType.SHARE.code
+                                type = "repost"
+                            }
+                            EventKind.ZAP_RECEIPT -> {
+                                action = NotificationActionType.LIKE.code
+                                type = "zap"
+                            }
+                            else -> {
+                                action = NotificationActionType.LIKE.code
+                                type = "reaction"
+                            }
+                        }
+
+                        users = listOf(User(service()).apply {
+                            id = ID(event.pubkey)
+                            name = event.pubkey.take(8)
+                        })
+                    }
+                }.sortedByDescending { it.createAt }
 
             Pageable<Notification>().also { p ->
                 p.entities = notifications
