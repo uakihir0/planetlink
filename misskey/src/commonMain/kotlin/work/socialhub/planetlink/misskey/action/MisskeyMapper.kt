@@ -182,7 +182,8 @@ object MisskeyMapper {
             it.emoji = emoji.name
             it.imageUrl = emoji.url
             it.category = emoji.category
-            it.shortCodes = emoji.aliases?.toList() ?: emptyList()
+            val aliases = emoji.aliases?.toList() ?: emptyList()
+            it.shortCodes = if (aliases.isNotEmpty()) aliases else listOf(emoji.name)
         }
     }
 
