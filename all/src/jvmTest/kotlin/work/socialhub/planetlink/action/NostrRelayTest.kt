@@ -37,6 +37,19 @@ class NostrRelayTest : AbstractTest() {
     }
 
     @Test
+    fun testNostrNotification() = runBlocking {
+        withTimeout(60_000) {
+            val account = nostr()
+            val result = account.action.notification(Paging(20))
+            println("Nostr notification: ${result.entities.size} items")
+            result.entities.forEach { n ->
+                println("  [${n.action}] ${n.type} from ${n.users?.firstOrNull()?.name} at ${n.createAt}")
+            }
+            assertTrue(result.entities.isNotEmpty(), "notification should return items")
+        }
+    }
+
+    @Test
     fun testNostrUserTimelinePaging() = runBlocking {
         withTimeout(60_000) {
             val account = nostr()
