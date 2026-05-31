@@ -43,7 +43,7 @@ class Emoji {
     }
 
     val shortCode: String
-        get() = shortCodes[0]
+        get() = shortCodes.firstOrNull() ?: (emoji ?: "")
 
     companion object {
 
