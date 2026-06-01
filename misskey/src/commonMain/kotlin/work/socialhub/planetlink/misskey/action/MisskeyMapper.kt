@@ -503,7 +503,7 @@ object MisskeyMapper {
         text: String?,
         host: String
     ): List<Emoji> {
-        return if (emojis != null) emojis(emojis)
+        return if (!emojis.isNullOrEmpty()) emojis(emojis)
         else extractEmojis(text, host)
     }
 
