@@ -52,7 +52,7 @@ class MisskeyPaging : Paging() {
 
             // Comment の場合はページング用 ID を使用
             if (last is MisskeyComment) {
-                pg.untilId = last.pagingId
+                pg.untilId = last.idForPaging
 
             } else {
                 // 他のオブジェクトはそのままのを使用
