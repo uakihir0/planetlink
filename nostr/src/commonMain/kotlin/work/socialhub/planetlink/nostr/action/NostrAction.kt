@@ -29,6 +29,9 @@ import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.nostr.model.NostrComment
 import work.socialhub.planetlink.nostr.model.NostrPaging
 import work.socialhub.planetlink.nostr.model.NostrUser
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.js.JsExport
 
 /** Action implementation for the Nostr platform */
@@ -263,22 +266,86 @@ class NostrAction(
 
             val filter = NostrFilter(
                 pTags = listOf(pubkey),
-                kinds = listOf(EventKind.REACTION),
+                kinds = listOf(
+                    EventKind.TEXT_NOTE,
+                    EventKind.REPOST,
+                    EventKind.REACTION,
+                    EventKind.ZAP_RECEIPT,
+                ),
                 until = np.until,
                 limit = paging.count ?: 50,
             )
             val response = nostr.events().queryEvents(listOf(filter))
 
-            val notifications = response.data.map { event ->
+            val events = response.data.filter { it.pubkey != pubkey }
+
+            val senderPubkeys = events.map { event ->
+                if (event.kind == EventKind.ZAP_RECEIPT) {
+                    extractZapSenderPubkey(event.tags) ?: event.pubkey
+                } else {
+                    event.pubkey
+                }
+            }.distinct().filter { it != pubkey }
+
+            val profileMap = if (senderPubkeys.isNotEmpty()) {
+                try {
+                    social.users().getProfiles(senderPubkeys).data
+                        .associateBy { it.pubkey }
+                } catch (_: Exception) {
+                    emptyMap()
+                }
+            } else {
+                emptyMap()
+            }
+
+            val notifications = events.map { event ->
+                val senderPubkey = if (event.kind == EventKind.ZAP_RECEIPT) {
+                    extractZapSenderPubkey(event.tags) ?: event.pubkey
+                } else {
+                    event.pubkey
+                }
+
                 Notification(service()).apply {
                     id = ID(event.id)
-                    action = NotificationActionType.LIKE.code
-                    type = "reaction"
                     createAt = Instant.fromEpochSeconds(event.createdAt, 0)
-                    users = listOf(User(service()).apply {
-                        id = ID(event.pubkey)
-                        name = event.pubkey.take(8)
-                    })
+
+                    when (event.kind) {
+                        EventKind.TEXT_NOTE -> {
+                            action = NotificationActionType.MENTION.code
+                            type = "mention"
+                            comments = listOf(
+                                NostrComment(service()).apply {
+                                    id = ID(event.id)
+                                    createAt = Instant.fromEpochSeconds(event.createdAt, 0)
+                                    text = work.socialhub.planetlink.model.common.AttributedString.plain(event.content)
+                                }
+                            )
+                        }
+                        EventKind.REPOST -> {
+                            action = NotificationActionType.SHARE.code
+                            type = "repost"
+                        }
+                        EventKind.ZAP_RECEIPT -> {
+                            action = NotificationActionType.LIKE.code
+                            type = "zap"
+                        }
+                        else -> {
+                            action = NotificationActionType.LIKE.code
+                            type = "reaction"
+                        }
+                    }
+
+                    val profile = profileMap[senderPubkey]
+                    users = listOf(
+                        if (profile != null) {
+                            NostrMapper.user(profile, service())
+                        } else {
+                            User(service()).apply {
+                                id = ID(senderPubkey)
+                                name = senderPubkey.take(8)
+                            }
+                        }
+                    )
                 }
             }.sortedByDescending { it.createAt }
 
@@ -286,6 +353,17 @@ class NostrAction(
                 p.entities = notifications
                 p.paging = NostrPaging.fromPaging(paging)
             }
+        }
+    }
+
+    private fun extractZapSenderPubkey(tags: List<List<String>>): String? {
+        val descriptionTag = tags.firstOrNull { it.size >= 2 && it[0] == "description" }
+            ?: return null
+        return try {
+            val json = Json.parseToJsonElement(descriptionTag[1])
+            json.jsonObject["pubkey"]?.jsonPrimitive?.content
+        } catch (_: Exception) {
+            null
         }
     }
 

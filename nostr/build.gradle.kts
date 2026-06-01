@@ -48,6 +48,7 @@ kotlin {
             implementation(libs.knostr.social)
             implementation(libs.ktor.core)
             implementation(libs.datetime)
+            implementation(libs.serialization.json)
         }
 
         commonTest.dependencies {
