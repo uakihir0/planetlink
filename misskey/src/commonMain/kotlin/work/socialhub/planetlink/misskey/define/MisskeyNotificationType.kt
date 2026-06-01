@@ -19,8 +19,8 @@ enum class MisskeyNotificationType(
         NotificationType.RENOTE.code,
     ),
 
-    REACTION(null, NotificationType.REACTION.code),
-    MENTION(null, NotificationType.MENTION.code),
+    REACTION(NotificationActionType.REACTION, NotificationType.REACTION.code),
+    MENTION(NotificationActionType.MENTION, NotificationType.MENTION.code),
     POLL(null, NotificationType.POLL_VOTE.code),
     ;
 

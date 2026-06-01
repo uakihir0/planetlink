@@ -14,4 +14,5 @@ enum class NotificationActionType(
     FOLLOW_REQUEST("follow_request"),
     SHARE("share"),
     LIKE("like"),
+    REACTION("reaction"),
 }
