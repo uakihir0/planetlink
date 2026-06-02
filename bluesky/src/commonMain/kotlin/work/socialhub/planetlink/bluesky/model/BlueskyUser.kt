@@ -37,7 +37,7 @@ class BlueskyUser(
 
     override var name: String = ""
         get() = field.ifEmpty {
-            return screenName!!
+            return screenName.orEmpty()
                 .also { field = it }
         }
 
