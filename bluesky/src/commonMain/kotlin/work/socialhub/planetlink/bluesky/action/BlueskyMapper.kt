@@ -66,7 +66,7 @@ object BlueskyMapper {
             isProtected = false
 
             id = ID(account.did)
-            name = account.displayName.orEmpty()
+            name = account.displayName ?: account.handle
             screenName = account.handle
             iconImageUrl = account.avatar
             coverImageUrl = account.banner
@@ -93,7 +93,7 @@ object BlueskyMapper {
             isProtected = false
 
             id = ID(account.did)
-            name = account.displayName.orEmpty()
+            name = account.displayName ?: account.handle
             screenName = account.handle
             iconImageUrl = account.avatar
 
@@ -115,7 +115,7 @@ object BlueskyMapper {
             isProtected = false
 
             id = ID(account.did)
-            name = account.displayName.orEmpty()
+            name = account.displayName ?: account.handle
             screenName = account.handle
             iconImageUrl = account.avatar
 
