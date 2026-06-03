@@ -18,7 +18,7 @@ interface CommentsRequest : Request {
      * Set Comment Stream
      * コメントストリームを設定
      */
-    fun setCommentsStream(callback: EventCallback): Stream
+    suspend fun setCommentsStream(callback: EventCallback): Stream
 
     /**
      * Get Flags of Comment Stream Support
