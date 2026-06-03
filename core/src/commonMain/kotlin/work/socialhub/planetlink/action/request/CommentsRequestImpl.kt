@@ -12,7 +12,7 @@ import kotlin.js.JsExport
 class CommentsRequestImpl : CommentsRequest {
 
     var commentsFunction: (suspend (Paging) -> Pageable<Comment>)? = null
-    var streamFunction: ((EventCallback) -> Stream)? = null
+    var streamFunction: (suspend (EventCallback) -> Stream)? = null
     var commentForm: CommentForm? = null
     var streamRecommended = true
 
@@ -44,7 +44,7 @@ class CommentsRequestImpl : CommentsRequest {
     /**
      * {@inheritDoc}
      */
-    override fun setCommentsStream(
+    override suspend fun setCommentsStream(
         callback: EventCallback
     ): Stream {
         return streamFunction?.invoke(callback)

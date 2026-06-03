@@ -17,7 +17,6 @@ import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Request
 import work.socialhub.planetlink.model.User
-import work.socialhub.planetlink.utils.toBlocking
 
 @JsExport
 class MisskeyRequest(
@@ -39,7 +38,7 @@ class MisskeyRequest(
                 SerializedRequest(LocalTimeLine)
             )
 
-            request.streamFunction = { cb -> toBlocking { action.localLineStream(cb) } }
+            request.streamFunction = { cb -> action.localLineStream(cb) }
             return request
         }
 
@@ -55,7 +54,7 @@ class MisskeyRequest(
                 SerializedRequest(FederationTimeLine)
             )
 
-            request.streamFunction = { cb -> toBlocking { action.federationLineStream(cb) } }
+            request.streamFunction = { cb -> action.federationLineStream(cb) }
             return request
         }
 
@@ -82,7 +81,7 @@ class MisskeyRequest(
     override fun homeTimeLine(): CommentsRequest {
         val action = account.action as MisskeyAction
         return (super.homeTimeLine() as CommentsRequestImpl).also {
-            it.streamFunction = { cb -> toBlocking { action.homeTimeLineStream(cb) } }
+            it.streamFunction = { cb -> action.homeTimeLineStream(cb) }
         }
     }
 
