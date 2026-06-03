@@ -40,7 +40,10 @@ class BlueskyRequest(
      * {@inheritDoc}
      */
     override fun homeTimeLine(): CommentsRequest {
-        return (super.homeTimeLine() as CommentsRequestImpl)
+        val action = account.action as BlueskyAction
+        return (super.homeTimeLine() as CommentsRequestImpl).also {
+            it.streamFunction = { cb -> action.homeTimeLineStream(cb) }
+        }
     }
 
     /**

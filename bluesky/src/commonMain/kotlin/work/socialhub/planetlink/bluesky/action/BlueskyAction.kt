@@ -40,6 +40,10 @@ import work.socialhub.kbsky.api.entity.com.atproto.repo.RepoUploadBlobRequest
 import work.socialhub.kbsky.api.entity.com.atproto.server.ServerCreateSessionRequest
 import work.socialhub.kbsky.auth.AuthProvider
 import work.socialhub.kbsky.auth.BearerTokenAuthProvider
+import work.socialhub.kbsky.stream.BlueskyStreamFactory
+import work.socialhub.kbsky.stream.api.entity.app.bsky.JetStreamSubscribeRequest
+import work.socialhub.kbsky.stream.entity.app.bsky.callback.JetStreamEventCallback
+import work.socialhub.kbsky.stream.entity.app.bsky.model.Event
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeedsPref
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImages
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImagesImage
@@ -61,9 +65,15 @@ import work.socialhub.planetlink.action.AccountActionImpl
 import work.socialhub.planetlink.bluesky.define.BlueskyReactionType
 import work.socialhub.planetlink.bluesky.model.BlueskyComment
 import work.socialhub.planetlink.bluesky.model.BlueskyPaging
+import work.socialhub.planetlink.bluesky.model.BlueskyStream
 import work.socialhub.planetlink.bluesky.model.BlueskyUser
 import work.socialhub.planetlink.bluesky.support.Utils
 import work.socialhub.planetlink.action.callback.EventCallback
+import work.socialhub.planetlink.action.callback.comment.UpdateCommentCallback
+import work.socialhub.planetlink.action.callback.lifecycle.ConnectCallback
+import work.socialhub.planetlink.action.callback.lifecycle.DisconnectCallback
+import work.socialhub.planetlink.action.callback.lifecycle.ErrorCallback
+import net.socialhub.planetlink.model.event.CommentEvent
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Channel
 import work.socialhub.planetlink.model.Comment
@@ -1098,10 +1108,69 @@ class BlueskyAction(
     /**
      * {@inheritDoc}
      */
+    suspend fun homeTimeLineStream(
+        callback: EventCallback
+    ): Stream {
+        return setHomeTimeLineStream(callback)
+    }
+
     override suspend fun setHomeTimeLineStream(
         callback: EventCallback
     ): Stream {
-        throw NotSupportedException()
+        return proceed {
+            val followingDids = getAllFollowingDids()
+
+            val client = BlueskyStreamFactory
+                .instance()
+                .jetStream()
+                .subscribe(
+                    JetStreamSubscribeRequest().also {
+                        it.wantedCollections = listOf(BlueskyTypes.FeedPost)
+                        if (followingDids.isNotEmpty()) {
+                            it.wantedDids = followingDids
+                        }
+                    }
+                )
+
+            client.eventCallback(object : JetStreamEventCallback {
+                override fun onEvent(event: Event) {
+                    if (callback is UpdateCommentCallback) {
+                        val commit = event.commit ?: return
+                        if (commit.operation != "create") return
+
+                        val comment = Mapper.commentFromEvent(event, service())
+                            ?: return
+                        callback.onUpdate(CommentEvent(comment))
+                    }
+                }
+            })
+
+            client.openedCallback(object : work.socialhub.kbsky.stream.entity.callback.OpenedCallback {
+                override fun onOpened() {
+                    if (callback is ConnectCallback) {
+                        callback.onConnect()
+                    }
+                }
+            })
+
+            client.closedCallback(object : work.socialhub.kbsky.stream.entity.callback.ClosedCallback {
+                override fun onClosed() {
+                    if (callback is DisconnectCallback) {
+                        callback.onDisconnect()
+                    }
+                }
+            })
+
+            client.errorCallback(object : work.socialhub.kbsky.stream.entity.callback.ErrorCallback {
+                override fun onError(e: Exception) {
+                    if (callback is ErrorCallback) {
+                        callback.onError(SocialHubException(e))
+                    }
+                }
+            })
+
+            BlueskyStream(client)
+        }
     }
 
     /**
@@ -1110,7 +1179,49 @@ class BlueskyAction(
     override suspend fun setNotificationStream(
         callback: EventCallback
     ): Stream {
-        throw NotSupportedException()
+        return proceed {
+            val myDid = did()
+
+            val client = BlueskyStreamFactory
+                .instance()
+                .jetStream()
+                .subscribe(
+                    JetStreamSubscribeRequest().also {
+                        it.wantedCollections = listOf(
+                            BlueskyTypes.FeedLike,
+                            BlueskyTypes.FeedRepost,
+                            BlueskyTypes.GraphFollow,
+                        )
+                        it.wantedDids = listOf(myDid)
+                    }
+                )
+
+            client.openedCallback(object : work.socialhub.kbsky.stream.entity.callback.OpenedCallback {
+                override fun onOpened() {
+                    if (callback is ConnectCallback) {
+                        callback.onConnect()
+                    }
+                }
+            })
+
+            client.closedCallback(object : work.socialhub.kbsky.stream.entity.callback.ClosedCallback {
+                override fun onClosed() {
+                    if (callback is DisconnectCallback) {
+                        callback.onDisconnect()
+                    }
+                }
+            })
+
+            client.errorCallback(object : work.socialhub.kbsky.stream.entity.callback.ErrorCallback {
+                override fun onError(e: Exception) {
+                    if (callback is ErrorCallback) {
+                        callback.onError(SocialHubException(e))
+                    }
+                }
+            })
+
+            BlueskyStream(client)
+        }
     }
 
     /**
@@ -1312,6 +1423,28 @@ class BlueskyAction(
     // ============================================================== //
     // Support
     // ============================================================== //
+    /**
+     * フォロー中の全ユーザーの DID を取得
+     */
+    private suspend fun getAllFollowingDids(): List<String> {
+        val dids = mutableListOf<String>()
+        var cursor: String? = null
+
+        do {
+            val response = auth.accessor.graph().getFollows(
+                GraphGetFollowsRequest(authProvider()).also {
+                    it.actor = did()
+                    it.cursor = cursor
+                    it.limit = 100
+                }
+            )
+            dids.addAll(response.data.follows.map { it.did })
+            cursor = response.data.cursor
+        } while (cursor != null)
+
+        return dids
+    }
+
     /**
      * Get User Uri from Identify
      * ID からユーザー URI を取得
