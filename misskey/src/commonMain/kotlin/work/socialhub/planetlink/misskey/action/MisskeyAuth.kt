@@ -22,10 +22,10 @@ class MisskeyAuth(
     var clientSecret: String? = null
     var accessToken: String? = null
 
-    /** API 通信用ホスト (プロキシ等)。未指定時は host を使用。プロトコル指定可。 */
+    /** API host (e.g. proxy URL). Falls back to host if not set. */
     var apiHost: String? = null
 
-    /** ストリーミング用ホスト。未指定時は host を使用。プロトコル指定可。 */
+    /** Streaming host. Falls back to host if not set. */
     var streamHost: String? = null
 
     /**
@@ -55,7 +55,8 @@ class MisskeyAuth(
             acc.action = MisskeyAction(acc, this)
             acc.service = Service("misskey", acc)
                 .also {
-                    it.apiHost = host
+                    it.host = host
+                    it.apiHost = apiHost ?: host
                     it.streamHost = streamHost ?: host
                 }
         }

@@ -92,7 +92,7 @@ class MisskeyAction(
     val auth: MisskeyAuth,
 ) : AccountActionImpl(account) {
 
-    /** 実インスタンスのホスト名 (絵文字URL構築・マッパー用) */
+    /** Actual instance hostname for emoji URL construction */
     private val instanceHost: String
         get() = io.ktor.http.Url(auth.host).host
 

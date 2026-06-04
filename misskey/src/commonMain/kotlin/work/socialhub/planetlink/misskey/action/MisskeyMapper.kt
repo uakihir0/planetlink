@@ -540,21 +540,11 @@ object MisskeyMapper {
     }
 
 
-    /**
-     * ローカルインスタンスのホスト名を取得
-     * service.apiHost がプロキシ URL に書き換えられている場合でも
-     * 元のインスタンスホスト名を返す
-     */
     private fun localHost(
         service: Service,
         fallback: String,
     ): String {
-        val apiHost = service.apiHost ?: return fallback
-        return try {
-            Url(apiHost).host
-        } catch (_: Exception) {
-            fallback
-        }
+        return service.host ?: fallback
     }
 
     /**
