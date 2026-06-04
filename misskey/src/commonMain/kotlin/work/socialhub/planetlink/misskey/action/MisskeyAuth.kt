@@ -22,17 +22,24 @@ class MisskeyAuth(
     var clientSecret: String? = null
     var accessToken: String? = null
 
+    /** API 通信用ホスト (プロキシ等)。未指定時は host を使用。プロトコル指定可。 */
+    var apiHost: String? = null
+
+    /** ストリーミング用ホスト。未指定時は host を使用。プロトコル指定可。 */
+    var streamHost: String? = null
+
     /**
      * Get Request Token for Misskey
      * Misskey のリクエストトークンの取得
      */
     override val accessor: Misskey
         get() {
+            val uri = apiHost ?: host
             return accessToken?.let { at ->
                 clientSecret?.let { cs ->
-                    MisskeyFactory.instance(host, cs, at)
-                } ?: MisskeyFactory.instance(host, at)
-            } ?: MisskeyFactory.instance(host)
+                    MisskeyFactory.instance(uri, cs, at)
+                } ?: MisskeyFactory.instance(uri, at)
+            } ?: MisskeyFactory.instance(uri)
         }
 
     /**
@@ -49,7 +56,7 @@ class MisskeyAuth(
             acc.service = Service("misskey", acc)
                 .also {
                     it.apiHost = host
-                    it.streamHost = host
+                    it.streamHost = streamHost ?: host
                 }
         }
     }
@@ -83,7 +90,7 @@ class MisskeyAuth(
             it.permission = permissions
         }
 
-        val misskey = MisskeyFactory.instance(host)
+        val misskey = MisskeyFactory.instance(apiHost ?: host)
         val response = misskey.app().createApp(request)
 
         this.clientId = response.data.id
@@ -95,7 +102,7 @@ class MisskeyAuth(
      * Misskey の認証ページの URL を取得
      */
     suspend fun authorizationURL(): String {
-        val misskey = MisskeyFactory.instance(host)
+        val misskey = MisskeyFactory.instance(apiHost ?: host)
         val response = misskey.auth().sessionGenerate(
             GenerateAuthSessionRequest().also {
                 it.appSecret = clientSecret
@@ -110,7 +117,7 @@ class MisskeyAuth(
     suspend fun accountWithCode(
         verifier: String
     ): Account {
-        val misskey = MisskeyFactory.instance(host)
+        val misskey = MisskeyFactory.instance(apiHost ?: host)
         val response = misskey.auth().sessionUserKey(
             UserKeyAuthSessionRequest().also {
                 it.appSecret = clientSecret
