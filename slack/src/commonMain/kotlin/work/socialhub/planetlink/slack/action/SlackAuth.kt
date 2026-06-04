@@ -65,7 +65,7 @@ class SlackAuth(
         return Account().also { acc ->
             acc.action = SlackAction(acc, this)
             acc.service = Service("slack", acc).also {
-                it.apiHost = "https://slack.com/api/"
+                it.host = "https://slack.com/api/"
             }
         }
     }
