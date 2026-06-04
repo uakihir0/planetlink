@@ -57,8 +57,7 @@ class MastodonAuth(
         return Account().also { acc ->
             acc.action = MastodonAction(acc, this)
             acc.service = PLService(type, acc).also {
-                it.apiHost = host
-                it.streamHost = host
+                it.host = host
             }
         }
     }

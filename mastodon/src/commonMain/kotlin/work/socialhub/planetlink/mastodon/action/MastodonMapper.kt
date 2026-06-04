@@ -163,7 +163,7 @@ object MastodonMapper {
                 c.poll = poll(status.poll, service)
 
                 // リクエストホストを記録
-                val url = Url(service.apiHost!!)
+                val url = Url(service.host!!)
                 c.requesterHost = url.host
             }
         }

@@ -44,7 +44,7 @@ class MatrixAuth(
         return Account().also { acc ->
             acc.action = MatrixAction(acc, this)
             acc.service = Service("matrix", acc).also {
-                it.apiHost = host
+                it.host = host
             }
         }
     }

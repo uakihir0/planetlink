@@ -42,17 +42,18 @@ object MisskeyMapper {
         host: String,
         service: Service
     ): User {
+        val userHost = account.host ?: localHost(service, host)
         return MisskeyUser(service).also { u ->
             val emojis = account.emojis?.list?.toList() ?: emptyList()
             val detailed = account.asUserDetailedNotMe
 
             u.id = ID(account.id)
             u.name = account.name ?: account.username
-            u.host = account.host ?: host
+            u.host = userHost
             u.screenName = account.username
             u.iconImageUrl = account.avatarUrl
 
-            u.emojis = selectEmojis(emojis, account.name, host)
+            u.emojis = selectEmojis(emojis, account.name, userHost)
             u.avatarColor = color(account.avatarColorObject)
             u.isSimple = (detailed == null)
 
@@ -67,7 +68,7 @@ object MisskeyMapper {
 
                 // ユーザー説明分の設定
                 u.description = AttributedString.plain(detailed.description)
-                    .also { it.addEmojiElement(selectEmojis(emojis, detailed.description, host)) }
+                    .also { it.addEmojiElement(selectEmojis(emojis, detailed.description, userHost)) }
 
                 u.followersCount = detailed.followersCount
                 u.followingCount = detailed.followingCount
@@ -84,7 +85,7 @@ object MisskeyMapper {
                 // フィールドの設定
                 u.fields = detailed.fields.map { f ->
                     AttributedFiled(f.name, f.value).also { af ->
-                        af.value?.addEmojiElement(selectEmojis(emojis, f.value, host))
+                        af.value?.addEmojiElement(selectEmojis(emojis, f.value, userHost))
                     }
                 }
             }
@@ -99,6 +100,7 @@ object MisskeyMapper {
         host: String,
         service: Service
     ): Comment {
+        val noteUserHost = note.user.host ?: localHost(service, host)
         return MisskeyComment(service).also { c ->
             val emojis = note.emojis?.list?.toList() ?: emptyList()
             val files = note.files?.toList() ?: emptyList()
@@ -120,12 +122,12 @@ object MisskeyMapper {
             // 注釈の設定
             note.cw?.let { cw ->
                 c.spoilerText = AttributedString.plain(cw)
-                    .also { it.addEmojiElement(selectEmojis(emojis, cw, host)) }
+                    .also { it.addEmojiElement(selectEmojis(emojis, cw, noteUserHost)) }
             }
 
             // 本文の設定
             c.text = AttributedString.plain(note.text)
-                .also { it.addEmojiElement(selectEmojis(emojis, note.text, host)) }
+                .also { it.addEmojiElement(selectEmojis(emojis, note.text, noteUserHost)) }
 
             // メディアの設定
             c.medias = medias(files)
@@ -137,11 +139,10 @@ object MisskeyMapper {
             c.poll = poll(note, note.poll, service)
 
             // リアクションの設定
-            c.reactions = reactions(note.reactions, note.myReaction, host)
+            c.reactions = reactions(note.reactions, note.myReaction, noteUserHost)
 
             // リクエストホストを記録
-            val url = Url(service.apiHost!!)
-            c.requesterHost = url.host
+            c.requesterHost = noteUserHost
         }
     }
 
@@ -241,6 +242,7 @@ object MisskeyMapper {
         host: String,
         service: Service,
     ): Notification {
+        val notifUserHost = notification.user?.host ?: localHost(service, host)
         return MisskeyNotification(service).also { n ->
             val type = MisskeyNotificationType.of(notification.type)
 
@@ -262,7 +264,7 @@ object MisskeyMapper {
                     n.iconUrl == null
                 ) {
                     val code = reaction.replace(":", "")
-                    n.iconUrl = getEmojiURL(host, code)
+                    n.iconUrl = getEmojiURL(notifUserHost, code)
                 }
             }
 
@@ -537,6 +539,13 @@ object MisskeyMapper {
         return results
     }
 
+
+    private fun localHost(
+        service: Service,
+        fallback: String,
+    ): String {
+        return service.host ?: fallback
+    }
 
     /**
      * (from v13)
