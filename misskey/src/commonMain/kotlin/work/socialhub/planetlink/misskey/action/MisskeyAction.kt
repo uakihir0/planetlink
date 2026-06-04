@@ -59,8 +59,10 @@ import work.socialhub.kmisskey.stream.callback.OpenedCallback
 import work.socialhub.kmisskey.stream.callback.RenoteCallback
 import work.socialhub.kmisskey.stream.callback.ReplayCallback
 import work.socialhub.kmisskey.stream.callback.TimelineCallback
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import work.socialhub.planetlink.action.AccountActionImpl
-import work.socialhub.planetlink.utils.toBlocking
 import work.socialhub.planetlink.action.RequestAction
 import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.action.callback.comment.MentionCommentCallback
@@ -1088,7 +1090,7 @@ class MisskeyAction(
             )
 
             val connectionListener = MisskeyConnectionListener(callback) {
-                toBlocking { stream.homeTimeLine(commentsListener) }
+                stream.homeTimeLine(commentsListener)
             }
 
             setStreamConnectionCallback(stream, connectionListener)
@@ -1133,7 +1135,7 @@ class MisskeyAction(
             )
 
             val connectionListener = MisskeyConnectionListener(callback) {
-                toBlocking { stream.main(notificationListener) }
+                stream.main(notificationListener)
             }
 
             setStreamConnectionCallback(stream, connectionListener)
@@ -1236,7 +1238,7 @@ class MisskeyAction(
             )
 
             val connectionListener = MisskeyConnectionListener(callback) {
-                toBlocking { stream.localTimeline(commentsListener) }
+                stream.localTimeline(commentsListener)
             }
             setStreamConnectionCallback(stream, connectionListener)
             work.socialhub.planetlink.misskey.model.MisskeyStream(stream)
@@ -1259,7 +1261,7 @@ class MisskeyAction(
                 misskey.host,
             )
             val connectionListener = MisskeyConnectionListener(callback) {
-                toBlocking { stream.globalTimeline(commentsListener) }
+                stream.globalTimeline(commentsListener)
             }
 
             setStreamConnectionCallback(stream, connectionListener)
@@ -1372,7 +1374,7 @@ class MisskeyAction(
     // 通信に対してのコールバック設定
     internal class MisskeyConnectionListener(
         val listener: EventCallback,
-        val runnable: () -> Unit
+        val runnable: suspend () -> Unit
     ) : OpenedCallback,
         ClosedCallback,
         ErrorCallback {
@@ -1381,7 +1383,9 @@ class MisskeyAction(
             if (listener is ConnectCallback) {
                 listener.onConnect()
             }
-            runnable()
+            CoroutineScope(Dispatchers.Default).launch {
+                runnable()
+            }
         }
 
         override fun onClosed() {
