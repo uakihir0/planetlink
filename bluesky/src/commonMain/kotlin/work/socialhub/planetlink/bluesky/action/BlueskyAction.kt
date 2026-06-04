@@ -62,6 +62,7 @@ import work.socialhub.kbsky.util.ATUriParser
 import work.socialhub.kbsky.util.facet.FacetType
 import work.socialhub.kbsky.util.facet.FacetUtil
 import work.socialhub.planetlink.action.AccountActionImpl
+import work.socialhub.planetlink.action.RequestAction
 import work.socialhub.planetlink.bluesky.define.BlueskyReactionType
 import work.socialhub.planetlink.bluesky.model.BlueskyComment
 import work.socialhub.planetlink.bluesky.model.BlueskyPaging
@@ -1105,6 +1106,19 @@ class BlueskyAction(
         throw NotSupportedException()
     }
 
+    // ============================================================== //
+    // Request
+    // ============================================================== //
+    /**
+     * {@inheritDoc}
+     */
+    override fun request(): RequestAction {
+        return BlueskyRequest(account)
+    }
+
+    // ============================================================== //
+    // Stream
+    // ============================================================== //
     /**
      * {@inheritDoc}
      */
