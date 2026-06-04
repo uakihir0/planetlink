@@ -92,6 +92,10 @@ class MisskeyAction(
     val auth: MisskeyAuth,
 ) : AccountActionImpl(account) {
 
+    /** 実インスタンスのホスト名 (絵文字URL構築・マッパー用) */
+    private val instanceHost: String
+        get() = io.ktor.http.Url(auth.host).host
+
     /** List of Emoji  */
     private var emojisCache: List<Emoji>? = null
 
@@ -108,7 +112,7 @@ class MisskeyAction(
 
             MisskeyMapper.user(
                 response.data,
-                misskey.host,
+                instanceHost,
                 service(),
             ).also { this.me = it }
         }
@@ -128,7 +132,7 @@ class MisskeyAction(
             // User のアカウント名で取得する場合
             if ((idv is String) && idv.startsWith("@")) {
                 val elem = idv.split("@")
-                val host = if ((elem.size > 2)) elem[2] else misskey.host
+                val host = if ((elem.size > 2)) elem[2] else instanceHost
 
                 user = misskey.users().show(
                     UsersShowSingleRequest().also {
@@ -143,7 +147,7 @@ class MisskeyAction(
             }
             MisskeyMapper.user(
                 user,
-                misskey.host,
+                instanceHost,
                 service(),
             )
         }
@@ -304,7 +308,7 @@ class MisskeyAction(
 
             MisskeyMapper.users(
                 response.data.mapNotNull { it.followee },
-                misskey.host,
+                instanceHost,
                 service(),
                 paging,
             )
@@ -328,7 +332,7 @@ class MisskeyAction(
 
             MisskeyMapper.users(
                 response.data.mapNotNull { it.follower },
-                misskey.host,
+                instanceHost,
                 service(),
                 paging,
             )
@@ -364,7 +368,7 @@ class MisskeyAction(
 
             val results = MisskeyMapper.users(
                 response.data.toList(),
-                misskey.host,
+                instanceHost,
                 service(),
                 paging,
             )
@@ -396,7 +400,7 @@ class MisskeyAction(
                     .filter { it.featuredId == null }
                     .filter { it.prId == null }
                     .toList(),
-                misskey.host,
+                instanceHost,
                 service(),
                 paging,
             )
@@ -422,7 +426,7 @@ class MisskeyAction(
             val response = misskey.accounts().iNotifications(request)
             MisskeyMapper.mentions(
                 response.data.toList(),
-                misskey.host,
+                instanceHost,
                 service(),
                 paging,
             )
@@ -446,7 +450,7 @@ class MisskeyAction(
 
             MisskeyMapper.timeLine(
                 response.data.toList(),
-                misskey.host,
+                instanceHost,
                 service(),
                 paging
             )
@@ -470,7 +474,7 @@ class MisskeyAction(
 
             MisskeyMapper.timeLine(
                 response.data.map { it.note },
-                misskey.host,
+                instanceHost,
                 service(),
                 paging,
             )
@@ -495,7 +499,7 @@ class MisskeyAction(
             val response = misskey.notes().users(request)
             MisskeyMapper.timeLine(
                 response.data.toList(),
-                misskey.host,
+                instanceHost,
                 service(),
                 paging,
             )
@@ -518,7 +522,7 @@ class MisskeyAction(
             val response = misskey.notes().search(request)
             MisskeyMapper.timeLine(
                 response.data.toList(),
-                misskey.host,
+                instanceHost,
                 service(),
                 paging
             )
@@ -610,7 +614,7 @@ class MisskeyAction(
 
             MisskeyMapper.comment(
                 response.data,
-                misskey.host,
+                instanceHost,
                 service()
             )
         }
@@ -852,9 +856,9 @@ class MisskeyAction(
             // コンテキストの組み立て
             val context = Context()
             context.ancestors = conversation.data
-                .map { MisskeyMapper.comment(it, misskey.host, service()) }
+                .map { MisskeyMapper.comment(it, instanceHost, service()) }
             context.descendants = descendants
-                .map { MisskeyMapper.comment(it, misskey.host, service()) }
+                .map { MisskeyMapper.comment(it, instanceHost, service()) }
 
             // 並び替えを実行
             context.sort()
@@ -952,7 +956,7 @@ class MisskeyAction(
 
             MisskeyMapper.timeLine(
                 response.data.toList(),
-                misskey.host,
+                instanceHost,
                 service(),
                 paging,
             )
@@ -981,7 +985,7 @@ class MisskeyAction(
             )
             MisskeyMapper.users(
                 users.data.toList(),
-                misskey.host,
+                instanceHost,
                 service(),
                 paging,
             )
@@ -1063,7 +1067,7 @@ class MisskeyAction(
             MisskeyMapper.notifications(
                 response.data.toList(),
                 emojis,
-                misskey.host,
+                instanceHost,
                 service(),
                 paging,
             )
@@ -1086,7 +1090,7 @@ class MisskeyAction(
             val commentsListener = MisskeyCommentsListener(
                 callback,
                 service(),
-                misskey.host,
+                instanceHost,
             )
 
             val connectionListener = MisskeyConnectionListener(callback) {
@@ -1130,7 +1134,7 @@ class MisskeyAction(
                 callback,
                 getEmojis(),
                 service(),
-                misskey.host,
+                instanceHost,
                 userMeWithCache()
             )
 
@@ -1161,7 +1165,7 @@ class MisskeyAction(
 
             MisskeyMapper.timeLine(
                 response.data.toList(),
-                misskey.host,
+                instanceHost,
                 service(),
                 paging,
             )
@@ -1183,7 +1187,7 @@ class MisskeyAction(
 
             MisskeyMapper.timeLine(
                 response.data.toList(),
-                misskey.host,
+                instanceHost,
                 service(),
                 paging,
             )
@@ -1210,7 +1214,7 @@ class MisskeyAction(
             val response = misskey.notes().featured(request)
             val results = MisskeyMapper.timeLine(
                 response.data.toList(),
-                misskey.host,
+                instanceHost,
                 service(),
                 paging,
             )
@@ -1234,7 +1238,7 @@ class MisskeyAction(
             val commentsListener = MisskeyCommentsListener(
                 callback,
                 service(),
-                misskey.host,
+                instanceHost,
             )
 
             val connectionListener = MisskeyConnectionListener(callback) {
@@ -1258,7 +1262,7 @@ class MisskeyAction(
             val commentsListener = MisskeyCommentsListener(
                 callback,
                 service(),
-                misskey.host,
+                instanceHost,
             )
             val connectionListener = MisskeyConnectionListener(callback) {
                 stream.globalTimeline(commentsListener)
