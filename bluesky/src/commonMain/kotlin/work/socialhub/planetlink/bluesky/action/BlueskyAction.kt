@@ -1118,7 +1118,7 @@ class BlueskyAction(
         callback: EventCallback
     ): Stream {
         return proceed {
-            val followingDids = getAllFollowingDids()
+            val followingDids = getAllFollowingDids() + did()
 
             val client = BlueskyStreamFactory
                 .instance()
@@ -1126,9 +1126,7 @@ class BlueskyAction(
                 .subscribe(
                     JetStreamSubscribeRequest().also {
                         it.wantedCollections = listOf(BlueskyTypes.FeedPost)
-                        if (followingDids.isNotEmpty()) {
-                            it.wantedDids = followingDids
-                        }
+                        it.wantedDids = followingDids
                     }
                 )
 
@@ -1181,6 +1179,7 @@ class BlueskyAction(
     ): Stream {
         return proceed {
             val myDid = did()
+            val followingDids = getAllFollowingDids()
 
             val client = BlueskyStreamFactory
                 .instance()
@@ -1192,9 +1191,32 @@ class BlueskyAction(
                             BlueskyTypes.FeedRepost,
                             BlueskyTypes.GraphFollow,
                         )
-                        it.wantedDids = listOf(myDid)
+                        it.wantedDids = followingDids
                     }
                 )
+
+            client.eventCallback(object : JetStreamEventCallback {
+                override fun onEvent(event: Event) {
+                    val commit = event.commit ?: return
+                    if (commit.operation != "create") return
+                    val record = commit.record ?: return
+
+                    val subjectUri = when (record) {
+                        is work.socialhub.kbsky.model.app.bsky.feed.FeedLike ->
+                            record.subject?.uri
+                        is work.socialhub.kbsky.model.app.bsky.feed.FeedRepost ->
+                            record.subject?.uri
+                        else -> null
+                    }
+
+                    // like/repost: subject が自分の投稿である場合のみ通知
+                    if (subjectUri != null && !subjectUri.startsWith("at://$myDid/")) return
+
+                    // follow: 自分がフォローされた場合のみ (JetStream では subject が record に含まれない)
+                    // GraphFollow の wantedDids は followingDids なので、
+                    // フォロー先が自分をフォローした場合に通知される
+                }
+            })
 
             client.openedCallback(object : work.socialhub.kbsky.stream.entity.callback.OpenedCallback {
                 override fun onOpened() {

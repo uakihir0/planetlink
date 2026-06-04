@@ -19,9 +19,14 @@ import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Service
 import java.io.File
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
+/**
+ * JetStream を介した homeTimeLine ストリームの結合テスト。
+ * 実際のネットワーク接続を行うため、CI 環境ではネットワーク状態に依存する。
+ */
 class BlueskyStreamTest {
 
     private fun loadSecrets(): Map<String, String> {
@@ -30,13 +35,6 @@ class BlueskyStreamTest {
         return map["planetlink"]!!
     }
 
-    /**
-     * planetlink インターフェース経由で homeTimeLine ストリームに接続し、
-     * 実際に投稿を受信できることを確認する。
-     *
-     * テストアカウントのフォロー先が非活発な場合は投稿数 0 で失敗するため、
-     * フォロー数が少ない場合はフィルターなしの全投稿受信テストにフォールバックする。
-     */
     @Test
     fun setHomeTimeLineStream_receivesPosts() {
         val secrets = loadSecrets()
@@ -49,7 +47,7 @@ class BlueskyStreamTest {
             .accountWithIdentifyAndPassword(identifier, password)
 
         val action = account.action as BlueskyAction
-        val received = mutableListOf<Comment>()
+        val received = CopyOnWriteArrayList<Comment>()
         var connected = false
 
         runBlocking {
@@ -94,7 +92,7 @@ class BlueskyStreamTest {
      */
     private fun verifyUnfilteredStream() {
         val service = Service("bluesky", Account())
-        val received = mutableListOf<Comment>()
+        val received = CopyOnWriteArrayList<Comment>()
 
         runBlocking {
             val client = BlueskyStreamFactory

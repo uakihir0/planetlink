@@ -12,6 +12,7 @@ import work.socialhub.planetlink.bluesky.action.BlueskyMapper
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Service
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
@@ -22,7 +23,7 @@ class BlueskyStreamTest {
     @Test
     fun stream_receivesPosts() {
         runBlocking {
-            val received = mutableListOf<Comment>()
+            val received = CopyOnWriteArrayList<Comment>()
 
             val client = BlueskyStreamFactory
                 .instance()
