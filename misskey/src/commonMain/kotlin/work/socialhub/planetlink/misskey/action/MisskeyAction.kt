@@ -1079,7 +1079,7 @@ class MisskeyAction(
     ): Stream {
         return proceed {
             val misskey = auth.accessor
-            val stream = MisskeyStream(misskey)
+            val stream = MisskeyStream(misskey, account.service.streamHost)
 
             val commentsListener = MisskeyCommentsListener(
                 callback,
@@ -1122,7 +1122,7 @@ class MisskeyAction(
     ): Stream {
         return proceed {
             val misskey = auth.accessor
-            val stream = MisskeyStream(misskey)
+            val stream = MisskeyStream(misskey, account.service.streamHost)
 
             val notificationListener = MisskeyNotificationListener(
                 callback,
@@ -1227,7 +1227,7 @@ class MisskeyAction(
     ): Stream {
         return proceed {
             val misskey = auth.accessor
-            val stream = MisskeyStream(misskey)
+            val stream = MisskeyStream(misskey, account.service.streamHost)
 
             val commentsListener = MisskeyCommentsListener(
                 callback,
@@ -1251,7 +1251,7 @@ class MisskeyAction(
     ): Stream {
         return proceed {
             val misskey = auth.accessor
-            val stream = MisskeyStream(misskey)
+            val stream = MisskeyStream(misskey, account.service.streamHost)
 
             val commentsListener = MisskeyCommentsListener(
                 callback,
