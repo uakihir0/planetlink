@@ -7,6 +7,8 @@ import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewBasic
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsViewerState
+import work.socialhub.kbsky.stream.entity.app.bsky.model.Commit
+import work.socialhub.kbsky.stream.entity.app.bsky.model.Event
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImagesView
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImagesViewImage
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecordView
@@ -655,5 +657,47 @@ object BlueskyMapper {
         model.entities = channelList.map { channel(it, service) }
         model.paging = BlueskyPaging.fromPaging(paging)
         return model
+    }
+
+    // ============================================================== //
+    // Stream Event Mapper
+    // ============================================================== //
+    /**
+     * JetStream Event からコメントを生成
+     */
+    fun commentFromEvent(
+        event: Event,
+        service: Service,
+    ): Comment? {
+        val commit = event.commit ?: return null
+        val record = commit.record?.asFeedPost ?: return null
+
+        val uri = "at://${event.did}/${commit.collection}/${commit.rkey}"
+
+        return BlueskyComment(service).apply {
+            id = ID(uri)
+            cid = commit.cid
+
+            user = BlueskyUser(service).apply {
+                isSimple = true
+                isProtected = false
+                id = ID(event.did)
+            }
+
+            createAt = Instant.fromEpochSeconds(
+                event.timeUs / 1_000_000,
+                (event.timeUs % 1_000_000).toInt() * 1_000,
+            )
+            text = attributedText(record)
+
+            medias = mutableListOf()
+            possiblySensitive = false
+            liked = false
+            shared = false
+
+            likeCount = 0
+            shareCount = 0
+            replyCount = 0
+        }
     }
 }
