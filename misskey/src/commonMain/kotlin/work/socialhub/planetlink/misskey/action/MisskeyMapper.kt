@@ -138,7 +138,7 @@ object MisskeyMapper {
             c.poll = poll(note, note.poll, service)
 
             // リアクションの設定
-            c.reactions = reactions(note.reactions, note.myReaction, noteUserHost)
+            c.reactions = reactions(note.reactions, note.myReaction, host)
 
             // リクエストホストを記録
             c.requesterHost = noteUserHost
@@ -241,7 +241,6 @@ object MisskeyMapper {
         host: String,
         service: Service,
     ): Notification {
-        val notifUserHost = notification.user?.host ?: host
         return MisskeyNotification(service).also { n ->
             val type = MisskeyNotificationType.of(notification.type)
 
@@ -263,7 +262,7 @@ object MisskeyMapper {
                     n.iconUrl == null
                 ) {
                     val code = reaction.replace(":", "")
-                    n.iconUrl = getEmojiURL(notifUserHost, code)
+                    n.iconUrl = getEmojiURL(host, code)
                 }
             }
 
