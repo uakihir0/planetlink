@@ -94,7 +94,8 @@ class MisskeyAction(
 
     /** Actual instance hostname for emoji URL construction */
     private val instanceHost: String
-        get() = io.ktor.http.Url(auth.host).host
+        get() = account.service.host?.let { io.ktor.http.Url(it).host }
+            ?: io.ktor.http.Url(auth.host).host
 
     /** List of Emoji  */
     private var emojisCache: List<Emoji>? = null
