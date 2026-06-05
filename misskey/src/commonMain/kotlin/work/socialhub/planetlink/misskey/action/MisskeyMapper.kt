@@ -1,6 +1,5 @@
 package work.socialhub.planetlink.misskey.action
 
-import io.ktor.http.*
 import kotlin.time.Clock
 import kotlin.time.Instant
 import work.socialhub.kmisskey.entity.File
@@ -42,7 +41,7 @@ object MisskeyMapper {
         host: String,
         service: Service
     ): User {
-        val userHost = account.host ?: localHost(service, host)
+        val userHost = account.host ?: host
         return MisskeyUser(service).also { u ->
             val emojis = account.emojis?.list?.toList() ?: emptyList()
             val detailed = account.asUserDetailedNotMe
@@ -100,7 +99,7 @@ object MisskeyMapper {
         host: String,
         service: Service
     ): Comment {
-        val noteUserHost = note.user.host ?: localHost(service, host)
+        val noteUserHost = note.user.host ?: host
         return MisskeyComment(service).also { c ->
             val emojis = note.emojis?.list?.toList() ?: emptyList()
             val files = note.files?.toList() ?: emptyList()
@@ -242,7 +241,7 @@ object MisskeyMapper {
         host: String,
         service: Service,
     ): Notification {
-        val notifUserHost = notification.user?.host ?: localHost(service, host)
+        val notifUserHost = notification.user?.host ?: host
         return MisskeyNotification(service).also { n ->
             val type = MisskeyNotificationType.of(notification.type)
 
@@ -540,17 +539,6 @@ object MisskeyMapper {
     }
 
 
-    private fun localHost(
-        service: Service,
-        fallback: String,
-    ): String {
-        val host = service.host ?: return fallback
-        return try {
-            Url(host).host
-        } catch (_: Exception) {
-            host
-        }
-    }
 
     /**
      * (from v13)
