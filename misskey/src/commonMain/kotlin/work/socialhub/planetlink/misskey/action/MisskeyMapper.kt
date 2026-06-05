@@ -544,7 +544,12 @@ object MisskeyMapper {
         service: Service,
         fallback: String,
     ): String {
-        return service.host ?: fallback
+        val host = service.host ?: return fallback
+        return try {
+            Url(host).host
+        } catch (_: Exception) {
+            host
+        }
     }
 
     /**
