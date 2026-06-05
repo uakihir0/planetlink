@@ -1125,12 +1125,6 @@ class BlueskyAction(
     suspend fun homeTimeLineStream(
         callback: EventCallback
     ): Stream {
-        return setHomeTimeLineStream(callback)
-    }
-
-    override suspend fun setHomeTimeLineStream(
-        callback: EventCallback
-    ): Stream {
         return proceed {
             val followingDids = getAllFollowingDids() + did()
 
@@ -1183,6 +1177,12 @@ class BlueskyAction(
 
             BlueskyStream(client)
         }
+    }
+
+    override suspend fun setHomeTimeLineStream(
+        callback: EventCallback
+    ): Stream {
+        return homeTimeLineStream(callback)
     }
 
     /**
