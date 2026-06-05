@@ -30,8 +30,8 @@ class BlueskyRequest(
     /**
      * {@inheritDoc}
      */
-    val federationTimeLine: CommentsRequest =
-        throw NotImplementedError()
+    val federationTimeLine: CommentsRequest
+        get() = throw NotImplementedError()
 
     // ============================================================== //
     // TimeLine API
