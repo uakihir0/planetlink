@@ -105,6 +105,10 @@ class BlueskyAction(
     val auth: BlueskyAuth,
 ) : AccountActionImpl(account) {
 
+    companion object {
+        const val MAX_WANTED_DIDS_PER_CONNECTION = 300
+    }
+
     private var accessJwt: String? = null
     private var expireAt: Long? = null
     private var did: String? = null
@@ -1128,54 +1132,60 @@ class BlueskyAction(
         return proceed {
             val followingDids = getAllFollowingDids() + did()
 
-            val client = BlueskyStreamFactory
-                .instance()
-                .jetStream()
-                .subscribe(
-                    JetStreamSubscribeRequest().also {
-                        it.wantedCollections = listOf(BlueskyTypes.FeedPost)
-                        it.wantedDids = followingDids
-                    }
-                )
+            val clients = followingDids
+                .chunked(MAX_WANTED_DIDS_PER_CONNECTION)
+                .map { chunk ->
+                    val client = BlueskyStreamFactory
+                        .instance()
+                        .jetStream()
+                        .subscribe(
+                            JetStreamSubscribeRequest().also {
+                                it.wantedCollections = listOf(BlueskyTypes.FeedPost)
+                                it.wantedDids = chunk
+                            }
+                        )
 
-            client.eventCallback(object : JetStreamEventCallback {
-                override fun onEvent(event: Event) {
-                    if (callback is UpdateCommentCallback) {
-                        val commit = event.commit ?: return
-                        if (commit.operation != "create") return
+                    client.eventCallback(object : JetStreamEventCallback {
+                        override fun onEvent(event: Event) {
+                            if (callback is UpdateCommentCallback) {
+                                val commit = event.commit ?: return
+                                if (commit.operation != "create") return
 
-                        val comment = Mapper.commentFromEvent(event, service())
-                            ?: return
-                        callback.onUpdate(CommentEvent(comment))
-                    }
+                                val comment = Mapper.commentFromEvent(event, service())
+                                    ?: return
+                                callback.onUpdate(CommentEvent(comment))
+                            }
+                        }
+                    })
+
+                    client.openedCallback(object : work.socialhub.kbsky.stream.entity.callback.OpenedCallback {
+                        override fun onOpened() {
+                            if (callback is ConnectCallback) {
+                                callback.onConnect()
+                            }
+                        }
+                    })
+
+                    client.closedCallback(object : work.socialhub.kbsky.stream.entity.callback.ClosedCallback {
+                        override fun onClosed() {
+                            if (callback is DisconnectCallback) {
+                                callback.onDisconnect()
+                            }
+                        }
+                    })
+
+                    client.errorCallback(object : work.socialhub.kbsky.stream.entity.callback.ErrorCallback {
+                        override fun onError(e: Exception) {
+                            if (callback is ErrorCallback) {
+                                callback.onError(SocialHubException(e))
+                            }
+                        }
+                    })
+
+                    client
                 }
-            })
 
-            client.openedCallback(object : work.socialhub.kbsky.stream.entity.callback.OpenedCallback {
-                override fun onOpened() {
-                    if (callback is ConnectCallback) {
-                        callback.onConnect()
-                    }
-                }
-            })
-
-            client.closedCallback(object : work.socialhub.kbsky.stream.entity.callback.ClosedCallback {
-                override fun onClosed() {
-                    if (callback is DisconnectCallback) {
-                        callback.onDisconnect()
-                    }
-                }
-            })
-
-            client.errorCallback(object : work.socialhub.kbsky.stream.entity.callback.ErrorCallback {
-                override fun onError(e: Exception) {
-                    if (callback is ErrorCallback) {
-                        callback.onError(SocialHubException(e))
-                    }
-                }
-            })
-
-            BlueskyStream(client)
+            BlueskyStream(clients)
         }
     }
 
@@ -1195,68 +1205,74 @@ class BlueskyAction(
             val myDid = did()
             val followingDids = getAllFollowingDids()
 
-            val client = BlueskyStreamFactory
-                .instance()
-                .jetStream()
-                .subscribe(
-                    JetStreamSubscribeRequest().also {
-                        it.wantedCollections = listOf(
-                            BlueskyTypes.FeedLike,
-                            BlueskyTypes.FeedRepost,
-                            BlueskyTypes.GraphFollow,
+            val clients = followingDids
+                .chunked(MAX_WANTED_DIDS_PER_CONNECTION)
+                .map { chunk ->
+                    val client = BlueskyStreamFactory
+                        .instance()
+                        .jetStream()
+                        .subscribe(
+                            JetStreamSubscribeRequest().also {
+                                it.wantedCollections = listOf(
+                                    BlueskyTypes.FeedLike,
+                                    BlueskyTypes.FeedRepost,
+                                    BlueskyTypes.GraphFollow,
+                                )
+                                it.wantedDids = chunk
+                            }
                         )
-                        it.wantedDids = followingDids
-                    }
-                )
 
-            client.eventCallback(object : JetStreamEventCallback {
-                override fun onEvent(event: Event) {
-                    val commit = event.commit ?: return
-                    if (commit.operation != "create") return
-                    val record = commit.record ?: return
+                    client.eventCallback(object : JetStreamEventCallback {
+                        override fun onEvent(event: Event) {
+                            val commit = event.commit ?: return
+                            if (commit.operation != "create") return
+                            val record = commit.record ?: return
 
-                    val subjectUri = when (record) {
-                        is work.socialhub.kbsky.model.app.bsky.feed.FeedLike ->
-                            record.subject?.uri
-                        is work.socialhub.kbsky.model.app.bsky.feed.FeedRepost ->
-                            record.subject?.uri
-                        else -> null
-                    }
+                            val subjectUri = when (record) {
+                                is work.socialhub.kbsky.model.app.bsky.feed.FeedLike ->
+                                    record.subject?.uri
+                                is work.socialhub.kbsky.model.app.bsky.feed.FeedRepost ->
+                                    record.subject?.uri
+                                else -> null
+                            }
 
-                    // like/repost: subject が自分の投稿である場合のみ通知
-                    if (subjectUri != null && !subjectUri.startsWith("at://$myDid/")) return
+                            // like/repost: subject が自分の投稿である場合のみ通知
+                            if (subjectUri != null && !subjectUri.startsWith("at://$myDid/")) return
 
-                    // follow: 自分がフォローされた場合のみ (JetStream では subject が record に含まれない)
-                    // GraphFollow の wantedDids は followingDids なので、
-                    // フォロー先が自分をフォローした場合に通知される
+                            // follow: 自分がフォローされた場合のみ (JetStream では subject が record に含まれない)
+                            // GraphFollow の wantedDids は followingDids なので、
+                            // フォロー先が自分をフォローした場合に通知される
+                        }
+                    })
+
+                    client.openedCallback(object : work.socialhub.kbsky.stream.entity.callback.OpenedCallback {
+                        override fun onOpened() {
+                            if (callback is ConnectCallback) {
+                                callback.onConnect()
+                            }
+                        }
+                    })
+
+                    client.closedCallback(object : work.socialhub.kbsky.stream.entity.callback.ClosedCallback {
+                        override fun onClosed() {
+                            if (callback is DisconnectCallback) {
+                                callback.onDisconnect()
+                            }
+                        }
+                    })
+
+                    client.errorCallback(object : work.socialhub.kbsky.stream.entity.callback.ErrorCallback {
+                        override fun onError(e: Exception) {
+                            if (callback is ErrorCallback) {
+                                callback.onError(SocialHubException(e))
+                            }
+                        }
+                    })
+
+                    client
                 }
-            })
 
-            client.openedCallback(object : work.socialhub.kbsky.stream.entity.callback.OpenedCallback {
-                override fun onOpened() {
-                    if (callback is ConnectCallback) {
-                        callback.onConnect()
-                    }
-                }
-            })
-
-            client.closedCallback(object : work.socialhub.kbsky.stream.entity.callback.ClosedCallback {
-                override fun onClosed() {
-                    if (callback is DisconnectCallback) {
-                        callback.onDisconnect()
-                    }
-                }
-            })
-
-            client.errorCallback(object : work.socialhub.kbsky.stream.entity.callback.ErrorCallback {
-                override fun onError(e: Exception) {
-                    if (callback is ErrorCallback) {
-                        callback.onError(SocialHubException(e))
-                    }
-                }
-            })
-
-            BlueskyStream(client)
+            BlueskyStream(clients)
         }
     }
 
