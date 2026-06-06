@@ -1,22 +1,28 @@
 package work.socialhub.planetlink.bluesky.model
 
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import work.socialhub.kbsky.stream.entity.app.bsky.JetStreamClient
 import work.socialhub.planetlink.model.Stream
 import kotlin.js.JsExport
 
 @JsExport
 class BlueskyStream internal constructor(
-    private val client: JetStreamClient
+    private val clients: List<JetStreamClient>
 ) : Stream {
 
     override suspend fun open() {
-        client.open()
+        coroutineScope {
+            clients.forEach { client ->
+                launch { client.open() }
+            }
+        }
     }
 
     override fun close() {
-        client.close()
+        clients.forEach { it.close() }
     }
 
     override val isOpened: Boolean
-        get() = client.isOpen
+        get() = clients.any { it.isOpen }
 }
