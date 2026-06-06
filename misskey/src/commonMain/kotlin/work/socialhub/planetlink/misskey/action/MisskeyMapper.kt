@@ -52,7 +52,7 @@ object MisskeyMapper {
             u.screenName = account.username
             u.iconImageUrl = account.avatarUrl
 
-            u.emojis = selectEmojis(emojis, account.name, userHost)
+            u.emojis = selectEmojis(emojis, account.name, host)
             u.avatarColor = color(account.avatarColorObject)
             u.isSimple = (detailed == null)
 
@@ -67,7 +67,7 @@ object MisskeyMapper {
 
                 // ユーザー説明分の設定
                 u.description = AttributedString.plain(detailed.description)
-                    .also { it.addEmojiElement(selectEmojis(emojis, detailed.description, userHost)) }
+                    .also { it.addEmojiElement(selectEmojis(emojis, detailed.description, host)) }
 
                 u.followersCount = detailed.followersCount
                 u.followingCount = detailed.followingCount
@@ -84,7 +84,7 @@ object MisskeyMapper {
                 // フィールドの設定
                 u.fields = detailed.fields.map { f ->
                     AttributedFiled(f.name, f.value).also { af ->
-                        af.value?.addEmojiElement(selectEmojis(emojis, f.value, userHost))
+                        af.value?.addEmojiElement(selectEmojis(emojis, f.value, host))
                     }
                 }
             }
@@ -121,12 +121,12 @@ object MisskeyMapper {
             // 注釈の設定
             note.cw?.let { cw ->
                 c.spoilerText = AttributedString.plain(cw)
-                    .also { it.addEmojiElement(selectEmojis(emojis, cw, noteUserHost)) }
+                    .also { it.addEmojiElement(selectEmojis(emojis, cw, host)) }
             }
 
             // 本文の設定
             c.text = AttributedString.plain(note.text)
-                .also { it.addEmojiElement(selectEmojis(emojis, note.text, noteUserHost)) }
+                .also { it.addEmojiElement(selectEmojis(emojis, note.text, host)) }
 
             // メディアの設定
             c.medias = medias(files)
