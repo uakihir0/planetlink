@@ -114,7 +114,7 @@ class BlueskyStreamTest {
                 }
             })
 
-            val stream = BlueskyStream(client)
+            val stream = BlueskyStream(listOf(client))
             launch { stream.open() }.let { job ->
                 delay(5000)
                 job.cancel()

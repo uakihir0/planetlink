@@ -11,8 +11,6 @@ class BlueskyStream internal constructor(
     private val clients: List<JetStreamClient>
 ) : Stream {
 
-    constructor(client: JetStreamClient) : this(listOf(client))
-
     override suspend fun open() {
         coroutineScope {
             clients.forEach { client ->
