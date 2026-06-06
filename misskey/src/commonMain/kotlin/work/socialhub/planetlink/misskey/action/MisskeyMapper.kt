@@ -41,14 +41,13 @@ object MisskeyMapper {
         host: String,
         service: Service
     ): User {
-        val userHost = account.host ?: host
         return MisskeyUser(service).also { u ->
             val emojis = account.emojis?.list?.toList() ?: emptyList()
             val detailed = account.asUserDetailedNotMe
 
             u.id = ID(account.id)
             u.name = account.name ?: account.username
-            u.host = userHost
+            u.host = account.host ?: host
             u.screenName = account.username
             u.iconImageUrl = account.avatarUrl
 
@@ -99,7 +98,6 @@ object MisskeyMapper {
         host: String,
         service: Service
     ): Comment {
-        val noteUserHost = note.user.host ?: host
         return MisskeyComment(service).also { c ->
             val emojis = note.emojis?.list?.toList() ?: emptyList()
             val files = note.files?.toList() ?: emptyList()
@@ -141,7 +139,7 @@ object MisskeyMapper {
             c.reactions = reactions(note.reactions, note.myReaction, host)
 
             // リクエストホストを記録
-            c.requesterHost = noteUserHost
+            c.requesterHost = note.user.host ?: host
         }
     }
 
