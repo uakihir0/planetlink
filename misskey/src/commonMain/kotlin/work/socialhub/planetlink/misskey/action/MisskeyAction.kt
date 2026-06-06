@@ -95,8 +95,12 @@ class MisskeyAction(
     /** Actual instance hostname for emoji URL construction */
     private val instanceHost: String
         get() = (account.service.host ?: auth.host)
+            .trim()
             .removePrefix("https://")
             .removePrefix("http://")
+            .substringBefore('/')
+            .substringBefore('?')
+            .substringBefore('#')
             .trimEnd('/')
 
     /** List of Emoji  */
