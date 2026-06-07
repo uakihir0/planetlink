@@ -668,6 +668,7 @@ object BlueskyMapper {
     fun commentFromEvent(
         event: Event,
         service: Service,
+        profileCache: Map<String, ActorDefsProfileView> = emptyMap(),
     ): Comment? {
         val commit = event.commit ?: return null
         val record = commit.record?.asFeedPost ?: return null
@@ -678,10 +679,15 @@ object BlueskyMapper {
             id = ID(uri)
             cid = commit.cid
 
-            user = BlueskyUser(service).apply {
-                isSimple = true
-                isProtected = false
-                id = ID(event.did)
+            val profile = profileCache[event.did]
+            user = if (profile != null) {
+                user(profile, service)
+            } else {
+                BlueskyUser(service).apply {
+                    isSimple = true
+                    isProtected = false
+                    id = ID(event.did)
+                }
             }
 
             createAt = Instant.fromEpochSeconds(

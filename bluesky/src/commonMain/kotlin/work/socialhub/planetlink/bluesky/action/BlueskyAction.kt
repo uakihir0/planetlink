@@ -44,6 +44,7 @@ import work.socialhub.kbsky.stream.BlueskyStreamFactory
 import work.socialhub.kbsky.stream.api.entity.app.bsky.JetStreamSubscribeRequest
 import work.socialhub.kbsky.stream.entity.app.bsky.callback.JetStreamEventCallback
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Event
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeedsPref
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImages
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImagesImage
@@ -1130,7 +1131,9 @@ class BlueskyAction(
         callback: EventCallback
     ): Stream {
         return proceed {
-            val followingDids = getAllFollowingDids() + did()
+            val profiles = getAllFollowingProfiles()
+            val profileCache = profiles.associateBy { it.did }
+            val followingDids = profiles.map { it.did } + did()
 
             val clients = followingDids
                 .chunked(MAX_WANTED_DIDS_PER_CONNECTION)
@@ -1151,7 +1154,7 @@ class BlueskyAction(
                                 val commit = event.commit ?: return
                                 if (commit.operation != "create") return
 
-                                val comment = Mapper.commentFromEvent(event, service())
+                                val comment = Mapper.commentFromEvent(event, service(), profileCache)
                                     ?: return
                                 callback.onUpdate(CommentEvent(comment))
                             }
@@ -1479,7 +1482,11 @@ class BlueskyAction(
      * フォロー中の全ユーザーの DID を取得
      */
     private suspend fun getAllFollowingDids(): List<String> {
-        val dids = mutableListOf<String>()
+        return getAllFollowingProfiles().map { it.did }
+    }
+
+    private suspend fun getAllFollowingProfiles(): List<ActorDefsProfileView> {
+        val profiles = mutableListOf<ActorDefsProfileView>()
         var cursor: String? = null
 
         do {
@@ -1490,11 +1497,14 @@ class BlueskyAction(
                     it.limit = 100
                 }
             )
-            dids.addAll(response.data.follows.map { it.did })
+            if (profiles.isEmpty()) {
+                profiles.add(response.data.subject)
+            }
+            profiles.addAll(response.data.follows)
             cursor = response.data.cursor
         } while (cursor != null)
 
-        return dids
+        return profiles
     }
 
     /**
