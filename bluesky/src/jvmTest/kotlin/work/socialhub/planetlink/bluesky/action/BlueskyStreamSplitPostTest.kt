@@ -69,7 +69,9 @@ class BlueskyStreamSplitPostTest {
 
             println(">> received ${received.size} posts")
             received.forEach { c ->
-                println("  [${c.user?.id?.value<String>()}] ${c.text?.displayText?.take(80)}")
+                val user = c.user
+                println("  [${user?.accountIdentify}] ${user?.name} (icon=${user?.iconImageUrl != null})")
+                println("    ${c.text?.displayText?.take(80)}")
             }
 
             val myPost = received.find { it.text?.displayText?.contains("split stream verify") == true }
