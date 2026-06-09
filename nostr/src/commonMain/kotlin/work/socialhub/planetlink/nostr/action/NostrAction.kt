@@ -11,6 +11,7 @@ import work.socialhub.knostr.social.model.NostrUser as KnostrUser
 import work.socialhub.knostr.social.stream.NotificationStream
 import work.socialhub.knostr.social.stream.TimelineStream
 import work.socialhub.planetlink.action.AccountActionImpl
+import work.socialhub.planetlink.action.Capabilities
 import work.socialhub.planetlink.action.RequestAction
 import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.action.callback.comment.MentionCommentCallback
@@ -20,6 +21,11 @@ import work.socialhub.planetlink.action.callback.lifecycle.ConnectCallback
 import work.socialhub.planetlink.action.callback.lifecycle.DisconnectCallback
 import work.socialhub.planetlink.action.callback.lifecycle.ErrorCallback
 import work.socialhub.planetlink.define.NotificationActionType
+import work.socialhub.planetlink.define.action.MessageActionType
+import work.socialhub.planetlink.define.action.SocialActionType
+import work.socialhub.planetlink.define.action.StreamActionType
+import work.socialhub.planetlink.define.action.TimeLineActionType
+import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
@@ -40,6 +46,51 @@ class NostrAction(
     account: Account,
     val auth: NostrAuth,
 ) : AccountActionImpl(account) {
+
+    companion object {
+        val CAPABILITIES = Capabilities(
+            setOf(
+                SocialActionType.GetUserMe,
+                SocialActionType.GetUser,
+                SocialActionType.FollowUser,
+                SocialActionType.UnfollowUser,
+                SocialActionType.MuteUser,
+                SocialActionType.UnmuteUser,
+                SocialActionType.GetRelationship,
+                SocialActionType.GetComment,
+                SocialActionType.GetContext,
+                SocialActionType.PostComment,
+                SocialActionType.DeleteComment,
+                SocialActionType.LikeComment,
+                SocialActionType.UnlikeComment,
+                SocialActionType.ShareComment,
+                SocialActionType.ReactionComment,
+                SocialActionType.UnreactionComment,
+                SocialActionType.GetNotification,
+
+                TimeLineActionType.HomeTimeLine,
+                TimeLineActionType.MentionTimeLine,
+                TimeLineActionType.UserCommentTimeLine,
+                TimeLineActionType.UserLikeTimeLine,
+                TimeLineActionType.UserMediaTimeLine,
+                TimeLineActionType.SearchTimeLine,
+                TimeLineActionType.MessageTimeLine,
+
+                UsersActionType.GetFollowingUsers,
+                UsersActionType.GetFollowerUsers,
+                UsersActionType.SearchUsers,
+
+                MessageActionType.GetMessageThread,
+                MessageActionType.GetMessageTimeLine,
+                MessageActionType.PostMessage,
+
+                StreamActionType.HomeTimeLineStream,
+                StreamActionType.NotificationStream,
+            )
+        )
+    }
+
+    override fun capabilities(): Capabilities = CAPABILITIES
 
     private val accessor get() = auth.accessor
     private val social get() = accessor.social

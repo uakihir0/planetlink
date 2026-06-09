@@ -20,6 +20,10 @@ import work.socialhub.ktumblr.api.request.user.UserLikeRequest
 import work.socialhub.ktumblr.api.request.user.UserUnfollowRequest
 import work.socialhub.ktumblr.api.request.user.UserUnlikeRequest
 import work.socialhub.planetlink.action.AccountActionImpl
+import work.socialhub.planetlink.action.Capabilities
+import work.socialhub.planetlink.define.action.SocialActionType
+import work.socialhub.planetlink.define.action.TimeLineActionType
+import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.ID
@@ -46,6 +50,36 @@ class TumblrAction(
     account: Account,
     val auth: TumblrAuth,
 ) : AccountActionImpl(account) {
+
+    companion object {
+        val CAPABILITIES = Capabilities(
+            setOf(
+                SocialActionType.GetUserMe,
+                SocialActionType.GetUser,
+                SocialActionType.FollowUser,
+                SocialActionType.UnfollowUser,
+                SocialActionType.GetRelationship,
+                SocialActionType.GetComment,
+                SocialActionType.GetContext,
+                SocialActionType.PostComment,
+                SocialActionType.DeleteComment,
+                SocialActionType.LikeComment,
+                SocialActionType.UnlikeComment,
+                SocialActionType.ShareComment,
+
+                TimeLineActionType.HomeTimeLine,
+                TimeLineActionType.UserCommentTimeLine,
+                TimeLineActionType.UserLikeTimeLine,
+                TimeLineActionType.UserMediaTimeLine,
+                TimeLineActionType.SearchTimeLine,
+
+                UsersActionType.GetFollowingUsers,
+                UsersActionType.GetFollowerUsers,
+            )
+        )
+    }
+
+    override fun capabilities(): Capabilities = CAPABILITIES
 
     // ============================================================== //
     // Account

@@ -17,8 +17,13 @@ import work.socialhub.kslack.api.methods.request.users.UsersListRequest
 import work.socialhub.kslack.entity.Attachment
 import work.socialhub.kslack.entity.ConversationType
 import work.socialhub.planetlink.action.AccountActionImpl
+import work.socialhub.planetlink.action.Capabilities
 import work.socialhub.planetlink.action.RequestAction
 import work.socialhub.planetlink.action.callback.EventCallback
+import work.socialhub.planetlink.define.action.MessageActionType
+import work.socialhub.planetlink.define.action.SocialActionType
+import work.socialhub.planetlink.define.action.TimeLineActionType
+import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.paging.DatePaging
 import work.socialhub.planetlink.model.error.NotSupportedException
@@ -33,6 +38,35 @@ class SlackAction(
     account: Account,
     val auth: SlackAuth
 ) : AccountActionImpl(account) {
+
+    companion object {
+        val CAPABILITIES = Capabilities(
+            setOf(
+                SocialActionType.GetUserMe,
+                SocialActionType.GetUser,
+                SocialActionType.GetContext,
+                SocialActionType.PostComment,
+                SocialActionType.DeleteComment,
+                SocialActionType.LikeComment,
+                SocialActionType.UnlikeComment,
+                SocialActionType.ReactionComment,
+                SocialActionType.UnreactionComment,
+                SocialActionType.GetChannels,
+
+                TimeLineActionType.HomeTimeLine,
+                TimeLineActionType.ChannelTimeLine,
+
+                UsersActionType.SearchUsers,
+                UsersActionType.ChannelUsers,
+
+                MessageActionType.GetMessageThread,
+                MessageActionType.GetMessageTimeLine,
+                MessageActionType.PostMessage,
+            )
+        )
+    }
+
+    override fun capabilities(): Capabilities = CAPABILITIES
 
     private var team: SlackTeam? = null
     private var generalChannel: String? = null
