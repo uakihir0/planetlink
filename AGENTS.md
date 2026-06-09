@@ -203,6 +203,21 @@ If authentication credentials are required for testing, create `secrets.json` (r
 - Pagination uses strategy pattern: `BorderPaging`, `CursorPaging`, `DatePaging`, `OffsetPaging`
 - Rich text is handled via `AttributedString` across all platforms
 - Stream callbacks are registered via `setHomeTimeLineStream()`, `setNotificationStream()`
+- **Capabilities discovery**: Each adapter declares supported actions via `capabilities()` — see below
+
+### Capabilities Discovery
+
+Each adapter statically declares which `ActionType` entries it supports via a `CAPABILITIES` companion-object field returned by `capabilities()`. This allows callers to check feature support **without making API calls**.
+
+**Key files:**
+- `core/src/commonMain/kotlin/work/socialhub/planetlink/action/Capabilities.kt`
+- `core/src/commonMain/kotlin/work/socialhub/planetlink/define/action/StreamActionType.kt`
+- `core/src/commonMain/kotlin/work/socialhub/planetlink/define/action/MessageActionType.kt`
+
+**When adding or removing a method in an adapter's `*Action.kt`:**
+1. Update the adapter's `CAPABILITIES` set in its companion object to reflect the change
+2. If the method corresponds to a new action category, add a new enum value to the appropriate `ActionType` enum (or create a new enum implementing `ActionType`)
+3. Run `./gradlew :all:compileKotlinJvm` to verify all adapters compile
 
 ### Platform-Specific Limitations
 
@@ -216,12 +231,16 @@ If authentication credentials are required for testing, create `secrets.json` (r
 |---------|-----------|
 | Main entry point | `core/src/commonMain/kotlin/work/socialhub/planetlink/PlanetLink.kt` |
 | Account action interface | `core/src/commonMain/kotlin/work/socialhub/planetlink/action/AccountAction.kt` |
+| Capabilities class | `core/src/commonMain/kotlin/work/socialhub/planetlink/action/Capabilities.kt` |
 | User model | `core/src/commonMain/kotlin/work/socialhub/planetlink/model/User.kt` |
 | Comment model | `core/src/commonMain/kotlin/work/socialhub/planetlink/model/Comment.kt` |
 | Account model | `core/src/commonMain/kotlin/work/socialhub/planetlink/model/Account.kt` |
 | Bluesky action | `bluesky/src/commonMain/kotlin/work/socialhub/planetlink/bluesky/action/BlueskyAction.kt` |
 | Misskey action | `misskey/src/commonMain/kotlin/work/socialhub/planetlink/misskey/action/MisskeyAction.kt` |
 | Mastodon action | `mastodon/src/commonMain/kotlin/work/socialhub/planetlink/mastodon/action/MastodonAction.kt` |
+| Nostr action | `nostr/src/commonMain/kotlin/work/socialhub/planetlink/nostr/action/NostrAction.kt` |
+| Slack action | `slack/src/commonMain/kotlin/work/socialhub/planetlink/slack/action/SlackAction.kt` |
+| Matrix action | `matrix/src/commonMain/kotlin/work/socialhub/planetlink/matrix/action/MatrixAction.kt` |
 | Tumblr action | `tumblr/src/commonMain/kotlin/work/socialhub/planetlink/tumblr/action/TumblrAction.kt` |
 | Integration tests | `all/src/jvmTest/kotlin/work/socialhub/planetlink/` |
 | Test configuration | `all/src/jvmTest/kotlin/work/socialhub/planetlink/AbstractTest.kt` |
