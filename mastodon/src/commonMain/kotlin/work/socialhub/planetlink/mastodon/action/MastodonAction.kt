@@ -106,59 +106,6 @@ class MastodonAction(
     val auth: MastodonAuth,
 ) : AccountActionImpl(account) {
 
-    companion object {
-        val CAPABILITIES = Capabilities(
-            setOf(
-                SocialActionType.GetUserMe,
-                SocialActionType.GetUser,
-                SocialActionType.FollowUser,
-                SocialActionType.UnfollowUser,
-                SocialActionType.MuteUser,
-                SocialActionType.UnmuteUser,
-                SocialActionType.BlockUser,
-                SocialActionType.UnblockUser,
-                SocialActionType.GetRelationship,
-                SocialActionType.GetComment,
-                SocialActionType.GetContext,
-                SocialActionType.PostComment,
-                SocialActionType.DeleteComment,
-                SocialActionType.LikeComment,
-                SocialActionType.UnlikeComment,
-                SocialActionType.ShareComment,
-                SocialActionType.UnShareComment,
-                SocialActionType.GetChannels,
-                SocialActionType.GetNotification,
-                SocialActionType.GetUserBookmarks,
-                SocialActionType.RemoveBookmark,
-
-                TimeLineActionType.HomeTimeLine,
-                TimeLineActionType.MentionTimeLine,
-                TimeLineActionType.UserCommentTimeLine,
-                TimeLineActionType.UserLikeTimeLine,
-                TimeLineActionType.UserMediaTimeLine,
-                TimeLineActionType.SearchTimeLine,
-                TimeLineActionType.ChannelTimeLine,
-                TimeLineActionType.MessageTimeLine,
-
-                UsersActionType.GetFollowingUsers,
-                UsersActionType.GetFollowerUsers,
-                UsersActionType.SearchUsers,
-                UsersActionType.ChannelUsers,
-
-                MessageActionType.GetMessageThread,
-                MessageActionType.GetMessageTimeLine,
-                MessageActionType.PostMessage,
-
-                StreamActionType.HomeTimeLineStream,
-
-                MastodonActionType.LocalTimeLine,
-                MastodonActionType.FederationTimeLine,
-                MastodonActionType.PinComment,
-                MastodonActionType.UnpinComment,
-            )
-        )
-    }
-
     override fun capabilities(): Capabilities = CAPABILITIES
 
     /** List of Emoji  */
@@ -1968,6 +1915,57 @@ class MastodonAction(
     }
 
     companion object {
+
+        val CAPABILITIES = Capabilities(
+            setOf(
+                SocialActionType.GetUserMe,
+                SocialActionType.GetUser,
+                SocialActionType.FollowUser,
+                SocialActionType.UnfollowUser,
+                SocialActionType.MuteUser,
+                SocialActionType.UnmuteUser,
+                SocialActionType.BlockUser,
+                SocialActionType.UnblockUser,
+                SocialActionType.GetRelationship,
+                SocialActionType.GetComment,
+                SocialActionType.GetContext,
+                SocialActionType.PostComment,
+                SocialActionType.DeleteComment,
+                SocialActionType.LikeComment,
+                SocialActionType.UnlikeComment,
+                SocialActionType.ShareComment,
+                SocialActionType.UnShareComment,
+                SocialActionType.GetChannels,
+                SocialActionType.GetNotification,
+                SocialActionType.GetUserBookmarks,
+                SocialActionType.RemoveBookmark,
+
+                TimeLineActionType.HomeTimeLine,
+                TimeLineActionType.MentionTimeLine,
+                TimeLineActionType.UserCommentTimeLine,
+                TimeLineActionType.UserLikeTimeLine,
+                TimeLineActionType.UserMediaTimeLine,
+                TimeLineActionType.SearchTimeLine,
+                TimeLineActionType.ChannelTimeLine,
+                TimeLineActionType.MessageTimeLine,
+
+                UsersActionType.GetFollowingUsers,
+                UsersActionType.GetFollowerUsers,
+                UsersActionType.SearchUsers,
+                UsersActionType.ChannelUsers,
+
+                MessageActionType.GetMessageThread,
+                MessageActionType.GetMessageTimeLine,
+                MessageActionType.PostMessage,
+
+                StreamActionType.HomeTimeLineStream,
+
+                MastodonActionType.LocalTimeLine,
+                MastodonActionType.FederationTimeLine,
+                MastodonActionType.PinComment,
+                MastodonActionType.UnpinComment,
+            )
+        )
 
         // ============================================================== //
         // Paging

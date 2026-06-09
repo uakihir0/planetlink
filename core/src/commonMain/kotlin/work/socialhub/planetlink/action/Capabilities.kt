@@ -16,16 +16,6 @@ open class Capabilities(
         return action in supportedActions
     }
 
-    @JsExport.Ignore
-    fun isAllSupported(vararg actions: ActionType): Boolean {
-        return actions.all { isSupported(it) }
-    }
-
-    @JsExport.Ignore
-    fun isAnySupported(vararg actions: ActionType): Boolean {
-        return actions.any { isSupported(it) }
-    }
-
     fun isAllSupported(actions: Array<ActionType>): Boolean {
         return actions.all { isSupported(it) }
     }
