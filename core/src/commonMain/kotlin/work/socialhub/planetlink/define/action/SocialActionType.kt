@@ -34,6 +34,13 @@ enum class SocialActionType : ActionType {
     // Channels
     GetChannels,  //
 
+    // Notification
+    GetNotification,
+
+    // Reaction
+    ReactionComment,
+    UnreactionComment,
+
     // Bookmarks
     GetUserBookmarks,
     RemoveBookmark,
