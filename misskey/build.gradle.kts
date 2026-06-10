@@ -54,7 +54,6 @@ kotlin {
             implementation(libs.ktor.core)
             implementation(libs.kmisskey.core)
             implementation(libs.kmisskey.stream)
-            implementation(libs.kmpcommon)
             implementation(libs.datetime)
         }
 
