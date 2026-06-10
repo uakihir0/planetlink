@@ -9,6 +9,8 @@ import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsViewerState
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Commit
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Event
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedGalleryView
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedGalleryViewImage
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImagesView
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImagesViewImage
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecordView
@@ -244,9 +246,15 @@ object BlueskyMapper {
         embed: EmbedViewUnion,
         service: Service
     ) {
-        // Media
+        // Media (up to 4 images)
         if (embed is EmbedImagesView) {
             val medias = embed.images!!.map { media(it) }
+            model.medias = model.medias.plus(medias)
+        }
+
+        // Gallery (5-10 images)
+        if (embed is EmbedGalleryView) {
+            val medias = embed.items!!.map { media(it) }
             model.medias = model.medias.plus(medias)
         }
 
@@ -407,6 +415,16 @@ object BlueskyMapper {
         return Media().apply {
             type = MediaType.Image
             previewUrl = img.thumb
+            sourceUrl = img.fullsize
+        }
+    }
+
+    private fun media(
+        img: EmbedGalleryViewImage
+    ): Media {
+        return Media().apply {
+            type = MediaType.Image
+            previewUrl = img.thumbnail
             sourceUrl = img.fullsize
         }
     }
