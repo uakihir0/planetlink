@@ -53,7 +53,6 @@ kotlin {
             implementation(libs.ktor.core)
             implementation(libs.kmastodon.core)
             implementation(libs.kmastodon.stream)
-            implementation(libs.kmpcommon)
             implementation(libs.datetime)
             implementation(libs.ksoup)
         }
