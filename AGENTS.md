@@ -23,7 +23,7 @@ This is a Kotlin Multiplatform port of [SocialHub](https://github.com/uakihir0/S
 - JVM (Java 11+)
 - JavaScript (IR, Node.js + Browser)
 - iOS (x64, arm64, simulatorArm64)
-- macOS (x64, arm64)
+- macOS (arm64)
 
 ## Architecture
 
