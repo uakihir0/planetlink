@@ -53,7 +53,6 @@ kotlin {
             implementation(project(":core"))
             implementation(libs.ktor.core)
             implementation(libs.ktumblr.core)
-            implementation(libs.kmpcommon)
             implementation(libs.datetime)
             implementation(libs.ksoup)
         }
