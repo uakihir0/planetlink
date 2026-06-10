@@ -1937,6 +1937,8 @@ class MastodonAction(
                 SocialActionType.UnShareComment,
                 SocialActionType.GetChannels,
                 SocialActionType.GetNotification,
+                SocialActionType.ReactionComment,
+                SocialActionType.UnreactionComment,
                 SocialActionType.GetUserBookmarks,
                 SocialActionType.RemoveBookmark,
 

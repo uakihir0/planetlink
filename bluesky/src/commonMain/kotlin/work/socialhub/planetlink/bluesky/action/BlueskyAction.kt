@@ -134,6 +134,8 @@ class BlueskyAction(
                 SocialActionType.UnlikeComment,
                 SocialActionType.ShareComment,
                 SocialActionType.UnShareComment,
+                SocialActionType.ReactionComment,
+                SocialActionType.UnreactionComment,
                 SocialActionType.GetChannels,
                 SocialActionType.GetNotification,
 
