@@ -774,8 +774,16 @@ class BlueskyAction(
     private suspend fun commentWithCheck(
         id: Identify
     ): BlueskyComment {
-        return if (id is BlueskyComment) id
-        else comment(id) as BlueskyComment
+        if (id is BlueskyComment) return id
+        val posts = auth.accessor.feed().getPosts(
+            FeedGetPostsRequest(authProvider()).also {
+                it.uris = listOf(id.id!!.value())
+            }
+        )
+        return Mapper.simpleComment(
+            posts.data.posts[0],
+            service(),
+        ) as BlueskyComment
     }
 
     /**
