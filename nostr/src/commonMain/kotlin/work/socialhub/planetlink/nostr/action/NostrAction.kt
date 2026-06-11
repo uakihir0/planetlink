@@ -695,9 +695,10 @@ class NostrAction(
 
     override suspend fun setHomeTimeLineStream(callback: EventCallback): Stream {
         val userMe = userMeWithCache()
+        val cache = social.profileCache()
         val stream = NostrStream(
             accessor = accessor,
-            timelineStream = TimelineStream(nostr).also { ts ->
+            timelineStream = TimelineStream(nostr, cache).also { ts ->
                 ts.onNoteCallback = { note ->
                     if (callback is UpdateCommentCallback) {
                         val comment = NostrMapper.comment(note, service(), userMe)
@@ -712,9 +713,10 @@ class NostrAction(
 
     override suspend fun setNotificationStream(callback: EventCallback): Stream {
         val userMe = userMeWithCache()
+        val cache = social.profileCache()
         val stream = NostrStream(
             accessor = accessor,
-            notificationStream = NotificationStream(nostr).also { ns ->
+            notificationStream = NotificationStream(nostr, cache).also { ns ->
                 ns.onMentionCallback = { note ->
                     if (callback is MentionCommentCallback) {
                         val comment = NostrMapper.comment(note, service(), userMe)
