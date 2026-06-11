@@ -16,8 +16,14 @@ import work.socialhub.kmatrix.api.response.notifications.NotificationsGetRespons
 import work.socialhub.kmatrix.api.response.rooms.RoomEvent
 import work.socialhub.kmatrix.stream.MatrixStreamFactory
 import work.socialhub.planetlink.action.AccountActionImpl
+import work.socialhub.planetlink.action.Capabilities
 import work.socialhub.planetlink.action.RequestAction
 import work.socialhub.planetlink.action.callback.EventCallback
+import work.socialhub.planetlink.define.action.MessageActionType
+import work.socialhub.planetlink.define.action.SocialActionType
+import work.socialhub.planetlink.define.action.StreamActionType
+import work.socialhub.planetlink.define.action.TimeLineActionType
+import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.model.error.NotSupportedException
@@ -33,6 +39,38 @@ class MatrixAction(
     account: Account,
     val auth: MatrixAuth,
 ) : AccountActionImpl(account) {
+
+    companion object {
+        val CAPABILITIES = Capabilities(
+            setOf(
+                SocialActionType.GetUserMe,
+                SocialActionType.GetUser,
+                SocialActionType.GetComment,
+                SocialActionType.GetContext,
+                SocialActionType.PostComment,
+                SocialActionType.DeleteComment,
+                SocialActionType.LikeComment,
+                SocialActionType.ReactionComment,
+                SocialActionType.GetChannels,
+                SocialActionType.GetNotification,
+
+                TimeLineActionType.MentionTimeLine,
+                TimeLineActionType.ChannelTimeLine,
+
+                UsersActionType.SearchUsers,
+                UsersActionType.ChannelUsers,
+
+                MessageActionType.GetMessageThread,
+                MessageActionType.GetMessageTimeLine,
+                MessageActionType.PostMessage,
+
+                StreamActionType.HomeTimeLineStream,
+                StreamActionType.NotificationStream,
+            )
+        )
+    }
+
+    override fun capabilities(): Capabilities = CAPABILITIES
 
     private val accessor get() = auth.accessor
 
