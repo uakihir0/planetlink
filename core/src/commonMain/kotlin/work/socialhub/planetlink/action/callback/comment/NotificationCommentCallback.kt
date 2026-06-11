@@ -6,5 +6,7 @@ import kotlin.js.JsExport
 
 @JsExport
 interface NotificationCommentCallback : EventCallback {
+    // See EventCallback.kt for why companion object is needed
+    companion object
     fun onNotification(reaction: NotificationEvent?)
 }
