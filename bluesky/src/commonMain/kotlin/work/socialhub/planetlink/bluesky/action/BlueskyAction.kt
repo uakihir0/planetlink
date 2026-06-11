@@ -46,10 +46,13 @@ import work.socialhub.kbsky.stream.entity.app.bsky.callback.JetStreamEventCallba
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Event
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeedsPref
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedGallery
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedGalleryImage
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImages
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImagesImage
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecord
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecordWithMedia
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedUnion
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsFeedViewPost
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsPostView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsThreadViewPost
@@ -544,6 +547,9 @@ class BlueskyAction(
                             if (embed is EmbedImages) {
                                 return@filter embed.images!!.isNotEmpty()
                             }
+                            if (embed is EmbedGallery) {
+                                return@filter embed.items!!.isNotEmpty()
+                            }
                         }
                         false
                     }
@@ -598,13 +604,13 @@ class BlueskyAction(
     ) {
         proceedUnit {
             coroutineScope {
-                val imagesAsync = mutableListOf<Deferred<EmbedImagesImage>>()
+                val blobsAsync = mutableListOf<Deferred<work.socialhub.kbsky.model.share.Blob>>()
 
                 if (req.images.isNotEmpty()) {
                     req.images.map { img ->
 
                         // 画像を並列でアップロード実行
-                        imagesAsync.add(async {
+                        blobsAsync.add(async {
                             val response = auth.accessor.repo().uploadBlob(
                                 RepoUploadBlobRequest(
                                     auth = authProvider(),
@@ -612,11 +618,7 @@ class BlueskyAction(
                                     name = img.name,
                                 )
                             )
-
-                            EmbedImagesImage().also {
-                                it.image = response.data.blob
-                                it.alt = ""
-                            }
+                            response.data.blob
                         })
                     }
                 }
@@ -651,17 +653,31 @@ class BlueskyAction(
                         it.facets = facets
                     }
 
-                    // Images
-                    var embedImages: EmbedImages? = null
-                    if (imagesAsync.isNotEmpty()) {
-                        val images = mutableListOf<EmbedImagesImage>()
-                        for (imageAsync in imagesAsync) {
-                            images.add(imageAsync.await())
-                        }
+                    // Images (up to 4) or Gallery (5-10)
+                    var embedMedia: EmbedUnion? = null
+                    if (blobsAsync.isNotEmpty()) {
+                        val blobs = blobsAsync.map { it.await() }
 
-                        embedImages = EmbedImages()
-                        embedImages.images = images
-                        builder.embed = embedImages
+                        if (blobs.size <= 4) {
+                            val embedImages = EmbedImages()
+                            embedImages.images = blobs.map { blob ->
+                                EmbedImagesImage().also {
+                                    it.image = blob
+                                    it.alt = ""
+                                }
+                            }
+                            embedMedia = embedImages
+                        } else {
+                            val embedGallery = EmbedGallery()
+                            embedGallery.items = blobs.map { blob ->
+                                EmbedGalleryImage(
+                                    image = blob,
+                                    alt = "",
+                                )
+                            }
+                            embedMedia = embedGallery
+                        }
+                        builder.embed = embedMedia
                     }
 
                     // Reply
@@ -713,11 +729,11 @@ class BlueskyAction(
                         record.record = RepoStrongRef(uri, comment.cid!!)
 
                         // 既に画像が設定済みの場合
-                        if (embedImages != null) {
+                        if (embedMedia != null) {
 
                             // RecordWithMedia を生成して上書き設定
                             val rwm = EmbedRecordWithMedia()
-                            rwm.media = embedImages
+                            rwm.media = embedMedia
                             rwm.record = record
                             builder.embed = rwm
 
