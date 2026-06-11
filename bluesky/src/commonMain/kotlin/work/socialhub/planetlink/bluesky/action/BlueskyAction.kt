@@ -66,8 +66,14 @@ import work.socialhub.kbsky.util.ATUriParser
 import work.socialhub.kbsky.util.facet.FacetType
 import work.socialhub.kbsky.util.facet.FacetUtil
 import work.socialhub.planetlink.action.AccountActionImpl
+import work.socialhub.planetlink.action.Capabilities
 import work.socialhub.planetlink.action.RequestAction
 import work.socialhub.planetlink.bluesky.define.BlueskyReactionType
+import work.socialhub.planetlink.define.action.MessageActionType
+import work.socialhub.planetlink.define.action.SocialActionType
+import work.socialhub.planetlink.define.action.StreamActionType
+import work.socialhub.planetlink.define.action.TimeLineActionType
+import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.bluesky.model.BlueskyComment
 import work.socialhub.planetlink.bluesky.model.BlueskyPaging
 import work.socialhub.planetlink.bluesky.model.BlueskyStream
@@ -111,7 +117,50 @@ class BlueskyAction(
 
     companion object {
         const val MAX_WANTED_DIDS_PER_CONNECTION = 300
+
+        val CAPABILITIES = Capabilities(
+            setOf(
+                SocialActionType.GetUserMe,
+                SocialActionType.GetUser,
+                SocialActionType.FollowUser,
+                SocialActionType.UnfollowUser,
+                SocialActionType.MuteUser,
+                SocialActionType.UnmuteUser,
+                SocialActionType.BlockUser,
+                SocialActionType.UnblockUser,
+                SocialActionType.GetRelationship,
+                SocialActionType.GetComment,
+                SocialActionType.GetContext,
+                SocialActionType.PostComment,
+                SocialActionType.DeleteComment,
+                SocialActionType.LikeComment,
+                SocialActionType.UnlikeComment,
+                SocialActionType.ShareComment,
+                SocialActionType.UnShareComment,
+                SocialActionType.ReactionComment,
+                SocialActionType.UnreactionComment,
+                SocialActionType.GetChannels,
+                SocialActionType.GetNotification,
+
+                TimeLineActionType.HomeTimeLine,
+                TimeLineActionType.MentionTimeLine,
+                TimeLineActionType.UserCommentTimeLine,
+                TimeLineActionType.UserLikeTimeLine,
+                TimeLineActionType.UserMediaTimeLine,
+                TimeLineActionType.SearchTimeLine,
+                TimeLineActionType.ChannelTimeLine,
+
+                UsersActionType.GetFollowingUsers,
+                UsersActionType.GetFollowerUsers,
+                UsersActionType.SearchUsers,
+
+                StreamActionType.HomeTimeLineStream,
+                StreamActionType.NotificationStream,
+            )
+        )
     }
+
+    override fun capabilities(): Capabilities = CAPABILITIES
 
     private var accessJwt: String? = null
     private var expireAt: Long? = null

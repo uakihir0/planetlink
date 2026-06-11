@@ -61,6 +61,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import work.socialhub.planetlink.action.AccountActionImpl
+import work.socialhub.planetlink.action.Capabilities
 import work.socialhub.planetlink.action.RequestAction
 import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.action.callback.comment.MentionCommentCallback
@@ -69,6 +70,11 @@ import work.socialhub.planetlink.action.callback.comment.UpdateCommentCallback
 import work.socialhub.planetlink.action.callback.lifecycle.ConnectCallback
 import work.socialhub.planetlink.action.callback.lifecycle.DisconnectCallback
 import work.socialhub.planetlink.action.callback.user.FollowUserCallback
+import work.socialhub.planetlink.define.action.SocialActionType
+import work.socialhub.planetlink.define.action.StreamActionType
+import work.socialhub.planetlink.define.action.TimeLineActionType
+import work.socialhub.planetlink.define.action.UsersActionType
+import work.socialhub.planetlink.misskey.define.MisskeyActionType
 import work.socialhub.planetlink.misskey.define.MisskeyReactionType.Favorite
 import work.socialhub.planetlink.misskey.define.MisskeyReactionType.Renote
 import work.socialhub.planetlink.misskey.model.MisskeyPaging
@@ -89,6 +95,54 @@ class MisskeyAction(
     account: Account,
     val auth: MisskeyAuth,
 ) : AccountActionImpl(account) {
+
+    companion object {
+        val CAPABILITIES = Capabilities(
+            setOf(
+                SocialActionType.GetUserMe,
+                SocialActionType.GetUser,
+                SocialActionType.FollowUser,
+                SocialActionType.UnfollowUser,
+                SocialActionType.MuteUser,
+                SocialActionType.UnmuteUser,
+                SocialActionType.BlockUser,
+                SocialActionType.UnblockUser,
+                SocialActionType.GetRelationship,
+                SocialActionType.GetComment,
+                SocialActionType.GetContext,
+                SocialActionType.PostComment,
+                SocialActionType.DeleteComment,
+                SocialActionType.LikeComment,
+                SocialActionType.UnlikeComment,
+                SocialActionType.ShareComment,
+                SocialActionType.UnShareComment,
+                SocialActionType.ReactionComment,
+                SocialActionType.UnreactionComment,
+                SocialActionType.GetNotification,
+
+                TimeLineActionType.HomeTimeLine,
+                TimeLineActionType.MentionTimeLine,
+                TimeLineActionType.UserCommentTimeLine,
+                TimeLineActionType.UserLikeTimeLine,
+                TimeLineActionType.UserMediaTimeLine,
+                TimeLineActionType.SearchTimeLine,
+                TimeLineActionType.ChannelTimeLine,
+
+                UsersActionType.GetFollowingUsers,
+                UsersActionType.GetFollowerUsers,
+                UsersActionType.SearchUsers,
+
+                StreamActionType.HomeTimeLineStream,
+                StreamActionType.NotificationStream,
+
+                MisskeyActionType.LocalTimeLine,
+                MisskeyActionType.FederationTimeLine,
+                MisskeyActionType.FeaturedTimeline,
+            )
+        )
+    }
+
+    override fun capabilities(): Capabilities = CAPABILITIES
 
     /** Actual instance hostname for emoji URL construction */
     private val instanceHost: String

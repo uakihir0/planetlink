@@ -58,6 +58,7 @@ import work.socialhub.kmastodon.stream.listener.PublicStreamListener
 import work.socialhub.kmastodon.stream.listener.UserStreamListener
 import work.socialhub.kmastodon.stream.listener.primitive.LifeCycleListener
 import work.socialhub.planetlink.action.AccountActionImpl
+import work.socialhub.planetlink.action.Capabilities
 import work.socialhub.planetlink.action.RequestAction
 import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.action.callback.comment.DeleteCommentCallback
@@ -68,7 +69,9 @@ import work.socialhub.planetlink.action.callback.lifecycle.ConnectCallback
 import work.socialhub.planetlink.action.callback.lifecycle.DisconnectCallback
 import work.socialhub.planetlink.action.callback.lifecycle.ErrorCallback
 import work.socialhub.planetlink.action.callback.user.FollowUserCallback
+import work.socialhub.planetlink.define.action.MessageActionType
 import work.socialhub.planetlink.define.action.SocialActionType
+import work.socialhub.planetlink.define.action.StreamActionType
 import work.socialhub.planetlink.define.action.TimeLineActionType
 import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.mastodon.define.MastodonActionType
@@ -102,6 +105,8 @@ class MastodonAction(
     account: Account,
     val auth: MastodonAuth,
 ) : AccountActionImpl(account) {
+
+    override fun capabilities(): Capabilities = CAPABILITIES
 
     /** List of Emoji  */
     private var emojisCache: List<Emoji>? = null
@@ -1905,6 +1910,59 @@ class MastodonAction(
     }
 
     companion object {
+
+        val CAPABILITIES = Capabilities(
+            setOf(
+                SocialActionType.GetUserMe,
+                SocialActionType.GetUser,
+                SocialActionType.FollowUser,
+                SocialActionType.UnfollowUser,
+                SocialActionType.MuteUser,
+                SocialActionType.UnmuteUser,
+                SocialActionType.BlockUser,
+                SocialActionType.UnblockUser,
+                SocialActionType.GetRelationship,
+                SocialActionType.GetComment,
+                SocialActionType.GetContext,
+                SocialActionType.PostComment,
+                SocialActionType.DeleteComment,
+                SocialActionType.LikeComment,
+                SocialActionType.UnlikeComment,
+                SocialActionType.ShareComment,
+                SocialActionType.UnShareComment,
+                SocialActionType.GetChannels,
+                SocialActionType.GetNotification,
+                SocialActionType.ReactionComment,
+                SocialActionType.UnreactionComment,
+                SocialActionType.GetUserBookmarks,
+                SocialActionType.RemoveBookmark,
+
+                TimeLineActionType.HomeTimeLine,
+                TimeLineActionType.MentionTimeLine,
+                TimeLineActionType.UserCommentTimeLine,
+                TimeLineActionType.UserLikeTimeLine,
+                TimeLineActionType.UserMediaTimeLine,
+                TimeLineActionType.SearchTimeLine,
+                TimeLineActionType.ChannelTimeLine,
+                TimeLineActionType.MessageTimeLine,
+
+                UsersActionType.GetFollowingUsers,
+                UsersActionType.GetFollowerUsers,
+                UsersActionType.SearchUsers,
+                UsersActionType.ChannelUsers,
+
+                MessageActionType.GetMessageThread,
+                MessageActionType.GetMessageTimeLine,
+                MessageActionType.PostMessage,
+
+                StreamActionType.HomeTimeLineStream,
+
+                MastodonActionType.LocalTimeLine,
+                MastodonActionType.FederationTimeLine,
+                MastodonActionType.PinComment,
+                MastodonActionType.UnpinComment,
+            )
+        )
 
         // ============================================================== //
         // Paging

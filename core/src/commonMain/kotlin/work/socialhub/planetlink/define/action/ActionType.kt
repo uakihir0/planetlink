@@ -9,6 +9,8 @@ import kotlin.js.JsExport
  * @see TimeLineActionType
  * @see SocialActionType
  * @see UsersActionType
+ * @see StreamActionType
+ * @see MessageActionType
  */
 @JsExport
-interface ActionType 
+interface ActionType
