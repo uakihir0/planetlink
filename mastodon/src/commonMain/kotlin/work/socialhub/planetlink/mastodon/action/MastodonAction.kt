@@ -157,29 +157,27 @@ class MastodonAction(
     override suspend fun user(
         url: String
     ): User {
-        return proceed {
-            var regex = "https://(.+?)/@(.+)".toRegex()
-            var matcher = regex.find(url)
+        var regex = "https://(.+?)/@(.+)".toRegex()
+        var matcher = regex.find(url)
+
+        if (matcher != null) {
+            val host = matcher.groupValues[1]
+            val screenName = matcher.groupValues[2]
+
+            val format: String = ("@$screenName@$host")
+            val users = searchUsers(format, Paging(10))
+            return users.entities.first { it.accountIdentify == format }
+
+        } else {
+            regex = "https://(.+?)/web/accounts/(.+)".toRegex()
+            matcher = regex.find(url)
 
             if (matcher != null) {
-                val host = matcher.groupValues[1]
-                val screenName = matcher.groupValues[2]
-
-                val format: String = ("@$screenName@$host")
-                val users = searchUsers(format, Paging(10))
-                users.entities.first { it.accountIdentify == format }
+                val id = matcher.groupValues[2]
+                return user(Identify(service(), ID(id)))
 
             } else {
-                regex = "https://(.+?)/web/accounts/(.+)".toRegex()
-                matcher = regex.find(url)
-
-                if (matcher != null) {
-                    val id = matcher.groupValues[2]
-                    user(Identify(service(), ID(id)))
-
-                } else {
-                    throw SocialHubException("this url is not supported format.")
-                }
+                throw SocialHubException("this url is not supported format.")
             }
         }
     }
@@ -707,29 +705,26 @@ class MastodonAction(
     override suspend fun comment(
         url: String
     ): Comment {
-        return proceed {
-            var regex = "https://(.+?)/@(.+?)/(.+)".toRegex()
-            var matcher = regex.find(url)
+        var regex = "https://(.+?)/@(.+?)/(.+)".toRegex()
+        var matcher = regex.find(url)
+
+        if (matcher != null) {
+            val id = matcher.groupValues[3]
+            val identify = Identify(service(), ID(id))
+            return comment(identify)
+
+        } else {
+            regex = "https://(.+?)/web/statuses/(.+)".toRegex()
+            matcher = regex.find(url)
 
             if (matcher != null) {
-                val id = matcher.groupValues[3]
+                val id = matcher.groupValues[2]
                 val identify = Identify(service(), ID(id))
-                comment(identify)
+                return comment(identify)
 
             } else {
-                regex = "https://(.+?)/web/statuses/(.+)".toRegex()
-                matcher = regex.find(url)
-
-                if (matcher != null) {
-                    val id = matcher.groupValues[2]
-                    val identify = Identify(service(), ID(id))
-                    comment(identify)
-
-                } else {
-                    throw SocialHubException("this url is not supported format.")
-                }
+                throw SocialHubException("this url is not supported format.")
             }
-
         }
     }
 

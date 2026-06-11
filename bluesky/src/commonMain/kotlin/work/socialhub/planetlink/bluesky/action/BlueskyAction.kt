@@ -270,8 +270,14 @@ class BlueskyAction(
             if (id is BlueskyUser) {
                 Mapper.relationship(id)
             } else {
-                val user = user(id) as BlueskyUser
-                Mapper.relationship(user)
+                // Fetch profile directly instead of calling user(id) to avoid
+                // broken virtual suspend bridge issue in KMP JS target
+                val response = auth.accessor.actor().getProfile(
+                    ActorGetProfileRequest(authProvider())
+                        .also { it.actor = id.id!!.value() }
+                )
+                val user = Mapper.user(response.data, service())
+                Mapper.relationship(user as BlueskyUser)
             }
         }
     }
@@ -722,11 +728,18 @@ class BlueskyAction(
                     if (req.quoteId != null) {
                         val uri = req.quoteId!!.value<String>()
 
-                        val id = Identify(service(), ID(uri))
-                        val comment = comment(id) as BlueskyComment
+                        // Fetch post directly to avoid broken virtual suspend bridge
+                        val quotePosts = auth.accessor.feed().getPosts(
+                            FeedGetPostsRequest(authProvider()).also {
+                                it.uris = listOf(uri)
+                            }
+                        )
+                        val quoteComment = Mapper.simpleComment(
+                            quotePosts.data.posts[0], service()
+                        ) as BlueskyComment
 
                         val record = EmbedRecord()
-                        record.record = RepoStrongRef(uri, comment.cid!!)
+                        record.record = RepoStrongRef(uri, quoteComment.cid!!)
 
                         // 既に画像が設定済みの場合
                         if (embedMedia != null) {
@@ -797,8 +810,15 @@ class BlueskyAction(
                 val did = response.data.did
                 val uri = "at://$did/app.bsky.feed.post/$rkey"
 
-                val identify = Identify(service(), ID(uri))
-                return@proceed comment(identify)
+                // Fetch post directly to avoid broken virtual suspend bridge
+                val posts = auth.accessor.feed().getPosts(
+                    FeedGetPostsRequest(authProvider()).also {
+                        it.uris = listOf(uri)
+                    }
+                )
+                return@proceed Mapper.simpleComment(
+                    posts.data.posts[0], service()
+                )
 
             } catch (e: Exception) {
                 throw handleException(e)
