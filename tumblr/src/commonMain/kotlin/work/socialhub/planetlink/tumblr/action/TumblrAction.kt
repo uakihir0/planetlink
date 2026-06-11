@@ -146,10 +146,8 @@ class TumblrAction(
     override suspend fun user(
         url: String
     ): User {
-        return proceed {
-            val name = url.split("/").last()
-            user(Identify(service(), ID(name)))
-        }
+        val name = url.split("/").last()
+        return user(Identify(service(), ID(name)))
     }
 
     /**
@@ -228,19 +226,17 @@ class TumblrAction(
     override suspend fun relationship(
         id: Identify
     ): Relationship {
-        return proceed {
-            // オブジェクトに格納済みなので返却
-            if (id is TumblrUser) {
-                return@proceed id.relationship!!
-            }
-
-            // ユーザーの一部なのでそれを返却
-            val user = user(id)
-            if (user is TumblrUser) {
-                return@proceed user.relationship!!
-            }
-            throw IllegalStateException()
+        // オブジェクトに格納済みなので返却
+        if (id is TumblrUser) {
+            return id.relationship!!
         }
+
+        // ユーザーの一部なのでそれを返却
+        val user = user(id)
+        if (user is TumblrUser) {
+            return user.relationship!!
+        }
+        throw IllegalStateException()
     }
 
     // ============================================================== //

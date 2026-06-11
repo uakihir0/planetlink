@@ -166,26 +166,24 @@ class MisskeyAction(
     override suspend fun user(
         url: String
     ): User {
-        return proceed {
-            val regex = ("https://(.+?)/@(.+)").toRegex()
-            val matcher = regex.find(url)
+        val regex = ("https://(.+?)/@(.+)").toRegex()
+        val matcher = regex.find(url)
 
-            if (matcher != null) {
-                val host = matcher.groupValues[1]
-                val identify = matcher.groupValues[2]
+        if (matcher != null) {
+            val host = matcher.groupValues[1]
+            val identify = matcher.groupValues[2]
 
-                if (identify.contains("@")) {
-                    val format = ("@$identify")
-                    return@proceed user(Identify(service())
-                        .also { it.id = ID(format) })
-                } else {
-                    val format = ("@$identify@$host")
-                    return@proceed user(Identify(service())
-                        .also { it.id = ID(format) })
-                }
+            if (identify.contains("@")) {
+                val format = ("@$identify")
+                return user(Identify(service())
+                    .also { it.id = ID(format) })
+            } else {
+                val format = ("@$identify@$host")
+                return user(Identify(service())
+                    .also { it.id = ID(format) })
             }
-            throw SocialHubException("this url is not supported format.")
         }
+        throw SocialHubException("this url is not supported format.")
     }
 
     /**
@@ -633,19 +631,17 @@ class MisskeyAction(
     override suspend fun comment(
         url: String
     ): Comment {
-        return proceed {
-            val regex = ("https://(.+?)/notes/(.+)").toRegex()
-            val matcher = regex.find(url)
+        val regex = ("https://(.+?)/notes/(.+)").toRegex()
+        val matcher = regex.find(url)
 
-            if (matcher != null) {
-                return@proceed comment(
-                    Identify(service()).also {
-                        it.id = ID(matcher.groupValues[2])
-                    })
-            }
-
-            throw SocialHubException("this url is not supported format.")
+        if (matcher != null) {
+            return comment(
+                Identify(service()).also {
+                    it.id = ID(matcher.groupValues[2])
+                })
         }
+
+        throw SocialHubException("this url is not supported format.")
     }
 
     /**
@@ -1052,10 +1048,11 @@ class MisskeyAction(
     override suspend fun notification(
         paging: Paging
     ): Pageable<Notification> {
+        // Fetch emojis outside proceed to avoid broken virtual suspend bridge
+        val emojis = this.getEmojis()
+
         return proceed {
             val misskey = auth.accessor
-            // TODO: 並列でリクエストを実行
-            val emojis = this.getEmojis()
 
             val builder = INotificationsRequest()
             setPaging(builder, paging)
