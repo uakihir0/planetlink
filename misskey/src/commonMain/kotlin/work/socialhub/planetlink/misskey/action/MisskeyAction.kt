@@ -7,8 +7,6 @@ import work.socialhub.kmisskey.MisskeyException
 import work.socialhub.kmisskey.api.model.PollRequest
 import work.socialhub.kmisskey.api.request.blocks.BlocksCreateRequest
 import work.socialhub.kmisskey.api.request.blocks.BlocksDeleteRequest
-import work.socialhub.kmisskey.api.request.favorites.FavoritesCreateRequest
-import work.socialhub.kmisskey.api.request.favorites.FavoritesDeleteRequest
 import work.socialhub.kmisskey.api.request.files.FilesCreateRequest
 import work.socialhub.kmisskey.api.request.following.FollowingCreateRequest
 import work.socialhub.kmisskey.api.request.following.FollowingDeleteRequest
@@ -711,9 +709,10 @@ class MisskeyAction(
         id: Identify
     ) {
         proceedUnit {
-            auth.accessor.favorites().create(
-                FavoritesCreateRequest().also {
+            auth.accessor.reactions().create(
+                ReactionsCreateRequest().also {
                     it.noteId = id.id<String>()
+                    it.reaction = "❤"
                 })
         }
     }
@@ -725,8 +724,8 @@ class MisskeyAction(
         id: Identify
     ) {
         proceedUnit {
-            auth.accessor.favorites().delete(
-                FavoritesDeleteRequest().also {
+            auth.accessor.reactions().delete(
+                ReactionsDeleteRequest().also {
                     it.noteId = id.id<String>()
                 })
         }

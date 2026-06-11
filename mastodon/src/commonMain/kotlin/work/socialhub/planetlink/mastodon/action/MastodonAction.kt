@@ -1695,9 +1695,9 @@ class MastodonAction(
      * サービスワーカーのエンドポイントを設定
      */
     suspend fun registerSubscription(
-        endpoint: String?,
-        publicKey: String?,
-        authSecret: String?
+        endpoint: String,
+        publicKey: String,
+        authSecret: String
     ) {
         proceedUnit {
 
