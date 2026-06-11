@@ -50,7 +50,6 @@ class MatrixAction(
                 SocialActionType.PostComment,
                 SocialActionType.DeleteComment,
                 SocialActionType.LikeComment,
-                SocialActionType.UnlikeComment,
                 SocialActionType.ReactionComment,
                 SocialActionType.GetChannels,
                 SocialActionType.GetNotification,
