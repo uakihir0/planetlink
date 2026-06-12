@@ -6,7 +6,5 @@ import kotlin.js.JsExport
 
 @JsExport
 interface ShareCommentCallback : EventCallback {
-    // See EventCallback.kt for why companion object is needed
-    companion object
     fun onShare(event: CommentEvent?)
 }
