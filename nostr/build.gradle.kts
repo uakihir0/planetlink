@@ -32,6 +32,7 @@ kotlin {
 
     compilerOptions {
         freeCompilerArgs.add("-XXLanguage:+JsAllowExportingSuspendFunctions")
+        freeCompilerArgs.add("-Xenable-implementing-interfaces-from-typescript")
     }
 
     sourceSets {
