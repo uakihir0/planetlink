@@ -5,7 +5,5 @@ import kotlin.js.JsExport
 
 @JsExport
 interface ErrorCallback : EventCallback {
-    // See EventCallback.kt for why companion object is needed
-    companion object
     fun onError(e: Exception)
 }

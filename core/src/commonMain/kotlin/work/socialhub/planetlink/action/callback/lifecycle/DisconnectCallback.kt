@@ -5,7 +5,5 @@ import kotlin.js.JsExport
 
 @JsExport
 interface DisconnectCallback : EventCallback {
-    // See EventCallback.kt for why companion object is needed
-    companion object
     fun onDisconnect()
 }
