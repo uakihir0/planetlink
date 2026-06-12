@@ -124,6 +124,7 @@ afterEvaluate {
         compilerOptions {
             target.set("es2015")
             freeCompilerArgs.add("-Xes-long-as-bigint")
+            freeCompilerArgs.add("-Xenable-implementing-interfaces-from-typescript")
         }
     }
 }
