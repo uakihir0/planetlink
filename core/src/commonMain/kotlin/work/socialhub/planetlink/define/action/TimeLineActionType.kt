@@ -12,6 +12,7 @@ enum class TimeLineActionType : ActionType {
     UserLikeTimeLine,
     UserMediaTimeLine,
     SearchTimeLine,
+    UserBookmarkTimeLine,
     ChannelTimeLine,
     MessageTimeLine,
 }

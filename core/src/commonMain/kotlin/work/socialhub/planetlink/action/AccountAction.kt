@@ -205,6 +205,16 @@ interface AccountAction {
         throw NotImplementedException()
     }
 
+    /**
+     * Get User Bookmark TimeLine
+     * ブックマークしたコメントのタイムラインを取得
+     */
+    suspend fun userBookmarkTimeLine(
+        paging: Paging,
+    ): Pageable<Comment> {
+        throw NotImplementedException()
+    }
+
     // ============================================================== //
     // Notification API
     // 通知関連 API
@@ -324,6 +334,37 @@ interface AccountAction {
      */
     suspend fun deleteComment(
         id: Identify
+    ) {
+        throw NotImplementedException()
+    }
+
+    /**
+     * Bookmark Comment
+     * コメントをブックマーク
+     */
+    suspend fun bookmarkComment(
+        id: Identify
+    ) {
+        throw NotImplementedException()
+    }
+
+    /**
+     * Unbookmark Comment
+     * コメントのブックマークを解除
+     */
+    suspend fun unbookmarkComment(
+        id: Identify
+    ) {
+        throw NotImplementedException()
+    }
+
+    /**
+     * Vote Poll
+     * 投票する
+     */
+    suspend fun votePoll(
+        id: Identify,
+        choices: List<Int>
     ) {
         throw NotImplementedException()
     }
