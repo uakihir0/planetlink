@@ -17,6 +17,7 @@ import work.socialhub.kmastodon.api.request.accounts.AccountsStatusesRequest
 import work.socialhub.kmastodon.api.request.accounts.AccountsUnblockRequest
 import work.socialhub.kmastodon.api.request.accounts.AccountsUnfollowRequest
 import work.socialhub.kmastodon.api.request.accounts.AccountsUnmuteRequest
+import work.socialhub.kmastodon.api.request.bookmarks.BookmarksBookmarkRequest
 import work.socialhub.kmastodon.api.request.bookmarks.BookmarksGetBookmarksRequest
 import work.socialhub.kmastodon.api.request.bookmarks.BookmarksUnbookmarkRequest
 import work.socialhub.kmastodon.api.request.domainblocks.DomainBlocksBlockDomainRequest
@@ -1413,6 +1414,25 @@ class MastodonAction(
                 service(),
                 paging,
                 status.link
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun bookmarkComment(
+        id: Identify
+    ) {
+        proceedUnit {
+            val response = auth.accessor.bookmarks().bookmark(
+                BookmarksBookmarkRequest().also {
+                    it.id = id.id<String>()
+                }
+            )
+            service().rateLimit.addInfo(
+                SocialActionType.BookmarkComment,
+                MastodonMapper.rateLimit(response)
             )
         }
     }
