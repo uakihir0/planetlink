@@ -1193,7 +1193,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
-    suspend fun votePoll(
+    override suspend fun votePoll(
         id: Identify,
         choices: List<Int>
     ) {
@@ -1390,10 +1390,9 @@ class MastodonAction(
     }
 
     /**
-     * Get user bookmarks.
-     * お気に入り（ブックマーク）一覧を取得
+     * {@inheritDoc}
      */
-    suspend fun userBookmarks(
+    override suspend fun userBookmarkTimeLine(
         paging: Paging
     ): Pageable<Comment> {
         return proceed {
@@ -1419,10 +1418,9 @@ class MastodonAction(
     }
 
     /**
-     * Remove a bookmark.
-     * ブックマークを解除
+     * {@inheritDoc}
      */
-    suspend fun removeBookmark(
+    override suspend fun unbookmarkComment(
         id: Identify
     ) {
         proceedUnit {
@@ -1432,7 +1430,7 @@ class MastodonAction(
                 }
             )
             service().rateLimit.addInfo(
-                SocialActionType.RemoveBookmark,
+                SocialActionType.UnbookmarkComment,
                 MastodonMapper.rateLimit(response)
             )
         }
@@ -1935,7 +1933,9 @@ class MastodonAction(
                 SocialActionType.ReactionComment,
                 SocialActionType.UnreactionComment,
                 SocialActionType.GetUserBookmarks,
-                SocialActionType.RemoveBookmark,
+                SocialActionType.BookmarkComment,
+                SocialActionType.UnbookmarkComment,
+                SocialActionType.VotePoll,
 
                 TimeLineActionType.HomeTimeLine,
                 TimeLineActionType.MentionTimeLine,
@@ -1943,6 +1943,7 @@ class MastodonAction(
                 TimeLineActionType.UserLikeTimeLine,
                 TimeLineActionType.UserMediaTimeLine,
                 TimeLineActionType.SearchTimeLine,
+                TimeLineActionType.UserBookmarkTimeLine,
                 TimeLineActionType.ChannelTimeLine,
                 TimeLineActionType.MessageTimeLine,
 
