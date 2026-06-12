@@ -9,6 +9,8 @@ import work.socialhub.kbsky.BlueskyTypes
 import work.socialhub.kbsky.api.entity.app.bsky.actor.ActorGetPreferencesRequest
 import work.socialhub.kbsky.api.entity.app.bsky.actor.ActorGetProfileRequest
 import work.socialhub.kbsky.api.entity.app.bsky.actor.ActorSearchActorsRequest
+import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedCreateBookmarkRequest
+import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedDeleteBookmarkRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedDeleteLikeRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedDeletePostRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedDeleteRepostRequest
@@ -141,6 +143,8 @@ class BlueskyAction(
                 SocialActionType.UnreactionComment,
                 SocialActionType.GetChannels,
                 SocialActionType.GetNotification,
+                SocialActionType.BookmarkComment,
+                SocialActionType.UnbookmarkComment,
 
                 TimeLineActionType.HomeTimeLine,
                 TimeLineActionType.MentionTimeLine,
@@ -1025,6 +1029,40 @@ class BlueskyAction(
             auth.accessor.feed().deletePost(
                 FeedDeletePostRequest(authProvider())
                     .also { it.uri = id.id!!.value() }
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun bookmarkComment(
+        id: Identify
+    ) {
+        proceedUnit {
+            val c = commentWithCheck(id)
+            auth.accessor.feed().createBookmark(
+                FeedCreateBookmarkRequest(
+                    auth = authProvider(),
+                    uri = c.id!!.value(),
+                    cid = c.cid!!,
+                )
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun unbookmarkComment(
+        id: Identify
+    ) {
+        proceedUnit {
+            auth.accessor.feed().deleteBookmark(
+                FeedDeleteBookmarkRequest(
+                    auth = authProvider(),
+                    uri = id.id!!.value(),
+                )
             )
         }
     }
