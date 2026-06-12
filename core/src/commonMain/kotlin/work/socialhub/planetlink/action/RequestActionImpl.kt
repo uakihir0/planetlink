@@ -144,6 +144,17 @@ open class RequestActionImpl(
     /**
      * {@inheritDoc}
      */
+    override fun userBookmarkTimeLine(): CommentsRequest {
+        return getCommentsRequest(
+            TimeLineActionType.UserBookmarkTimeLine,
+            { paging -> account.action.userBookmarkTimeLine(paging) },
+            SerializedRequest(TimeLineActionType.UserBookmarkTimeLine)
+        )
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     override fun channelTimeLine(
         id: Identify
     ): CommentsRequest {
@@ -218,6 +229,7 @@ open class RequestActionImpl(
                     TimeLineActionType.UserLikeTimeLine -> userLikeTimeLine(checkNotNull(id))
                     TimeLineActionType.UserMediaTimeLine -> userMediaTimeLine(checkNotNull(id))
                     TimeLineActionType.UserCommentTimeLine -> userCommentTimeLine(checkNotNull(id))
+                    TimeLineActionType.UserBookmarkTimeLine -> userBookmarkTimeLine()
                 }.also { it.raw = request }
             }
 

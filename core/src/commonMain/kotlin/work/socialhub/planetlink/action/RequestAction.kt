@@ -72,6 +72,12 @@ interface RequestAction {
     fun searchTimeLine(query: String): CommentsRequest
 
     /**
+     * Get User Bookmark TimeLine
+     * ブックマークしたコメントのタイムラインを取得
+     */
+    fun userBookmarkTimeLine(): CommentsRequest
+
+    /**
      * Get Channel TimeLine
      * チャンネルのタイムラインを取得
      */

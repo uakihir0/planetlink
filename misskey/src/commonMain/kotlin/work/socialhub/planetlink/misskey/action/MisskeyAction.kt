@@ -11,6 +11,8 @@ import work.socialhub.kmisskey.api.request.files.FilesCreateRequest
 import work.socialhub.kmisskey.api.request.following.FollowingCreateRequest
 import work.socialhub.kmisskey.api.request.following.FollowingDeleteRequest
 import work.socialhub.kmisskey.api.request.hashtags.HashtagsTrendRequest
+import work.socialhub.kmisskey.api.request.favorites.FavoritesCreateRequest
+import work.socialhub.kmisskey.api.request.favorites.FavoritesDeleteRequest
 import work.socialhub.kmisskey.api.request.i.IFavoritesRequest
 import work.socialhub.kmisskey.api.request.i.INotificationsRequest
 import work.socialhub.kmisskey.api.request.i.IRequest
@@ -119,6 +121,9 @@ class MisskeyAction(
                 SocialActionType.ReactionComment,
                 SocialActionType.UnreactionComment,
                 SocialActionType.GetNotification,
+                SocialActionType.BookmarkComment,
+                SocialActionType.UnbookmarkComment,
+                SocialActionType.VotePoll,
 
                 TimeLineActionType.HomeTimeLine,
                 TimeLineActionType.MentionTimeLine,
@@ -1055,7 +1060,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
-    suspend fun votePoll(
+    override suspend fun votePoll(
         id: Identify,
         choices: List<Int>
     ) {
@@ -1073,6 +1078,39 @@ class MisskeyAction(
                     }
                 )
             }
+        }
+    }
+
+    // ============================================================== //
+    // Bookmark (Favorites)
+    // ============================================================== //
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun bookmarkComment(
+        id: Identify
+    ) {
+        proceedUnit {
+            auth.accessor.favorites().create(
+                FavoritesCreateRequest().also {
+                    it.noteId = id.id<String>()
+                }
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun unbookmarkComment(
+        id: Identify
+    ) {
+        proceedUnit {
+            auth.accessor.favorites().delete(
+                FavoritesDeleteRequest().also {
+                    it.noteId = id.id<String>()
+                }
+            )
         }
     }
 

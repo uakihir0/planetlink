@@ -43,5 +43,9 @@ enum class SocialActionType : ActionType {
 
     // Bookmarks
     GetUserBookmarks,
-    RemoveBookmark,
+    BookmarkComment,
+    UnbookmarkComment,
+
+    // Poll
+    VotePoll,
 }
