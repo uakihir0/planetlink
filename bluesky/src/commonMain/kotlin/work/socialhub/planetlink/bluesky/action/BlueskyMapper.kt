@@ -52,6 +52,7 @@ import work.socialhub.planetlink.model.common.AttributedKind
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.utils.CollectionUtil.takeUntil
 import kotlin.math.max
+import kotlin.math.min
 
 object BlueskyMapper {
 
@@ -335,7 +336,7 @@ object BlueskyMapper {
 
                     // Facet の前を Text として取得
                     if (readIndex < index.byteStart!!) {
-                        val len: Int = (index.byteStart!! - readIndex)
+                        val len: Int = min((index.byteStart!! - readIndex), bytes.size)
                         val beforeBytes = bytes.copyOfRange(0, len)
 
                         // readIndex = index.byteStart!!
@@ -355,7 +356,7 @@ object BlueskyMapper {
                     }
 
                     // Facet の部分を切り出して作成
-                    val len = (index.byteEnd!! - index.byteStart!!)
+                    val len = min((index.byteEnd!! - index.byteStart!!), bytes.size)
                     val targetByte = bytes.copyOfRange(0, len)
 
                     readIndex = index.byteEnd!!
