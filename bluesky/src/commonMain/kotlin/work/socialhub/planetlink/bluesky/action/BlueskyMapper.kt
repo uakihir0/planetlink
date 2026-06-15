@@ -30,6 +30,7 @@ import work.socialhub.kbsky.model.app.bsky.feed.FeedRepost
 import work.socialhub.kbsky.model.app.bsky.notification.NotificationListNotificationsNotification
 import work.socialhub.kbsky.model.app.bsky.richtext.RichtextFacetLink
 import work.socialhub.kbsky.model.app.bsky.richtext.RichtextFacetMention
+import work.socialhub.kbsky.model.app.bsky.richtext.RichtextFacetTag
 import work.socialhub.planetlink.bluesky.define.BlueskyNotificationType
 import work.socialhub.planetlink.bluesky.model.BlueskyChannel
 import work.socialhub.planetlink.bluesky.model.BlueskyComment
@@ -376,6 +377,13 @@ object BlueskyMapper {
                         val element = AttributedItem()
                         element.kind = AttributedKind.LINK
                         element.expandedText = union.uri
+                        element.displayText = str
+                        elements.add(element)
+                    } else if (union is RichtextFacetTag) {
+                        val str = targetByte.decodeToString()
+                        val element = AttributedItem()
+                        element.kind = AttributedKind.HASH_TAG
+                        element.expandedText = union.tag
                         element.displayText = str
                         elements.add(element)
                     } else {
