@@ -90,6 +90,7 @@ import work.socialhub.planetlink.mastodon.model.MastodonThread
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
+import work.socialhub.planetlink.utils.ExceptionHandler
 import work.socialhub.planetlink.model.event.IdentifyEvent
 import work.socialhub.planetlink.model.event.NotificationEvent
 import work.socialhub.planetlink.model.event.UserEvent
@@ -1901,30 +1902,21 @@ class MastodonAction(
     // Utils
     // ============================================================== //
     private suspend fun <T> proceed(runner: suspend () -> T): T {
-        try {
-            return runner()
-        } catch (e: Exception) {
-            throw handleException(e)
-        }
+        return ExceptionHandler.proceed(
+            serviceName = "mastodon",
+            statusExtractor = { e -> (e as? MastodonException)?.status },
+            bodyExtractor = { e -> (e as? MastodonException)?.body },
+            runner = runner,
+        )
     }
 
     private suspend fun proceedUnit(runner: suspend () -> Unit) {
-        try {
-            runner()
-        } catch (e: Exception) {
-            throw handleException(e)
-        }
-    }
-
-    private fun handleException(
-        e: Exception
-    ): SocialHubException {
-
-        if ((e is MastodonException) && (e.message != null)) {
-            return SocialHubException(e.message, e)
-            // TODO: エラーメッセージが設定されているエラーである場合
-        }
-        return SocialHubException(e)
+        ExceptionHandler.proceedUnit(
+            serviceName = "mastodon",
+            statusExtractor = { e -> (e as? MastodonException)?.status },
+            bodyExtractor = { e -> (e as? MastodonException)?.body },
+            runner = runner,
+        )
     }
 
     companion object {

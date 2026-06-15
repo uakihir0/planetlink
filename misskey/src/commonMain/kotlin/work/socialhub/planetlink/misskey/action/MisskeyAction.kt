@@ -84,6 +84,7 @@ import work.socialhub.planetlink.misskey.model.MisskeyPoll
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
+import work.socialhub.planetlink.utils.ExceptionHandler
 import work.socialhub.planetlink.model.event.NotificationEvent
 import work.socialhub.planetlink.model.event.UserEvent
 import work.socialhub.planetlink.model.paging.OffsetPaging
@@ -1567,33 +1568,20 @@ class MisskeyAction(
     // Utils
     // ============================================================== //
     private suspend fun <T> proceed(runner: suspend () -> T): T {
-        try {
-            return runner()
-        } catch (e: Exception) {
-            throw handleException(e)
-        }
+        return ExceptionHandler.proceed(
+            serviceName = "misskey",
+            statusExtractor = { e -> (e as? MisskeyException)?.status },
+            bodyExtractor = { e -> (e as? MisskeyException)?.body },
+            runner = runner,
+        )
     }
 
     private suspend fun proceedUnit(runner: suspend () -> Unit) {
-        try {
-            runner()
-        } catch (e: Exception) {
-            throw handleException(e)
-        }
-    }
-
-    private fun handleException(
-        e: Exception
-    ): SocialHubException {
-        if ((e is MisskeyException) && (e.message != null)) {
-            return SocialHubException(e.message, e)
-
-            // エラーメッセージが設定されているエラーである場合
-            // if (me.getError() != null && me.getError().getError() != null) {
-            //    val detail: ErrorDetail = me.getError().getError()
-            //    se.setError(java.lang.Error(detail.getMessage()))
-            // }
-        }
-        throw SocialHubException(e)
+        ExceptionHandler.proceedUnit(
+            serviceName = "misskey",
+            statusExtractor = { e -> (e as? MisskeyException)?.status },
+            bodyExtractor = { e -> (e as? MisskeyException)?.body },
+            runner = runner,
+        )
     }
 }

@@ -26,8 +26,10 @@ import work.socialhub.planetlink.define.action.TimeLineActionType
 import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.paging.DatePaging
+import work.socialhub.kslack.api.methods.SlackApiException
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
+import work.socialhub.planetlink.utils.ExceptionHandler
 import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.slack.model.*
 import kotlin.js.JsExport
@@ -684,22 +686,20 @@ class SlackAction(
     private fun service(): Service = account.service
 
     private suspend fun <T> proceed(runner: suspend () -> T): T {
-        return try {
-            runner()
-        } catch (e: SocialHubException) {
-            throw e
-        } catch (e: Exception) {
-            throw SocialHubException(e.message, e)
-        }
+        return ExceptionHandler.proceed(
+            serviceName = "slack",
+            statusExtractor = { e -> (e as? SlackApiException)?.response?.status },
+            bodyExtractor = { e -> (e as? SlackApiException)?.response?.stringBody },
+            runner = runner,
+        )
     }
 
     private suspend fun proceedUnit(runner: suspend () -> Unit) {
-        try {
-            runner()
-        } catch (e: SocialHubException) {
-            throw e
-        } catch (e: Exception) {
-            throw SocialHubException(e.message, e)
-        }
+        ExceptionHandler.proceedUnit(
+            serviceName = "slack",
+            statusExtractor = { e -> (e as? SlackApiException)?.response?.status },
+            bodyExtractor = { e -> (e as? SlackApiException)?.response?.stringBody },
+            runner = runner,
+        )
     }
 }

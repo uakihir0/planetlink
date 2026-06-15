@@ -26,8 +26,10 @@ import work.socialhub.planetlink.define.action.TimeLineActionType
 import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.common.AttributedString
+import work.socialhub.kmatrix.MatrixException
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
+import work.socialhub.planetlink.utils.ExceptionHandler
 import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.matrix.model.MatrixComment
 import work.socialhub.planetlink.matrix.model.MatrixPaging
@@ -443,17 +445,21 @@ class MatrixAction(
     private fun service(): Service = account.service
 
     private suspend fun <T> proceed(runner: suspend () -> T): T {
-        return try {
-            runner()
-        } catch (e: SocialHubException) { throw e }
-        catch (e: Exception) { throw SocialHubException(e.message, e) }
+        return ExceptionHandler.proceed(
+            serviceName = "matrix",
+            statusExtractor = { e -> (e as? MatrixException)?.status },
+            bodyExtractor = { e -> (e as? MatrixException)?.body },
+            runner = runner,
+        )
     }
 
     private suspend fun proceedUnit(runner: suspend () -> Unit) {
-        try {
-            runner()
-        } catch (e: SocialHubException) { throw e }
-        catch (e: Exception) { throw SocialHubException(e.message, e) }
+        ExceptionHandler.proceedUnit(
+            serviceName = "matrix",
+            statusExtractor = { e -> (e as? MatrixException)?.status },
+            bodyExtractor = { e -> (e as? MatrixException)?.body },
+            runner = runner,
+        )
     }
 
     private data class Permalink(val roomId: String, val eventId: String)

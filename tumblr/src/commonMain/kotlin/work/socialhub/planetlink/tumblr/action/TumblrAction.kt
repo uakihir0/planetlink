@@ -36,6 +36,7 @@ import work.socialhub.planetlink.model.Thread
 import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
+import work.socialhub.planetlink.utils.ExceptionHandler
 import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.model.support.TupleIdentify
 import work.socialhub.planetlink.tumblr.define.TumblrIconSize
@@ -956,29 +957,20 @@ class TumblrAction(
     // Utils
     // ============================================================== //
     private suspend fun <T> proceed(runner: suspend () -> T): T {
-        try {
-            return runner()
-        } catch (e: Exception) {
-            throw handleException(e)
-        }
+        return ExceptionHandler.proceed(
+            serviceName = "tumblr",
+            statusExtractor = { e -> (e as? TumblrException)?.status },
+            bodyExtractor = { e -> (e as? TumblrException)?.body },
+            runner = runner,
+        )
     }
 
     private suspend fun proceedUnit(runner: suspend () -> Unit) {
-        try {
-            runner()
-        } catch (e: Exception) {
-            throw handleException(e)
-        }
-    }
-
-    private fun handleException(
-        e: Exception
-    ): SocialHubException {
-
-        if ((e is TumblrException) && (e.message != null)) {
-            return SocialHubException(e.message, e)
-            // TODO: エラーメッセージが設定されているエラーである場合
-        }
-        return SocialHubException(e)
+        ExceptionHandler.proceedUnit(
+            serviceName = "tumblr",
+            statusExtractor = { e -> (e as? TumblrException)?.status },
+            bodyExtractor = { e -> (e as? TumblrException)?.body },
+            runner = runner,
+        )
     }
 }

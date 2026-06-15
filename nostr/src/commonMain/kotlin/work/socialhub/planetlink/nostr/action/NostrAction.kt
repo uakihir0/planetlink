@@ -29,6 +29,7 @@ import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
+import work.socialhub.planetlink.utils.ExceptionHandler
 import net.socialhub.planetlink.model.event.CommentEvent
 import work.socialhub.planetlink.model.event.NotificationEvent
 import work.socialhub.planetlink.model.request.CommentForm
@@ -760,22 +761,16 @@ class NostrAction(
     private fun service(): Service = account.service
 
     private suspend fun <T> proceed(runner: suspend () -> T): T {
-        return try {
-            runner()
-        } catch (e: SocialHubException) {
-            throw e
-        } catch (e: Exception) {
-            throw SocialHubException(e.message, e)
-        }
+        return ExceptionHandler.proceed(
+            serviceName = "nostr",
+            runner = runner,
+        )
     }
 
     private suspend fun proceedUnit(runner: suspend () -> Unit) {
-        try {
-            runner()
-        } catch (e: SocialHubException) {
-            throw e
-        } catch (e: Exception) {
-            throw SocialHubException(e.message, e)
-        }
+        ExceptionHandler.proceedUnit(
+            serviceName = "nostr",
+            runner = runner,
+        )
     }
 }
