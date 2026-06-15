@@ -53,6 +53,7 @@ kotlin {
             implementation(project(":core"))
             implementation(libs.ktor.core)
             implementation(libs.kslack.core)
+            implementation(libs.khttpclient)
             implementation(libs.datetime)
         }
 
