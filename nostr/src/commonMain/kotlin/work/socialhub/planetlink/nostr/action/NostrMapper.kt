@@ -15,6 +15,8 @@ import work.socialhub.planetlink.model.Reaction
 import work.socialhub.planetlink.model.Relationship
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.User
+import work.socialhub.planetlink.model.common.AttributedItem
+import work.socialhub.planetlink.model.common.AttributedKind
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.nostr.model.NostrComment
 import work.socialhub.planetlink.nostr.model.NostrPaging
@@ -65,7 +67,7 @@ object NostrMapper {
                 this.user = user(author, service)
             }
 
-            text = AttributedString.plain(note.content)
+            text = attributedText(note)
 
             replyCount = note.replyCount
             likeCount = note.likeCount
@@ -170,5 +172,28 @@ object NostrMapper {
         model.entities = users.map { user(it, service) }
         model.paging = NostrPaging.fromPaging(paging)
         return model
+    }
+
+    private fun attributedText(note: NostrNote): AttributedString {
+        val eventHashtags = note.event.tags
+            .filter { it.size >= 2 && it[0] == "t" }
+            .map { it[1].lowercase() }
+            .toSet()
+
+        val attributed = AttributedString.plain(note.content)
+        if (eventHashtags.isEmpty()) return attributed
+
+        val validated = attributed.elements.map { elem ->
+            if (elem.kind == AttributedKind.HASH_TAG && elem is AttributedItem) {
+                val tagText = elem.displayText.removePrefix("#").removePrefix("＃").lowercase()
+                if (tagText in eventHashtags) elem
+                else AttributedItem().also {
+                    it.kind = AttributedKind.PLAIN
+                    it.displayText = elem.displayText
+                    it.expandedText = elem.displayText
+                }
+            } else elem
+        }
+        return AttributedString(validated)
     }
 }
