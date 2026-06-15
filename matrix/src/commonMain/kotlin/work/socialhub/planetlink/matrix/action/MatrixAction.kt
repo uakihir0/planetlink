@@ -426,13 +426,15 @@ class MatrixAction(
     }
 
     override suspend fun setHomeTimeLineStream(callback: EventCallback): Stream {
-        val kmatrixStream = MatrixStreamFactory.instance(
-            auth.host,
-            auth.accessToken ?: ""
-        )
-        val stream = MatrixStream(kmatrixStream, callback)
-        stream.open()
-        return stream
+        return proceed {
+            val kmatrixStream = MatrixStreamFactory.instance(
+                auth.host,
+                auth.accessToken ?: ""
+            )
+            val stream = MatrixStream(kmatrixStream, callback)
+            stream.open()
+            stream
+        }
     }
 
     override suspend fun setNotificationStream(callback: EventCallback): Stream {

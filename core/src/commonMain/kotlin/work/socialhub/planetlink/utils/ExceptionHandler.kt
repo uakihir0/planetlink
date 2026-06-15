@@ -1,6 +1,7 @@
 package work.socialhub.planetlink.utils
 
 import io.ktor.utils.io.errors.IOException
+import kotlin.coroutines.cancellation.CancellationException
 import work.socialhub.planetlink.define.ErrorType
 import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.error.*
@@ -94,7 +95,10 @@ object ExceptionHandler {
     ): T {
         try {
             return runner()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: SocialHubException) {
+            if (e.serviceType == null) e.serviceType = serviceType
             throw e
         } catch (e: Exception) {
             throw classify(
@@ -114,7 +118,10 @@ object ExceptionHandler {
     ) {
         try {
             runner()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: SocialHubException) {
+            if (e.serviceType == null) e.serviceType = serviceType
             throw e
         } catch (e: Exception) {
             throw classify(

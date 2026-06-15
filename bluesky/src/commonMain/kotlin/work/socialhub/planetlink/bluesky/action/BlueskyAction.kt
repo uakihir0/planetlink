@@ -1310,7 +1310,11 @@ class BlueskyAction(
                         override fun onError(e: Exception) {
                             if (callback is ErrorCallback) {
                                 val classified = if (e is SocialHubException) e
-                                    else ExceptionHandler.classify(e, ServiceType.Bluesky)
+                                    else ExceptionHandler.classify(e, ServiceType.Bluesky,
+                                        statusCode = (e as? ATProtocolException)?.status
+                                            ?: (e.cause as? ATProtocolException)?.status,
+                                        responseBody = (e as? ATProtocolException)?.body
+                                            ?: (e.cause as? ATProtocolException)?.body)
                                 callback.onError(classified)
                             }
                         }
@@ -1399,7 +1403,11 @@ class BlueskyAction(
                         override fun onError(e: Exception) {
                             if (callback is ErrorCallback) {
                                 val classified = if (e is SocialHubException) e
-                                    else ExceptionHandler.classify(e, ServiceType.Bluesky)
+                                    else ExceptionHandler.classify(e, ServiceType.Bluesky,
+                                        statusCode = (e as? ATProtocolException)?.status
+                                            ?: (e.cause as? ATProtocolException)?.status,
+                                        responseBody = (e as? ATProtocolException)?.body
+                                            ?: (e.cause as? ATProtocolException)?.body)
                                 callback.onError(classified)
                             }
                         }
