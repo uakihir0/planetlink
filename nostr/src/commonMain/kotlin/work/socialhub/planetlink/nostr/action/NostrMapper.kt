@@ -181,7 +181,6 @@ object NostrMapper {
             .toSet()
 
         val attributed = AttributedString.plain(note.content)
-        if (eventHashtags.isEmpty()) return attributed
 
         val validated = attributed.elements.map { elem ->
             if (elem.kind == AttributedKind.HASH_TAG && elem is AttributedItem) {
