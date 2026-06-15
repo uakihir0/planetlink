@@ -4,7 +4,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlin.time.Clock
-import work.socialhub.kbsky.BlueskyException
+import work.socialhub.kbsky.ATProtocolException
 import work.socialhub.kbsky.BlueskyTypes
 import work.socialhub.kbsky.api.entity.app.bsky.actor.ActorGetPreferencesRequest
 import work.socialhub.kbsky.api.entity.app.bsky.actor.ActorGetProfileRequest
@@ -103,7 +103,9 @@ import work.socialhub.planetlink.model.Thread
 import work.socialhub.planetlink.model.Trend
 import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.error.NotSupportedException
+import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.error.SocialHubException
+import work.socialhub.planetlink.utils.ExceptionHandler
 import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.utils.CollectionUtil.takeUntil
 import kotlin.js.JsExport
@@ -812,7 +814,9 @@ class BlueskyAction(
                     auth.accessor.feed().post(builder)
 
                 } catch (e: Exception) {
-                    throw handleException(e)
+                    throw ExceptionHandler.classify(e, ServiceType.Bluesky,
+                        statusCode = (e as? ATProtocolException)?.status,
+                        responseBody = (e as? ATProtocolException)?.body)
                 }
             }
         }
@@ -860,30 +864,24 @@ class BlueskyAction(
         url: String
     ): Comment {
         return proceed {
-            try {
-                val handle = Utils.userHandleFromUrl(url)
-                val rkey = Utils.userRkeyFromUrl(url)
+            val handle = Utils.userHandleFromUrl(url)
+            val rkey = Utils.userRkeyFromUrl(url)
 
-                val response = auth.accessor.identity().resolveHandle(
-                    IdentityResolveHandleRequest().handle(handle)
-                )
+            val response = auth.accessor.identity().resolveHandle(
+                IdentityResolveHandleRequest().handle(handle)
+            )
 
-                val did = response.data.did
-                val uri = "at://$did/app.bsky.feed.post/$rkey"
+            val did = response.data.did
+            val uri = "at://$did/app.bsky.feed.post/$rkey"
 
-                // Fetch post directly to avoid broken virtual suspend bridge
-                val posts = auth.accessor.feed().getPosts(
-                    FeedGetPostsRequest(authProvider()).also {
-                        it.uris = listOf(uri)
-                    }
-                )
-                return@proceed Mapper.simpleComment(
-                    posts.data.posts[0], service()
-                )
-
-            } catch (e: Exception) {
-                throw handleException(e)
-            }
+            val posts = auth.accessor.feed().getPosts(
+                FeedGetPostsRequest(authProvider()).also {
+                    it.uris = listOf(uri)
+                }
+            )
+            Mapper.simpleComment(
+                posts.data.posts[0], service()
+            )
         }
     }
 
@@ -1311,7 +1309,13 @@ class BlueskyAction(
                     client.errorCallback(object : work.socialhub.kbsky.stream.entity.callback.ErrorCallback {
                         override fun onError(e: Exception) {
                             if (callback is ErrorCallback) {
-                                callback.onError(SocialHubException(e))
+                                val classified = if (e is SocialHubException) e
+                                    else ExceptionHandler.classify(e, ServiceType.Bluesky,
+                                        statusCode = (e as? ATProtocolException)?.status
+                                            ?: (e.cause as? ATProtocolException)?.status,
+                                        responseBody = (e as? ATProtocolException)?.body
+                                            ?: (e.cause as? ATProtocolException)?.body)
+                                callback.onError(classified)
                             }
                         }
                     })
@@ -1398,7 +1402,13 @@ class BlueskyAction(
                     client.errorCallback(object : work.socialhub.kbsky.stream.entity.callback.ErrorCallback {
                         override fun onError(e: Exception) {
                             if (callback is ErrorCallback) {
-                                callback.onError(SocialHubException(e))
+                                val classified = if (e is SocialHubException) e
+                                    else ExceptionHandler.classify(e, ServiceType.Bluesky,
+                                        statusCode = (e as? ATProtocolException)?.status
+                                            ?: (e.cause as? ATProtocolException)?.status,
+                                        responseBody = (e as? ATProtocolException)?.body
+                                            ?: (e.cause as? ATProtocolException)?.body)
+                                callback.onError(classified)
                             }
                         }
                     })
@@ -1762,33 +1772,38 @@ class BlueskyAction(
     // Utils
     // ============================================================== //
     private suspend fun <T> proceed(runner: suspend () -> T): T {
-        try {
-            return runner()
-        } catch (e: Exception) {
-            throw handleException(e)
-        }
+        return ExceptionHandler.proceed(
+            serviceType = ServiceType.Bluesky,
+            statusExtractor = { e ->
+                (e as? ATProtocolException)?.status
+                    ?: (e.cause as? ATProtocolException)?.status
+            },
+            bodyExtractor = { e ->
+                (e as? ATProtocolException)?.body
+                    ?: (e.cause as? ATProtocolException)?.body
+            },
+            runner = runner,
+        )
     }
 
     private suspend fun proceedUnit(runner: suspend () -> Unit) {
-        try {
-            runner()
-        } catch (e: Exception) {
-            throw handleException(e)
-        }
+        ExceptionHandler.proceedUnit(
+            serviceType = ServiceType.Bluesky,
+            statusExtractor = { e ->
+                (e as? ATProtocolException)?.status
+                    ?: (e.cause as? ATProtocolException)?.status
+            },
+            bodyExtractor = { e ->
+                (e as? ATProtocolException)?.body
+                    ?: (e.cause as? ATProtocolException)?.body
+            },
+            runner = runner,
+        )
     }
 
     class NotificationStructure {
         var notifications: List<NotificationListNotificationsNotification>? = null
         var cursor: String? = null
         var first: String? = null
-    }
-
-    private fun handleException(
-        e: Exception
-    ): SocialHubException {
-        if ((e is BlueskyException) && (e.message != null)) {
-            return SocialHubException(e.message, e)
-        }
-        throw SocialHubException(e)
     }
 }

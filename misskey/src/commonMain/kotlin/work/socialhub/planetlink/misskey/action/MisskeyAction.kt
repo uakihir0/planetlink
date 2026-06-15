@@ -51,7 +51,7 @@ import work.socialhub.kmisskey.entity.Note
 import work.socialhub.kmisskey.entity.constant.NotificationType
 import work.socialhub.kmisskey.stream.MisskeyStream
 import work.socialhub.kmisskey.stream.callback.ClosedCallback
-import work.socialhub.kmisskey.stream.callback.ErrorCallback
+import work.socialhub.kmisskey.stream.callback.ErrorCallback as KmisskeyErrorCallback
 import work.socialhub.kmisskey.stream.callback.FollowedCallback
 import work.socialhub.kmisskey.stream.callback.MentionCallback
 import work.socialhub.kmisskey.stream.callback.NotificationCallback
@@ -83,7 +83,9 @@ import work.socialhub.planetlink.misskey.model.MisskeyPaging
 import work.socialhub.planetlink.misskey.model.MisskeyPoll
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.error.NotSupportedException
+import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.error.SocialHubException
+import work.socialhub.planetlink.utils.ExceptionHandler
 import work.socialhub.planetlink.model.event.NotificationEvent
 import work.socialhub.planetlink.model.event.UserEvent
 import work.socialhub.planetlink.model.paging.OffsetPaging
@@ -1476,7 +1478,7 @@ class MisskeyAction(
         val runnable: suspend () -> Unit
     ) : OpenedCallback,
         ClosedCallback,
-        ErrorCallback {
+        KmisskeyErrorCallback {
 
         override fun onOpened() {
             if (listener is ConnectCallback) {
@@ -1494,8 +1496,12 @@ class MisskeyAction(
         }
 
         override fun onError(e: Exception) {
-            if (listener is ErrorCallback) {
-                listener.onError(e)
+            if (listener is work.socialhub.planetlink.action.callback.lifecycle.ErrorCallback) {
+                val classified = if (e is SocialHubException) e
+                    else ExceptionHandler.classify(e, ServiceType.Misskey,
+                        statusCode = (e as? MisskeyException)?.status,
+                        responseBody = (e as? MisskeyException)?.body)
+                listener.onError(classified)
             }
         }
     }
@@ -1567,33 +1573,20 @@ class MisskeyAction(
     // Utils
     // ============================================================== //
     private suspend fun <T> proceed(runner: suspend () -> T): T {
-        try {
-            return runner()
-        } catch (e: Exception) {
-            throw handleException(e)
-        }
+        return ExceptionHandler.proceed(
+            serviceType = ServiceType.Misskey,
+            statusExtractor = { e -> (e as? MisskeyException)?.status },
+            bodyExtractor = { e -> (e as? MisskeyException)?.body },
+            runner = runner,
+        )
     }
 
     private suspend fun proceedUnit(runner: suspend () -> Unit) {
-        try {
-            runner()
-        } catch (e: Exception) {
-            throw handleException(e)
-        }
-    }
-
-    private fun handleException(
-        e: Exception
-    ): SocialHubException {
-        if ((e is MisskeyException) && (e.message != null)) {
-            return SocialHubException(e.message, e)
-
-            // エラーメッセージが設定されているエラーである場合
-            // if (me.getError() != null && me.getError().getError() != null) {
-            //    val detail: ErrorDetail = me.getError().getError()
-            //    se.setError(java.lang.Error(detail.getMessage()))
-            // }
-        }
-        throw SocialHubException(e)
+        ExceptionHandler.proceedUnit(
+            serviceType = ServiceType.Misskey,
+            statusExtractor = { e -> (e as? MisskeyException)?.status },
+            bodyExtractor = { e -> (e as? MisskeyException)?.body },
+            runner = runner,
+        )
     }
 }

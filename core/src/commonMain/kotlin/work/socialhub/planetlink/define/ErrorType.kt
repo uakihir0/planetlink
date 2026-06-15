@@ -16,7 +16,23 @@ enum class ErrorType(
     RATE_LIMIT_EXCEEDED(
         "Rate limit exceeded, please try again in a moment.",
         "時間当たりのリクエストの上限に達しました。時間をおいて再度お試しください。"
-    )
+    ),
+    AUTH_FAILED(
+        "Authentication failed. Please re-authenticate.",
+        "認証に失敗しました。再認証してください。"
+    ),
+    NOT_FOUND(
+        "The requested resource was not found.",
+        "リクエストされたリソースが見つかりませんでした。"
+    ),
+    NETWORK_ERROR(
+        "Network error. Please check your connection.",
+        "ネットワークエラーです。接続を確認してください。"
+    ),
+    SERVER_ERROR(
+        "Server error. Please try again later.",
+        "サーバーエラーです。しばらくしてから再試行してください。"
+    ),
     ;
 
     fun message(languageType: LanguageType): String {
