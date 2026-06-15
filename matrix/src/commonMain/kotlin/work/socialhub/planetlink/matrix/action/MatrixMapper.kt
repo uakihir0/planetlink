@@ -6,6 +6,7 @@ import work.socialhub.kmatrix.api.response.notifications.NotificationsGetRespons
 import work.socialhub.kmatrix.api.response.rooms.RoomEvent
 import work.socialhub.kmatrix.api.response.rooms.RoomsGetJoinedMembersResponse
 import work.socialhub.kmatrix.api.response.profile.ProfileGetProfileResponse
+import work.socialhub.planetlink.define.AttributedType as AttributedTypeDef
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.Channel
 import work.socialhub.planetlink.model.Comment
@@ -20,6 +21,12 @@ import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.matrix.model.MatrixComment
 import work.socialhub.planetlink.matrix.model.MatrixPaging
 import work.socialhub.planetlink.matrix.model.MatrixUser
+
+private val MATRIX_KINDS = listOf(
+    AttributedTypeDef.link,
+    AttributedTypeDef.email,
+    AttributedTypeDef.phone,
+)
 
 object MatrixMapper {
 
@@ -74,7 +81,7 @@ object MatrixMapper {
             id = ID(event.eventId)
             createAt = Instant.fromEpochMilliseconds(event.originServerTs)
             this.msgtype = msgtype
-            text = body?.let { AttributedString.plain(it) }
+            text = body?.let { AttributedString.plain(it, MATRIX_KINDS) }
 
             if (url != null && (msgtype == "m.image" || msgtype == "m.file" || msgtype == "m.video")) {
                 medias = listOf(

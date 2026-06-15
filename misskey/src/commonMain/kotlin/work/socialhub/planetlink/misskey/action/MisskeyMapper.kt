@@ -15,7 +15,10 @@ import work.socialhub.planetlink.misskey.model.MisskeyPaging
 import work.socialhub.planetlink.misskey.model.MisskeyPoll
 import work.socialhub.planetlink.misskey.model.MisskeyUser
 import work.socialhub.planetlink.model.*
+import work.socialhub.planetlink.model.common.AttributedElement
 import work.socialhub.planetlink.model.common.AttributedFiled
+import work.socialhub.planetlink.model.common.AttributedItem
+import work.socialhub.planetlink.model.common.AttributedKind
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.model.support.Color
 import work.socialhub.planetlink.model.support.PollOption
@@ -118,12 +121,12 @@ object MisskeyMapper {
 
             // 注釈の設定
             note.cw?.let { cw ->
-                c.spoilerText = AttributedString.plain(cw)
+                c.spoilerText = validateHashtags(AttributedString.plain(cw), note.tags)
                     .also { it.addEmojiElement(selectEmojis(emojis, cw, host)) }
             }
 
             // 本文の設定
-            c.text = AttributedString.plain(note.text)
+            c.text = validateHashtags(AttributedString.plain(note.text), note.tags)
                 .also { it.addEmojiElement(selectEmojis(emojis, note.text, host)) }
 
             // メディアの設定
@@ -555,5 +558,25 @@ object MisskeyMapper {
             c = c.substring(0, c.length - 2)
         }
         return "https://$host/emoji/$c.webp"
+    }
+
+    private fun validateHashtags(
+        attributed: AttributedString,
+        serverTags: Array<String>?
+    ): AttributedString {
+        if (serverTags == null) return attributed
+        val tagSet = serverTags.map { it.lowercase() }.toSet()
+        val validated = attributed.elements.map { elem ->
+            if (elem.kind == AttributedKind.HASH_TAG && elem is AttributedItem) {
+                val tagText = elem.displayText.removePrefix("#").removePrefix("＃").lowercase()
+                if (tagText in tagSet) elem
+                else AttributedItem().also {
+                    it.kind = AttributedKind.PLAIN
+                    it.displayText = elem.displayText
+                    it.expandedText = elem.displayText
+                }
+            } else elem
+        }
+        return AttributedString(validated)
     }
 }

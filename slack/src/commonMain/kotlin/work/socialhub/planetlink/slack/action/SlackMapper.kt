@@ -9,6 +9,7 @@ import work.socialhub.kslack.api.methods.response.users.UsersInfoResponse
 import work.socialhub.kslack.entity.Conversation
 import work.socialhub.kslack.entity.message.Message
 import work.socialhub.kslack.entity.file.File
+import work.socialhub.planetlink.define.AttributedType as AttributedTypeDef
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.define.emoji.EmojiCategoryType
 import work.socialhub.planetlink.model.*
@@ -17,6 +18,12 @@ import work.socialhub.planetlink.model.common.AttributedItem
 import work.socialhub.planetlink.model.common.AttributedKind
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.slack.model.*
+
+private val SLACK_KINDS = listOf(
+    AttributedTypeDef.link,
+    AttributedTypeDef.email,
+    AttributedTypeDef.phone,
+)
 
 /** Slack エンティティのマッピング */
 object SlackMapper {
@@ -101,7 +108,7 @@ object SlackMapper {
             createAt = getDateFromTimeStamp(message.ts)
             this.user = user
 
-            text = AttributedString.plain(message.text ?: "")
+            text = AttributedString.plain(message.text ?: "", SLACK_KINDS)
 
             this.channelId = channel
             if (message.channel != null) {
