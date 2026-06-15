@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.model.error
 
+import work.socialhub.planetlink.define.ServiceType
 import kotlin.js.JsExport
 
 @JsExport
@@ -7,7 +8,7 @@ open class SocialHubException : RuntimeException {
 
     var error: SocialHubError? = null
 
-    var serviceName: String? = null
+    var serviceType: ServiceType? = null
 
     @JsExport.Ignore
     constructor() : super()

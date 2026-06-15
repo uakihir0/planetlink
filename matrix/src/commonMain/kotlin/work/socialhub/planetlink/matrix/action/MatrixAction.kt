@@ -27,6 +27,7 @@ import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.kmatrix.MatrixException
+import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.utils.ExceptionHandler
@@ -446,7 +447,7 @@ class MatrixAction(
 
     private suspend fun <T> proceed(runner: suspend () -> T): T {
         return ExceptionHandler.proceed(
-            serviceName = "matrix",
+            serviceType = ServiceType.Matrix,
             statusExtractor = { e -> (e as? MatrixException)?.status },
             bodyExtractor = { e -> (e as? MatrixException)?.body },
             runner = runner,
@@ -455,7 +456,7 @@ class MatrixAction(
 
     private suspend fun proceedUnit(runner: suspend () -> Unit) {
         ExceptionHandler.proceedUnit(
-            serviceName = "matrix",
+            serviceType = ServiceType.Matrix,
             statusExtractor = { e -> (e as? MatrixException)?.status },
             bodyExtractor = { e -> (e as? MatrixException)?.body },
             runner = runner,

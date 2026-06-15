@@ -89,6 +89,7 @@ import work.socialhub.planetlink.mastodon.model.MastodonStream
 import work.socialhub.planetlink.mastodon.model.MastodonThread
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.error.NotSupportedException
+import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.utils.ExceptionHandler
 import work.socialhub.planetlink.model.event.IdentifyEvent
@@ -1840,7 +1841,11 @@ class MastodonAction(
 
         override fun onError(e: Exception) {
             if (listener is ErrorCallback) {
-                listener.onError(SocialHubException(e))
+                val classified = if (e is SocialHubException) e
+                    else ExceptionHandler.classify(e, ServiceType.Mastodon,
+                        statusCode = (e as? MastodonException)?.status,
+                        responseBody = (e as? MastodonException)?.body)
+                listener.onError(classified)
             }
         }
 
@@ -1903,7 +1908,7 @@ class MastodonAction(
     // ============================================================== //
     private suspend fun <T> proceed(runner: suspend () -> T): T {
         return ExceptionHandler.proceed(
-            serviceName = "mastodon",
+            serviceType = ServiceType.Mastodon,
             statusExtractor = { e -> (e as? MastodonException)?.status },
             bodyExtractor = { e -> (e as? MastodonException)?.body },
             runner = runner,
@@ -1912,7 +1917,7 @@ class MastodonAction(
 
     private suspend fun proceedUnit(runner: suspend () -> Unit) {
         ExceptionHandler.proceedUnit(
-            serviceName = "mastodon",
+            serviceType = ServiceType.Mastodon,
             statusExtractor = { e -> (e as? MastodonException)?.status },
             bodyExtractor = { e -> (e as? MastodonException)?.body },
             runner = runner,

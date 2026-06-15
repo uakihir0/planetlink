@@ -104,6 +104,7 @@ import work.socialhub.planetlink.model.Thread
 import work.socialhub.planetlink.model.Trend
 import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.error.NotSupportedException
+import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.utils.ExceptionHandler
 import work.socialhub.planetlink.model.request.CommentForm
@@ -1313,7 +1314,9 @@ class BlueskyAction(
                     client.errorCallback(object : work.socialhub.kbsky.stream.entity.callback.ErrorCallback {
                         override fun onError(e: Exception) {
                             if (callback is ErrorCallback) {
-                                callback.onError(SocialHubException(e))
+                                val classified = if (e is SocialHubException) e
+                                    else ExceptionHandler.classify(e, ServiceType.Bluesky)
+                                callback.onError(classified)
                             }
                         }
                     })
@@ -1400,7 +1403,9 @@ class BlueskyAction(
                     client.errorCallback(object : work.socialhub.kbsky.stream.entity.callback.ErrorCallback {
                         override fun onError(e: Exception) {
                             if (callback is ErrorCallback) {
-                                callback.onError(SocialHubException(e))
+                                val classified = if (e is SocialHubException) e
+                                    else ExceptionHandler.classify(e, ServiceType.Bluesky)
+                                callback.onError(classified)
                             }
                         }
                     })
@@ -1765,7 +1770,7 @@ class BlueskyAction(
     // ============================================================== //
     private suspend fun <T> proceed(runner: suspend () -> T): T {
         return ExceptionHandler.proceed(
-            serviceName = "bluesky",
+            serviceType = ServiceType.Bluesky,
             statusExtractor = { e ->
                 (e as? ATProtocolException)?.status
                     ?: (e.cause as? ATProtocolException)?.status
@@ -1780,7 +1785,7 @@ class BlueskyAction(
 
     private suspend fun proceedUnit(runner: suspend () -> Unit) {
         ExceptionHandler.proceedUnit(
-            serviceName = "bluesky",
+            serviceType = ServiceType.Bluesky,
             statusExtractor = { e ->
                 (e as? ATProtocolException)?.status
                     ?: (e.cause as? ATProtocolException)?.status

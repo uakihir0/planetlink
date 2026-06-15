@@ -2,13 +2,14 @@ package work.socialhub.planetlink.utils
 
 import io.ktor.utils.io.errors.IOException
 import work.socialhub.planetlink.define.ErrorType
+import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.error.*
 
 object ExceptionHandler {
 
     fun classify(
         e: Exception,
-        serviceName: String,
+        serviceType: ServiceType,
         statusCode: Int? = null,
         responseBody: String? = null,
     ): SocialHubException {
@@ -16,13 +17,13 @@ object ExceptionHandler {
 
         if (isNetworkError(e)) {
             return NetworkException(e.message, e).also {
-                it.serviceName = serviceName
+                it.serviceType = serviceType
                 it.error = ErrorType.NETWORK_ERROR
             }
         }
 
         if (statusCode != null) {
-            return classifyHttpStatus(statusCode, responseBody, e, serviceName)
+            return classifyHttpStatus(statusCode, responseBody, e, serviceType)
         }
 
         if (e is NullPointerException ||
@@ -32,12 +33,12 @@ object ExceptionHandler {
             e is ClassCastException
         ) {
             return ApplicationException(e.message, e).also {
-                it.serviceName = serviceName
+                it.serviceType = serviceType
             }
         }
 
         return SocialHubException(e.message, e).also {
-            it.serviceName = serviceName
+            it.serviceType = serviceType
         }
     }
 
@@ -45,7 +46,7 @@ object ExceptionHandler {
         statusCode: Int,
         responseBody: String?,
         cause: Throwable?,
-        serviceName: String,
+        serviceType: ServiceType,
     ): SocialHubException {
         val exception: SocialHubException = when {
             statusCode == 401 || statusCode == 403 ->
@@ -67,7 +68,7 @@ object ExceptionHandler {
             else ->
                 HttpException(statusCode, responseBody, cause)
         }
-        exception.serviceName = serviceName
+        exception.serviceType = serviceType
         return exception
     }
 
@@ -86,7 +87,7 @@ object ExceptionHandler {
     }
 
     suspend fun <T> proceed(
-        serviceName: String,
+        serviceType: ServiceType,
         statusExtractor: ((Exception) -> Int?)? = null,
         bodyExtractor: ((Exception) -> String?)? = null,
         runner: suspend () -> T,
@@ -98,7 +99,7 @@ object ExceptionHandler {
         } catch (e: Exception) {
             throw classify(
                 e = e,
-                serviceName = serviceName,
+                serviceType = serviceType,
                 statusCode = statusExtractor?.invoke(e),
                 responseBody = bodyExtractor?.invoke(e),
             )
@@ -106,7 +107,7 @@ object ExceptionHandler {
     }
 
     suspend fun proceedUnit(
-        serviceName: String,
+        serviceType: ServiceType,
         statusExtractor: ((Exception) -> Int?)? = null,
         bodyExtractor: ((Exception) -> String?)? = null,
         runner: suspend () -> Unit,
@@ -118,7 +119,7 @@ object ExceptionHandler {
         } catch (e: Exception) {
             throw classify(
                 e = e,
-                serviceName = serviceName,
+                serviceType = serviceType,
                 statusCode = statusExtractor?.invoke(e),
                 responseBody = bodyExtractor?.invoke(e),
             )

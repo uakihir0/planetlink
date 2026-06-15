@@ -35,6 +35,7 @@ import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.Thread
 import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.error.NotSupportedException
+import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.utils.ExceptionHandler
 import work.socialhub.planetlink.model.request.CommentForm
@@ -958,7 +959,7 @@ class TumblrAction(
     // ============================================================== //
     private suspend fun <T> proceed(runner: suspend () -> T): T {
         return ExceptionHandler.proceed(
-            serviceName = "tumblr",
+            serviceType = ServiceType.Tumblr,
             statusExtractor = { e -> (e as? TumblrException)?.status },
             bodyExtractor = { e -> (e as? TumblrException)?.body },
             runner = runner,
@@ -967,7 +968,7 @@ class TumblrAction(
 
     private suspend fun proceedUnit(runner: suspend () -> Unit) {
         ExceptionHandler.proceedUnit(
-            serviceName = "tumblr",
+            serviceType = ServiceType.Tumblr,
             statusExtractor = { e -> (e as? TumblrException)?.status },
             bodyExtractor = { e -> (e as? TumblrException)?.body },
             runner = runner,

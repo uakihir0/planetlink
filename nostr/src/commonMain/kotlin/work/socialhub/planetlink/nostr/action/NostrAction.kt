@@ -27,6 +27,7 @@ import work.socialhub.planetlink.define.action.StreamActionType
 import work.socialhub.planetlink.define.action.TimeLineActionType
 import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.model.*
+import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.utils.ExceptionHandler
@@ -762,14 +763,14 @@ class NostrAction(
 
     private suspend fun <T> proceed(runner: suspend () -> T): T {
         return ExceptionHandler.proceed(
-            serviceName = "nostr",
+            serviceType = ServiceType.Nostr,
             runner = runner,
         )
     }
 
     private suspend fun proceedUnit(runner: suspend () -> Unit) {
         ExceptionHandler.proceedUnit(
-            serviceName = "nostr",
+            serviceType = ServiceType.Nostr,
             runner = runner,
         )
     }

@@ -27,6 +27,7 @@ import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.paging.DatePaging
 import work.socialhub.kslack.api.methods.SlackApiException
+import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.utils.ExceptionHandler
@@ -687,7 +688,7 @@ class SlackAction(
 
     private suspend fun <T> proceed(runner: suspend () -> T): T {
         return ExceptionHandler.proceed(
-            serviceName = "slack",
+            serviceType = ServiceType.Slack,
             statusExtractor = { e -> (e as? SlackApiException)?.response?.status },
             bodyExtractor = { e -> (e as? SlackApiException)?.response?.stringBody },
             runner = runner,
@@ -696,7 +697,7 @@ class SlackAction(
 
     private suspend fun proceedUnit(runner: suspend () -> Unit) {
         ExceptionHandler.proceedUnit(
-            serviceName = "slack",
+            serviceType = ServiceType.Slack,
             statusExtractor = { e -> (e as? SlackApiException)?.response?.status },
             bodyExtractor = { e -> (e as? SlackApiException)?.response?.stringBody },
             runner = runner,
