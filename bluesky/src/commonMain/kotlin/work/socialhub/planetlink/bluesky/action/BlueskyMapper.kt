@@ -9,14 +9,21 @@ import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsViewerState
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Commit
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Event
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedExternal
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedGallery
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedGalleryView
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedGalleryViewImage
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedImages
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImagesView
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImagesViewImage
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecordView
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecordViewRecord
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecordWithMedia
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecordWithMediaView
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedUnion
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedVideo
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedViewUnion
+import work.socialhub.kbsky.model.share.Blob
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsFeedViewPost
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsGeneratorView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsPostView
@@ -724,6 +731,7 @@ object BlueskyMapper {
             text = attributedText(record)
 
             medias = mutableListOf()
+            record.embed?.let { embedFromRecord(this, it, event.did) }
             possiblySensitive = false
             liked = false
             shared = false
@@ -732,5 +740,77 @@ object BlueskyMapper {
             shareCount = 0
             replyCount = 0
         }
+    }
+
+    // ============================================================== //
+    // Stream Embed Helpers
+    // ============================================================== //
+    /**
+     * レコードレベルの EmbedUnion からメディアを抽出
+     * (JetStream はView レベルではなくレコードを返すため、Blob CID から CDN URL を構築)
+     */
+    private fun embedFromRecord(
+        model: BlueskyComment,
+        embed: EmbedUnion,
+        did: String,
+    ) {
+        when (embed) {
+            is EmbedImages -> {
+                embed.images?.forEach { img ->
+                    mediaFromBlob(img.image, did)?.let {
+                        model.medias = model.medias.plus(it)
+                    }
+                }
+            }
+            is EmbedGallery -> {
+                embed.items?.forEach { img ->
+                    mediaFromBlob(img.image, did)?.let {
+                        model.medias = model.medias.plus(it)
+                    }
+                }
+            }
+            is EmbedVideo -> {
+                mediaFromVideoBlob(embed.video, did)?.let {
+                    model.medias = model.medias.plus(it)
+                }
+            }
+            is EmbedExternal -> {
+                embed.external?.let { ext ->
+                    val media = Media().apply {
+                        type = MediaType.Link
+                        sourceUrl = ext.uri
+                        previewUrl = ext.thumb?.let { blobCdnUrl(did, it, "feed_thumbnail") }
+                    }
+                    model.medias = model.medias.plus(media)
+                }
+            }
+            is EmbedRecordWithMedia -> {
+                embed.media?.let { embedFromRecord(model, it, did) }
+            }
+            else -> {}
+        }
+    }
+
+    private fun mediaFromBlob(blob: Blob?, did: String): Media? {
+        val cid = blob?.ref?.link ?: return null
+        return Media().apply {
+            type = MediaType.Image
+            sourceUrl = blobCdnUrl(did, blob, "feed_fullsize")
+            previewUrl = blobCdnUrl(did, blob, "feed_thumbnail")
+        }
+    }
+
+    private fun mediaFromVideoBlob(blob: Blob?, did: String): Media? {
+        val cid = blob?.ref?.link ?: return null
+        return Media().apply {
+            type = MediaType.Movie
+            sourceUrl = blobCdnUrl(did, blob, "feed_fullsize")
+            previewUrl = blobCdnUrl(did, blob, "feed_thumbnail")
+        }
+    }
+
+    private fun blobCdnUrl(did: String, blob: Blob, variant: String): String {
+        val cid = blob.ref?.link ?: return ""
+        return "https://cdn.bsky.app/img/$variant/plain/$did/$cid@jpeg"
     }
 }
