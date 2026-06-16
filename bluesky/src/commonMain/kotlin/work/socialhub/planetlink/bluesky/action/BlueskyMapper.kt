@@ -218,12 +218,16 @@ object BlueskyMapper {
             medias = mutableListOf()
             post.embed?.let { embed(this, it, service) }
 
-            // Reply
+            // Reply (skip if parent/root is a notFoundPost with null author)
             if (reply != null) {
                 // 直接の会話の設定
-                replyTo = simpleComment(reply.parent!!, service)
+                reply.parent?.takeIf { it.author != null }?.let {
+                    replyTo = simpleComment(it, service)
+                }
                 // 会話スレッドのルート設定
-                replyRootTo = simpleComment(reply.root!!, service)
+                reply.root?.takeIf { it.author != null }?.let {
+                    replyRootTo = simpleComment(it, service)
+                }
             }
         }
     }
@@ -584,7 +588,14 @@ object BlueskyMapper {
         }
 
         val model = Pageable<Comment>()
-        model.entities = feedList.map { comment(it, service) }
+        model.entities = feedList.mapNotNull {
+            try {
+                comment(it, service)
+            } catch (e: Exception) {
+                println("[BlueskyMapper] Failed to map feed item: ${it.post.uri} - ${e.message}")
+                null
+            }
+        }
         model.paging = BlueskyPaging.fromPaging(paging)
             .also { it.cursorHint = cursor }
         return model
