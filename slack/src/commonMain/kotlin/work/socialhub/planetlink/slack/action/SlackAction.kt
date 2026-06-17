@@ -641,30 +641,32 @@ class SlackAction(
             channel = searchMessageChannel(req.replyId!!.value<String>())
         }
 
-        val response = auth.accessor.slack.chat().chatPostMessage(
-            ChatPostMessageRequest(
-                token = token,
-                username = null,
-                threadTs = req.replyId?.value<String>(),
-                channel = channel,
-                text = req.text,
-                parse = null,
-                isLinkNames = false,
-                blocks = null,
-                blocksAsString = null,
-                attachments = null,
-                attachmentsAsString = null,
-                isUnfurlLinks = false,
-                isUnfurlMedia = false,
-                isAsUser = null,
-                iconUrl = null,
-                iconEmoji = null,
-                isReplyBroadcast = false
+        proceedUnit {
+            val response = auth.accessor.slack.chat().chatPostMessage(
+                ChatPostMessageRequest(
+                    token = token,
+                    username = null,
+                    threadTs = req.replyId?.value<String>(),
+                    channel = channel,
+                    text = req.text,
+                    parse = null,
+                    isLinkNames = false,
+                    blocks = null,
+                    blocksAsString = null,
+                    attachments = null,
+                    attachmentsAsString = null,
+                    isUnfurlLinks = false,
+                    isUnfurlMedia = false,
+                    isAsUser = null,
+                    iconUrl = null,
+                    iconEmoji = null,
+                    isReplyBroadcast = false
+                )
             )
-        )
 
-        if (!response.isOk) {
-            throw SocialHubException(response.error ?: "Failed to send message")
+            if (!response.isOk) {
+                throw SocialHubException(response.error ?: "Failed to send message")
+            }
         }
     }
 

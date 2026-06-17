@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.tumblr.action
 
+import kotlin.coroutines.cancellation.CancellationException
 import work.socialhub.ktumblr.TumblrException
 import work.socialhub.ktumblr.api.request.FileRequest
 import work.socialhub.ktumblr.api.request.auth.AuthOAuth2TokenRefreshRequest
@@ -856,26 +857,37 @@ class TumblrAction(
         func: suspend () -> T
     ): T {
         try {
-            return func()
-        } catch (e: TumblrException) {
-
-            if (e.status == 401) {
-                val refresh = auth.accessor.auth().oAuth2TokenRefresh(
-                    AuthOAuth2TokenRefreshRequest().also {
-                        it.clientId = auth.consumerKey
-                        it.clientSecret = auth.consumerSecret
-                        it.refreshToken = auth.refreshToken
-                    }
-                )
-
-                // トークン類を取得した値で更新
-                auth.accessToken = refresh.data.accessToken
-                auth.refreshToken = refresh.data.refreshToken
-                auth.tokenRefreshCallback(auth)
+            try {
                 return func()
-            }
+            } catch (e: TumblrException) {
+                if (e.status == 401) {
+                    val refresh = auth.accessor.auth().oAuth2TokenRefresh(
+                        AuthOAuth2TokenRefreshRequest().also {
+                            it.clientId = auth.consumerKey
+                            it.clientSecret = auth.consumerSecret
+                            it.refreshToken = auth.refreshToken
+                        }
+                    )
 
+                    auth.accessToken = refresh.data.accessToken
+                    auth.refreshToken = refresh.data.refreshToken
+                    auth.tokenRefreshCallback(auth)
+                    return func()
+                }
+                throw e
+            }
+        } catch (e: CancellationException) {
             throw e
+        } catch (e: SocialHubException) {
+            if (e.serviceType == null) e.serviceType = ServiceType.Tumblr
+            throw e
+        } catch (e: Exception) {
+            throw ExceptionHandler.classify(
+                e = e,
+                serviceType = ServiceType.Tumblr,
+                statusCode = (e as? TumblrException)?.status,
+                responseBody = (e as? TumblrException)?.body,
+            )
         }
     }
 
