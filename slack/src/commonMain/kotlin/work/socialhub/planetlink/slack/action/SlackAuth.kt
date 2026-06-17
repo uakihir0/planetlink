@@ -14,6 +14,7 @@ class SlackAuth(
 ) : ServiceAuth<SlackAuth.SlackAccessor> {
 
     var accessToken: String? = null
+    var apiHost: String? = null
     private var _accessor: SlackAccessor? = null
 
     companion object {
@@ -36,7 +37,9 @@ class SlackAuth(
         redirectUri: String,
         code: String
     ): Account {
-        val response = SlackFactory.instance().oauth().oauthV2Access(
+        val slack = apiHost?.let { SlackFactory.instance(null, "$it/api/") }
+            ?: SlackFactory.instance()
+        val response = slack.oauth().oauthV2Access(
             OAuthV2AccessRequest(
                 token = null,
                 clientId = clientId,
@@ -58,7 +61,8 @@ class SlackAuth(
     ): Account {
         this.accessToken = token
         this._accessor = SlackAccessor(
-            slack = SlackFactory.instance(token),
+            slack = apiHost?.let { SlackFactory.instance(token, "$it/api/") }
+                ?: SlackFactory.instance(token),
             token = token
         )
 
@@ -66,6 +70,7 @@ class SlackAuth(
             acc.action = SlackAction(acc, this)
             acc.service = Service("slack", acc).also {
                 it.host = "https://slack.com/api/"
+                it.apiHost = apiHost?.let { "$it/api/" }
             }
         }
     }
