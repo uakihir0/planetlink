@@ -163,21 +163,23 @@ class SlackAction(
     }
 
     private suspend fun loadUsersCache() {
-        val response = auth.accessor.slack.users().usersList(
-            UsersListRequest(
-                token = auth.accessor.token,
-                cursor = null,
-                limit = 200,
-                isIncludeLocale = false,
-                isPresence = false
+        val teamObj = loadTeam()
+        val response = proceed {
+            auth.accessor.slack.users().usersList(
+                UsersListRequest(
+                    token = auth.accessor.token,
+                    cursor = null,
+                    limit = 200,
+                    isIncludeLocale = false,
+                    isPresence = false
+                )
             )
-        )
+        }
 
         if (!response.isOk) {
             throw SocialHubException(response.error ?: "Unknown error")
         }
 
-        val teamObj = loadTeam()
         response.members?.forEach { u ->
             val user = SlackMapper.user(u, teamObj, service())
             user.let { userCache[it.id!!.value<String>()] = it }
@@ -315,6 +317,7 @@ class SlackAction(
     override suspend fun commentContexts(id: Identify): Context {
         val emojis = getEmojis()
         val userMe = userMeWithCache()
+        val teamObj = loadTeam()
         val threadId = (id as? SlackComment)?.threadTs ?: id.id!!.value<String>()
         val channelId = getChannelId(id)
 
@@ -344,7 +347,6 @@ class SlackAction(
                     val resp = auth.accessor.slack.users().usersInfo(
                         UsersInfoRequest(token = auth.accessor.token, user = key, isIncludeLocale = false)
                     )
-                    val teamObj = team
                     val u = SlackMapper.user(resp, teamObj, service())
                     u?.let { userCache[it.id!!.value<String>()] = it }
                     u!!
@@ -569,18 +571,20 @@ class SlackAction(
 
     private suspend fun loadGeneralChannel(): String {
         if (generalChannel == null) {
-            val response = auth.accessor.slack.conversations().conversationsList(
-                ConversationsListRequest(
-                    token = auth.accessor.token,
-                    cursor = null,
-                    isExcludeArchived = false,
-                    limit = 1000,
-                    types = arrayOf(ConversationType.PUBLIC_CHANNEL, ConversationType.PRIVATE_CHANNEL)
+            proceed {
+                val response = auth.accessor.slack.conversations().conversationsList(
+                    ConversationsListRequest(
+                        token = auth.accessor.token,
+                        cursor = null,
+                        isExcludeArchived = false,
+                        limit = 1000,
+                        types = arrayOf(ConversationType.PUBLIC_CHANNEL, ConversationType.PRIVATE_CHANNEL)
+                    )
                 )
-            )
-            if (response.isOk) {
-                response.channels?.find { it.isGeneral }?.let {
-                    generalChannel = it.id
+                if (response.isOk) {
+                    response.channels?.find { it.isGeneral }?.let {
+                        generalChannel = it.id
+                    }
                 }
             }
         }
@@ -712,19 +716,21 @@ class SlackAction(
         if (cached != null) return cached
 
         val teamObj = loadTeam()
-        val response = auth.accessor.slack.users().usersInfo(
-            UsersInfoRequest(
-                token = auth.accessor.token,
-                user = key,
-                isIncludeLocale = false
+        return proceed {
+            val response = auth.accessor.slack.users().usersInfo(
+                UsersInfoRequest(
+                    token = auth.accessor.token,
+                    user = key,
+                    isIncludeLocale = false
+                )
             )
-        )
-        if (!response.isOk) {
-            throw SocialHubException(response.error ?: "Unknown error")
+            if (!response.isOk) {
+                throw SocialHubException(response.error ?: "Unknown error")
+            }
+            val user = SlackMapper.user(response, teamObj, service())
+            user?.let { userCache[it.id!!.value<String>()] = it }
+            user!!
         }
-        val user = SlackMapper.user(response, teamObj, service())
-        user?.let { userCache[it.id!!.value<String>()] = it }
-        return user!!
     }
 
     private suspend fun getBotWithCache(id: Identify): User {
@@ -732,18 +738,20 @@ class SlackAction(
         val cached = botCache[key]
         if (cached != null) return cached
 
-        val response = auth.accessor.slack.bots().botsInfo(
-            BotsInfoRequest(
-                token = auth.accessor.token,
-                bot = key
+        return proceed {
+            val response = auth.accessor.slack.bots().botsInfo(
+                BotsInfoRequest(
+                    token = auth.accessor.token,
+                    bot = key
+                )
             )
-        )
-        if (!response.isOk) {
-            throw SocialHubException(response.error ?: "Unknown error")
+            if (!response.isOk) {
+                throw SocialHubException(response.error ?: "Unknown error")
+            }
+            val bot = SlackMapper.bots(response, service())!!
+            botCache[bot.id!!.value<String>()] = bot
+            bot
         }
-        val bot = SlackMapper.bots(response, service())!!
-        botCache[bot.id!!.value<String>()] = bot
-        return bot
     }
 
     private fun service(): Service = account.service

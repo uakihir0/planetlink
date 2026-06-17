@@ -678,7 +678,7 @@ class TumblrAction(
             }
         } else {
             throw NotSupportedException(
-                "TumblrComment (id, blog n ame only) required."
+                "TumblrComment (id, blog name only) required."
             )
         }
     }

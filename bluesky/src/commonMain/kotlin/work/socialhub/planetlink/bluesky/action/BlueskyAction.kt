@@ -841,15 +841,17 @@ class BlueskyAction(
         id: Identify
     ): BlueskyComment {
         if (id is BlueskyComment) return id
-        val posts = auth.accessor.feed().getPosts(
-            FeedGetPostsRequest(authProvider()).also {
-                it.uris = listOf(id.id!!.value())
-            }
-        )
-        return Mapper.simpleComment(
-            posts.data.posts[0],
-            service(),
-        ) as BlueskyComment
+        return proceed {
+            val posts = auth.accessor.feed().getPosts(
+                FeedGetPostsRequest(authProvider()).also {
+                    it.uris = listOf(id.id!!.value())
+                }
+            )
+            Mapper.simpleComment(
+                posts.data.posts[0],
+                service(),
+            ) as BlueskyComment
+        }
     }
 
     /**
@@ -1651,28 +1653,27 @@ class BlueskyAction(
     private suspend fun userUri(
         id: Identify
     ): String {
-        var uri: String? = null
+        return proceed {
+            var uri: String? = null
 
-        // ユーザーオブジェクトから取得
-        if (id is BlueskyUser) {
-            uri = id.followRecordUri
-        }
-
-        // DID から取得
-        if (uri == null) {
-            val response = auth.accessor.actor().getProfile(
-                ActorGetProfileRequest(authProvider())
-                    .also { it.actor = id.id!!.value() }
-            )
-
-            // ユーザー情報にフォローしているかどうかが確認できる
-            val state = response.data.viewer
-            if (state?.following != null) {
-                uri = state.following
+            if (id is BlueskyUser) {
+                uri = id.followRecordUri
             }
-        }
 
-        return checkNotNull(uri)
+            if (uri == null) {
+                val response = auth.accessor.actor().getProfile(
+                    ActorGetProfileRequest(authProvider())
+                        .also { it.actor = id.id!!.value() }
+                )
+
+                val state = response.data.viewer
+                if (state?.following != null) {
+                    uri = state.following
+                }
+            }
+
+            checkNotNull(uri)
+        }
     }
 
     // ============================================================== //
