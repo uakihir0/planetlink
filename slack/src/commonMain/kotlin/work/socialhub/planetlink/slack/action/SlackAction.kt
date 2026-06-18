@@ -1,38 +1,28 @@
 package work.socialhub.planetlink.slack.action
 
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
-import kotlin.time.Instant
+import work.socialhub.kslack.api.methods.SlackApiException
 import work.socialhub.kslack.api.methods.request.auth.AuthTestRequest
-import work.socialhub.kslack.api.methods.request.bots.BotsInfoRequest
 import work.socialhub.kslack.api.methods.request.chat.ChatDeleteRequest
-import work.socialhub.kslack.api.methods.request.chat.ChatPostMessageRequest
 import work.socialhub.kslack.api.methods.request.conversations.*
-import work.socialhub.kslack.api.methods.request.emoji.EmojiListRequest
 import work.socialhub.kslack.api.methods.request.reactions.ReactionsAddRequest
 import work.socialhub.kslack.api.methods.request.reactions.ReactionsRemoveRequest
-import work.socialhub.kslack.api.methods.request.team.TeamInfoRequest
 import work.socialhub.kslack.api.methods.request.users.UsersInfoRequest
-import work.socialhub.kslack.api.methods.request.users.UsersListRequest
-import work.socialhub.kslack.entity.Attachment
 import work.socialhub.kslack.entity.ConversationType
 import work.socialhub.planetlink.action.AccountActionImpl
 import work.socialhub.planetlink.action.Capabilities
 import work.socialhub.planetlink.action.RequestAction
 import work.socialhub.planetlink.action.callback.EventCallback
+import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.define.action.MessageActionType
 import work.socialhub.planetlink.define.action.SocialActionType
 import work.socialhub.planetlink.define.action.TimeLineActionType
 import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.model.*
-import work.socialhub.planetlink.model.paging.DatePaging
-import work.socialhub.kslack.api.methods.SlackApiException
-import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
-import work.socialhub.planetlink.utils.ExceptionHandler
 import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.slack.model.*
+import work.socialhub.planetlink.utils.ExceptionHandler
 import kotlin.js.JsExport
 
 /** Slack プラットフォームのアクション実装 */
@@ -71,17 +61,13 @@ class SlackAction(
 
     override fun capabilities(): Capabilities = CAPABILITIES
 
-    private var team: SlackTeam? = null
-    private var generalChannel: String? = null
+    internal val userCache = mutableMapOf<String, User>()
+    internal val botCache = mutableMapOf<String, User>()
 
-    private val userCache = mutableMapOf<String, User>()
-    private val botCache = mutableMapOf<String, User>()
-    private var emojisCache: List<Emoji>? = null
-
-    private var userMeId: String? = null
+    internal val helper = SlackActionHelper(this)
 
     override suspend fun userMe(): User {
-        val teamObj = loadTeam()
+        val teamObj = helper.loadTeam()
         return proceed<User> {
             val testResponse = auth.accessor.slack.auth().authTest(
                 AuthTestRequest(auth.accessor.token)
@@ -91,7 +77,7 @@ class SlackAction(
                 throw SocialHubException(testResponse.error ?: "Unknown error")
             }
 
-            userMeId = testResponse.userId
+            helper.userMeId = testResponse.userId
 
             val userId = testResponse.userId ?: throw SocialHubException("User ID is null")
             val userResponse = auth.accessor.slack.users().usersInfo(
@@ -112,25 +98,7 @@ class SlackAction(
     override suspend fun user(id: Identify): User {
         val key = id.id!!.value<String>()
         userCache[key]?.let { return it }
-
-        val teamObj = loadTeam()
-        return proceed<User> {
-            val response = auth.accessor.slack.users().usersInfo(
-                UsersInfoRequest(
-                    token = auth.accessor.token,
-                    user = key,
-                    isIncludeLocale = false
-                )
-            )
-
-            if (!response.isOk) {
-                throw SocialHubException(response.error ?: "Unknown error")
-            }
-
-            val user = SlackMapper.user(response, teamObj, service())
-            user?.let { userCache[it.id!!.value<String>()] = it }
-            user!!
-        }
+        return helper.getUserWithCache(id)
     }
 
     override suspend fun user(url: String): User {
@@ -147,7 +115,7 @@ class SlackAction(
 
     override suspend fun searchUsers(query: String, paging: Paging): Pageable<User> {
         if (userCache.isEmpty()) {
-            loadUsersCache()
+            helper.loadUsersCache()
         }
         return proceed<Pageable<User>> {
             val filtered = userCache.values.filter {
@@ -162,33 +130,9 @@ class SlackAction(
         }
     }
 
-    private suspend fun loadUsersCache() {
-        val teamObj = loadTeam()
-        val response = proceed {
-            auth.accessor.slack.users().usersList(
-                UsersListRequest(
-                    token = auth.accessor.token,
-                    cursor = null,
-                    limit = 200,
-                    isIncludeLocale = false,
-                    isPresence = false
-                )
-            )
-        }
-
-        if (!response.isOk) {
-            throw SocialHubException(response.error ?: "Unknown error")
-        }
-
-        response.members?.forEach { u ->
-            val user = SlackMapper.user(u, teamObj, service())
-            user.let { userCache[it.id!!.value<String>()] = it }
-        }
-    }
-
     override suspend fun homeTimeLine(paging: Paging): Pageable<Comment> {
-        val channel = loadGeneralChannel()
-        return getChannelTimeLine(channel, paging)
+        val channel = helper.loadGeneralChannel()
+        return helper.getChannelTimeLine(channel, paging)
     }
 
     override suspend fun mentionTimeLine(paging: Paging): Pageable<Comment> {
@@ -212,7 +156,7 @@ class SlackAction(
     }
 
     override suspend fun postComment(req: CommentForm) {
-        sendMessage(req)
+        helper.sendMessage(req)
     }
 
     override suspend fun comment(id: Identify): Comment {
@@ -315,89 +259,15 @@ class SlackAction(
     }
 
     override suspend fun commentContexts(id: Identify): Context {
-        val emojis = getEmojis()
-        val userMe = userMeWithCache()
-        val teamObj = loadTeam()
-        val threadId = (id as? SlackComment)?.threadTs ?: id.id!!.value<String>()
-        val channelId = getChannelId(id)
-
-        return proceed<Context> {
-            val response = auth.accessor.slack.conversations().conversationsReplies(
-                ConversationsRepliesRequest(
-                    token = auth.accessor.token,
-                    isInclusive = false,
-                    ts = threadId,
-                    cursor = null,
-                    limit = 100,
-                    channel = channelId,
-                    oldest = null,
-                    latest = null
-                )
-            )
-
-            if (!response.isOk) {
-                throw SocialHubException(response.error ?: "Unknown error")
-            }
-
-            val messages = response.messages?.toList() ?: emptyList()
-            val userIds = messages.mapNotNull { m -> m.user }.distinct()
-            val userMap = userIds.associateWith { uid ->
-                val key = uid
-                userCache[key] ?: run {
-                    val resp = auth.accessor.slack.users().usersInfo(
-                        UsersInfoRequest(token = auth.accessor.token, user = key, isIncludeLocale = false)
-                    )
-                    val u = SlackMapper.user(resp, teamObj, service())
-                    u?.let { userCache[it.id!!.value<String>()] = it }
-                    u!!
-                }
-            }
-
-            val context = Context()
-            context.ancestors = mutableListOf()
-            context.descendants = mutableListOf()
-
-            var isProceededMine = false
-            for (m in messages) {
-                if (m.ts == id.id!!.value<String>()) {
-                    isProceededMine = true
-                    continue
-                }
-
-                val user = m.user?.let { userMap[it] }
-                val comment = SlackMapper.comment(m, user, userMe, emojis, channelId, service(), auth.accessor.token)
-                val targetList = if (!isProceededMine) context.ancestors else context.descendants
-                (targetList as MutableList).add(comment)
-            }
-
-            val allComments = (context.ancestors ?: emptyList()) + (context.descendants ?: emptyList())
-            SlackMapper.setMentionName(allComments, userMap)
-
-            context.sort()
-            context
-        }
+        return helper.getCommentContexts(id)
     }
 
     override fun emojis(): List<Emoji> {
-        return emojisCache ?: super.emojis()
+        return helper.emojisCache ?: super.emojis()
     }
 
     suspend fun getEmojis(): List<Emoji> {
-        if (emojisCache != null) return emojisCache!!
-
-        return proceed<List<Emoji>> {
-            val response = auth.accessor.slack.emoji().emojiList(
-                EmojiListRequest(auth.accessor.token)
-            )
-
-            if (!response.isOk) {
-                throw SocialHubException(response.error ?: "Unknown error")
-            }
-
-            val emojis = SlackMapper.emojis(response)
-            emojisCache = emojis + super.emojis()
-            emojisCache!!
-        }
+        return helper.getEmojis()
     }
 
     override suspend fun channels(id: Identify, paging: Paging): Pageable<Channel> {
@@ -417,7 +287,7 @@ class SlackAction(
             }
 
             response.channels?.find { it.isGeneral }?.let {
-                generalChannel = it.id
+                helper.generalChannel = it.id
             }
 
             SlackMapper.channels(response, service())
@@ -425,91 +295,23 @@ class SlackAction(
     }
 
     override suspend fun channelTimeLine(id: Identify, paging: Paging): Pageable<Comment> {
-        val channel = id.id!!.value<String>()
-        return getChannelTimeLine(channel, paging)
+        return helper.getChannelTimeLine(id.id!!.value<String>(), paging)
     }
 
     override suspend fun channelUsers(id: Identify, paging: Paging): Pageable<User> {
-        val channelId = id.id!!.value<String>()
-        val limitValue = minOf(paging.count ?: 100, 100)
-
-        val response = proceed {
-            auth.accessor.slack.conversations().conversationsMembers(
-                ConversationsMembersRequest(
-                    token = auth.accessor.token,
-                    channel = channelId,
-                    cursor = null,
-                    limit = limitValue
-                )
-            )
-        }
-
-        if (!response.isOk) {
-            throw SocialHubException(response.error ?: "Unknown error")
-        }
-
-        val allUsers = mutableListOf<User>()
-        response.members?.forEach { userId ->
-            val user = getUserWithCache(Identify(service(), ID(userId)))
-            allUsers.add(user)
-        }
-
-        return Pageable<User>().also {
-            it.entities = allUsers
-            it.paging = SlackPaging.fromPaging(paging)
-        }
+        return helper.getChannelUsers(id, paging)
     }
 
     override suspend fun messageThread(paging: Paging): Pageable<Thread> {
-        val userMe = userMeWithCache()
-
-        val response = proceed {
-            auth.accessor.slack.conversations().conversationsList(
-                ConversationsListRequest(
-                    token = auth.accessor.token,
-                    cursor = null,
-                    isExcludeArchived = false,
-                    limit = paging.count ?: 200,
-                    types = arrayOf(ConversationType.IM, ConversationType.MPIM)
-                )
-            )
-        }
-
-        if (!response.isOk) {
-            throw SocialHubException(response.error ?: "Unknown error")
-        }
-
-        val memberMap = mutableMapOf<String, List<String>>()
-        val historyMap = mutableMapOf<String, Instant>()
-
-        response.channels?.forEach { channel ->
-            val channelUser = channel.user
-            val channelId = channel.id
-            if (channelUser != null && channelId != null) {
-                memberMap[channelId] = listOf(userMe.id!!.value<String>(), channelUser)
-            }
-        }
-
-        val allUserIds = memberMap.values.flatten().distinct()
-        val accountMap = allUserIds.associateWith { uid ->
-            getUserWithCache(Identify(service(), ID(uid)))
-        }
-
-        val threads = SlackMapper.threads(response, memberMap, historyMap, accountMap, service())
-            .sortedByDescending { it.lastUpdate }
-
-        return Pageable<Thread>().also {
-            it.entities = threads
-            it.paging = paging
-        }
+        return helper.getMessageThread(paging)
     }
 
     override suspend fun messageTimeLine(id: Identify, paging: Paging): Pageable<Comment> {
-        return getChannelTimeLine(id.id!!.value<String>(), paging)
+        return helper.getChannelTimeLine(id.id!!.value<String>(), paging)
     }
 
     override suspend fun postMessage(req: CommentForm) {
-        sendMessage(req)
+        helper.sendMessage(req)
     }
 
     override suspend fun setHomeTimeLineStream(callback: EventCallback): Stream {
@@ -524,234 +326,18 @@ class SlackAction(
         return SlackRequest(account)
     }
 
-    fun getTeam(): SlackTeam? = team
-
-    private suspend fun loadTeam(): SlackTeam? {
-        if (team != null) return team
-
-        return try {
-            val response = auth.accessor.slack.team().teamInfo(
-                TeamInfoRequest(auth.accessor.token)
-            )
-
-            if (response.isOk) {
-                team = SlackMapper.team(response)
-            }
-            team
-        } catch (e: Exception) {
-            null
-        }
-    }
-
     suspend fun getBots(id: Identify): User {
-        val key = id.id!!.value<String>()
-        botCache[key]?.let { return it }
-
-        return proceed<User> {
-            val response = auth.accessor.slack.bots().botsInfo(
-                BotsInfoRequest(
-                    token = auth.accessor.token,
-                    bot = key
-                )
-            )
-
-            if (!response.isOk) {
-                throw SocialHubException(response.error ?: "Unknown error")
-            }
-
-            val bot = SlackMapper.bots(response, service())!!
-            botCache[bot.id!!.value<String>()] = bot
-            bot
-        }
+        return helper.getBotWithCache(id)
     }
 
     fun getGeneralChannel(): String {
-        return generalChannel ?: ""
+        return helper.generalChannel ?: ""
     }
 
-    private suspend fun loadGeneralChannel(): String {
-        if (generalChannel == null) {
-            proceed {
-                val response = auth.accessor.slack.conversations().conversationsList(
-                    ConversationsListRequest(
-                        token = auth.accessor.token,
-                        cursor = null,
-                        isExcludeArchived = false,
-                        limit = 1000,
-                        types = arrayOf(ConversationType.PUBLIC_CHANNEL, ConversationType.PRIVATE_CHANNEL)
-                    )
-                )
-                if (response.isOk) {
-                    response.channels?.find { it.isGeneral }?.let {
-                        generalChannel = it.id
-                    }
-                }
-            }
-        }
-        return generalChannel ?: throw SocialHubException("General channel not found.")
-    }
-
-    private suspend fun getChannelTimeLine(channel: String, paging: Paging): Pageable<Comment> {
-        val emojis = getEmojis()
-        val userMe = userMeWithCache()
-        val datePaging = if (paging is DatePaging) paging else null
-
-        val response = proceed {
-            auth.accessor.slack.conversations().conversationsHistory(
-                ConversationsHistoryRequest(
-                    token = auth.accessor.token,
-                    channel = channel,
-                    cursor = null,
-                    oldest = datePaging?.oldest,
-                    latest = datePaging?.latest,
-                    limit = paging.count ?: 100,
-                    isInclusive = datePaging?.inclusive ?: false
-                )
-            )
-        }
-
-        if (!response.isOk) {
-            throw SocialHubException(response.error ?: "Unknown error")
-        }
-
-        val messages = response.messages?.toList() ?: emptyList()
-
-        val userIds = messages
-            .filter { it.subtype != "bot_message" }
-            .mapNotNull { it.user }
-            .distinct()
-        val userMap = userIds.associateWith { getUserWithCache(Identify(service(), ID(it))) }
-
-        val botIds = messages
-            .filter { it.subtype == "bot_message" }
-            .mapNotNull { it.botId }
-            .distinct()
-        val botMap = botIds.associateWith { getBotWithCache(Identify(service(), ID(it))) }
-
-        val pageable = SlackMapper.timeLine(messages, userMap, botMap, userMe, emojis, channel, service(), paging, auth.accessor.token)
-
-        val allComments = pageable.entities + pageable.displayableEntities
-        SlackMapper.setMentionName(allComments, userMap)
-
-        return pageable
-    }
-
-    private suspend fun sendMessage(req: CommentForm) {
-        val token = auth.accessor.token
-        @Suppress("UNCHECKED_CAST")
-        var channel = req.params["channel"] as? String
-
-        if (channel == null && req.replyId != null) {
-            channel = searchMessageChannel(req.replyId!!.value<String>())
-        }
-
-        proceedUnit {
-            val response = auth.accessor.slack.chat().chatPostMessage(
-                ChatPostMessageRequest(
-                    token = token,
-                    username = null,
-                    threadTs = req.replyId?.value<String>(),
-                    channel = channel,
-                    text = req.text,
-                    parse = null,
-                    isLinkNames = false,
-                    blocks = null,
-                    blocksAsString = null,
-                    attachments = null,
-                    attachmentsAsString = null,
-                    isUnfurlLinks = false,
-                    isUnfurlMedia = false,
-                    isAsUser = null,
-                    iconUrl = null,
-                    iconEmoji = null,
-                    isReplyBroadcast = false
-                )
-            )
-
-            if (!response.isOk) {
-                throw SocialHubException(response.error ?: "Failed to send message")
-            }
-        }
-    }
-
-    private suspend fun searchMessageChannel(userId: String): String {
-        return proceed<String> {
-            val response = auth.accessor.slack.conversations().conversationsList(
-                ConversationsListRequest(
-                    token = auth.accessor.token,
-                    cursor = null,
-                    isExcludeArchived = false,
-                    limit = 100,
-                    types = arrayOf(ConversationType.IM)
-                )
-            )
-
-            response.channels?.find { it.user == userId }?.id?.let {
-                return@proceed it
-            }
-
-            val openResponse = auth.accessor.slack.conversations().conversationsOpen(
-                ConversationsOpenRequest(
-                    token = auth.accessor.token,
-                    channel = null,
-                    isReturnIm = false,
-                    users = arrayOf(userId)
-                )
-            )
-
-            openResponse.channel?.id!!
-        }
-    }
+    fun getTeam(): SlackTeam? = helper.team
 
     private fun getChannelId(id: Identify): String {
-        if (id is SlackComment) return id.channelId!!
-        if (id is SlackIdentify) return id.channel!!
-
-        throw SocialHubException("No Channel Info. Identify must be SlackIdentify or SlackComment.")
-    }
-
-    private suspend fun getUserWithCache(id: Identify): User {
-        val key = id.id!!.value<String>()
-        val cached = userCache[key]
-        if (cached != null) return cached
-
-        val teamObj = loadTeam()
-        return proceed {
-            val response = auth.accessor.slack.users().usersInfo(
-                UsersInfoRequest(
-                    token = auth.accessor.token,
-                    user = key,
-                    isIncludeLocale = false
-                )
-            )
-            if (!response.isOk) {
-                throw SocialHubException(response.error ?: "Unknown error")
-            }
-            val user = SlackMapper.user(response, teamObj, service())
-            user?.let { userCache[it.id!!.value<String>()] = it }
-            user!!
-        }
-    }
-
-    private suspend fun getBotWithCache(id: Identify): User {
-        val key = id.id!!.value<String>()
-        val cached = botCache[key]
-        if (cached != null) return cached
-
-        return proceed {
-            val response = auth.accessor.slack.bots().botsInfo(
-                BotsInfoRequest(
-                    token = auth.accessor.token,
-                    bot = key
-                )
-            )
-            if (!response.isOk) {
-                throw SocialHubException(response.error ?: "Unknown error")
-            }
-            val bot = SlackMapper.bots(response, service())!!
-            botCache[bot.id!!.value<String>()] = bot
-            bot
-        }
+        return helper.getChannelId(id)
     }
 
     private fun service(): Service = account.service
