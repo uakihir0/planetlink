@@ -205,6 +205,63 @@ If authentication credentials are required for testing, create `secrets.json` (r
 - Stream callbacks are registered via `setHomeTimeLineStream()`, `setNotificationStream()`
 - **Capabilities discovery**: Each adapter declares supported actions via `capabilities()` — see below
 
+### Kotlin/JS yield* Bug — MUST READ
+
+**Known runtime bug in Kotlin/JS suspend coroutine transformation.**
+
+Calling **another suspend function of the same class** inside a suspend lambda such as `proceed { }` / `proceedUnit { }` causes a runtime error on the JS target only:
+
+```
+TypeError: yield* (intermediate value)(...) is not iterable
+```
+
+#### Rules
+
+1. **Only external object API calls are allowed inside `proceed { }` / `proceedUnit { }`**
+   - OK: `auth.accessor.slack.chat().chatPostMessage(...)` (external object)
+   - NG: `getUserWithCache(id)` (same-class suspend fun)
+   - NG: `validateToken { ... }` (same-class suspend fun)
+   - NG: `loadTeam()` (same-class suspend fun)
+
+2. **Move same-class suspend calls outside the lambda**
+   ```kotlin
+   // NG — breaks on JS
+   suspend fun likeComment(id: Identify) {
+       proceedUnit {
+           val c = commentWithCheck(id)  // same-class suspend
+           api.like(c.ref())
+       }
+   }
+
+   // OK — called outside the lambda
+   suspend fun likeComment(id: Identify) {
+       val c = commentWithCheck(id)  // outside the lambda
+       proceedUnit {
+           api.like(c.ref())          // external API only
+       }
+   }
+   ```
+
+3. **Embedding `proceed { }` inside the callee is also a valid pattern**
+   ```kotlin
+   // getUserWithCache itself wraps with proceed
+   private suspend fun getUserWithCache(id: Identify): User {
+       val cached = cache[key]
+       if (cached != null) return cached
+       return proceed {
+           api.usersInfo(...)  // only external APIs inside lambda
+       }
+   }
+   ```
+
+4. **Do not lose error handling** — when removing `proceed` from the caller, embed `proceed` inside the callee or integrate exception classification logic (as done with `validateToken` in TumblrAction)
+
+#### Scope
+
+- JS target only (JVM / Native are unaffected due to different coroutine implementations)
+- No compile-time error — only manifests at runtime
+- Other suspend lambdas (`coroutineScope { }`, `withContext { }`, etc.) are equally affected
+
 ### Capabilities Discovery
 
 Each adapter statically declares which `ActionType` entries it supports via a `CAPABILITIES` companion-object field returned by `capabilities()`. This allows callers to check feature support **without making API calls**.

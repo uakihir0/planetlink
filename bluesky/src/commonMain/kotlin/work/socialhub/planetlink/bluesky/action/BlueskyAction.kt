@@ -245,14 +245,12 @@ class BlueskyAction(
     override suspend fun unfollowUser(
         id: Identify
     ) {
+        val uri = userUri(id)
         proceedUnit {
-            // TODO: uri の取得について確認
-            userUri(id).let { uri ->
-                auth.accessor.graph().deleteFollow(
-                    GraphDeleteFollowRequest(authProvider())
-                        .also { it.uri = uri }
-                )
-            }
+            auth.accessor.graph().deleteFollow(
+                GraphDeleteFollowRequest(authProvider())
+                    .also { it.uri = uri }
+            )
         }
     }
 
@@ -304,14 +302,12 @@ class BlueskyAction(
     override suspend fun unblockUser(
         id: Identify
     ) {
+        val uri = userUri(id)
         proceedUnit {
-            // TODO: uri の取得について確認
-            userUri(id).let { uri ->
-                auth.accessor.graph().deleteBlock(
-                    GraphDeleteBlockRequest(authProvider())
-                        .also { it.uri = uri }
-                )
-            }
+            auth.accessor.graph().deleteBlock(
+                GraphDeleteBlockRequest(authProvider())
+                    .also { it.uri = uri }
+            )
         }
     }
 
@@ -845,15 +841,17 @@ class BlueskyAction(
         id: Identify
     ): BlueskyComment {
         if (id is BlueskyComment) return id
-        val posts = auth.accessor.feed().getPosts(
-            FeedGetPostsRequest(authProvider()).also {
-                it.uris = listOf(id.id!!.value())
-            }
-        )
-        return Mapper.simpleComment(
-            posts.data.posts[0],
-            service(),
-        ) as BlueskyComment
+        return proceed {
+            val posts = auth.accessor.feed().getPosts(
+                FeedGetPostsRequest(authProvider()).also {
+                    it.uris = listOf(id.id!!.value())
+                }
+            )
+            Mapper.simpleComment(
+                posts.data.posts[0],
+                service(),
+            ) as BlueskyComment
+        }
     }
 
     /**
@@ -919,8 +917,8 @@ class BlueskyAction(
     override suspend fun likeComment(
         id: Identify
     ) {
+        val c = commentWithCheck(id)
         proceedUnit {
-            val c = commentWithCheck(id)
             auth.accessor.feed().like(
                 FeedLikeRequest(authProvider())
                     .also { it.subject = c.ref() }
@@ -934,8 +932,8 @@ class BlueskyAction(
     override suspend fun unlikeComment(
         id: Identify
     ) {
+        val c = commentWithCheck(id)
         proceed {
-            val c = commentWithCheck(id)
             auth.accessor.feed().deleteLike(
                 FeedDeleteLikeRequest(authProvider())
                     .also { it.uri = c.likeRecordUri }
@@ -949,8 +947,8 @@ class BlueskyAction(
     override suspend fun shareComment(
         id: Identify
     ) {
+        val c = commentWithCheck(id)
         proceed {
-            val c = commentWithCheck(id)
             auth.accessor.feed().repost(
                 FeedRepostRequest(authProvider())
                     .also { it.subject = c.ref() }
@@ -964,8 +962,8 @@ class BlueskyAction(
     override suspend fun unshareComment(
         id: Identify
     ) {
+        val c = commentWithCheck(id)
         proceed {
-            val c = commentWithCheck(id)
             auth.accessor.feed().deleteRepost(
                 FeedDeleteRepostRequest(authProvider())
                     .also { it.uri = c.repostRecordUri }
@@ -1037,8 +1035,8 @@ class BlueskyAction(
     override suspend fun bookmarkComment(
         id: Identify
     ) {
+        val c = commentWithCheck(id)
         proceedUnit {
-            val c = commentWithCheck(id)
             auth.accessor.feed().createBookmark(
                 FeedCreateBookmarkRequest(
                     auth = authProvider(),
@@ -1655,28 +1653,27 @@ class BlueskyAction(
     private suspend fun userUri(
         id: Identify
     ): String {
-        var uri: String? = null
+        return proceed {
+            var uri: String? = null
 
-        // ユーザーオブジェクトから取得
-        if (id is BlueskyUser) {
-            uri = id.followRecordUri
-        }
-
-        // DID から取得
-        if (uri == null) {
-            val response = auth.accessor.actor().getProfile(
-                ActorGetProfileRequest(authProvider())
-                    .also { it.actor = id.id!!.value() }
-            )
-
-            // ユーザー情報にフォローしているかどうかが確認できる
-            val state = response.data.viewer
-            if (state?.following != null) {
-                uri = state.following
+            if (id is BlueskyUser) {
+                uri = id.followRecordUri
             }
-        }
 
-        return checkNotNull(uri)
+            if (uri == null) {
+                val response = auth.accessor.actor().getProfile(
+                    ActorGetProfileRequest(authProvider())
+                        .also { it.actor = id.id!!.value() }
+                )
+
+                val state = response.data.viewer
+                if (state?.following != null) {
+                    uri = state.following
+                }
+            }
+
+            checkNotNull(uri)
+        }
     }
 
     // ============================================================== //
