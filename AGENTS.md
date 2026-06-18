@@ -254,8 +254,14 @@ Compile to JS and inspect the generated `.mjs` (`./gradlew :all:jsNodeDevelopmen
 #### Scope
 
 - JS target only (JVM / Native use a different coroutine implementation)
-- No compile-time error — runtime only, often only on a cache-miss path
-- At-risk modules call `userMeWithCache()` without overriding it: **misskey, mastodon, tumblr, matrix** (only nostr + slack carry the override). Apply fix #1 there if the crash surfaces.
+- No compile-time error — runtime only, and **only on the cache-miss path** (`me == null`)
+- `userMeWithCache()` is now overridden (fix #1) in **all** platform adapters: nostr, slack, misskey, mastodon, tumblr, matrix.
+
+#### Why it surfaced only in Slack (important)
+
+The codegen defect is present for *every* adapter that inherits `userMeWithCache()` — the broken `userMe$suspendBridge` is only reached when `me == null`. In most adapters `userMe()` is called during login/account setup, populating `me` *before* any timeline calls `userMeWithCache()`, so the cache-hit (`else`) branch is taken and the bridge is never touched. Slack's `homeTimeLine` (driven by the polling/stream orchestrator) could reach `userMeWithCache()` while `me` was still null → cache-miss → crash. So "module X works" only meant "X happens to warm the cache first" — not that X was safe. The override removes the ordering dependency entirely.
+
+To reproduce/confirm: compile to JS (`./gradlew :all:jsNodeDevelopmentLibraryDistribution`), build an action with a fake token, and call `userMeWithCache()` on a fresh instance (forces `me == null`). Broken code throws `yield* ... is not iterable`; fixed code reaches a real network/auth error.
 
 ### Capabilities Discovery
 
