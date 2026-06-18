@@ -121,6 +121,16 @@ class MastodonAction(
      * {@inheritDoc}
      */
     override suspend fun userMe(): User {
+        return fetchUserMe()
+    }
+
+    /**
+     * Overrides the base `userMeWithCache()` and routes both it and `userMe()`
+     * through this private function to avoid the Kotlin/JS yield* crash caused by
+     * the unwired virtual suspend bridge for base→abstract `userMe()` delegation.
+     * See AGENTS.md "Kotlin/JS yield* Bug".
+     */
+    private suspend fun fetchUserMe(): User {
         return proceed {
             val account = auth.accessor.accounts()
                 .verifyCredentials()
@@ -135,6 +145,10 @@ class MastodonAction(
                 service()
             ).also { this.me = it }
         }
+    }
+
+    override suspend fun userMeWithCache(): User {
+        return me ?: fetchUserMe()
     }
 
     /**

@@ -172,6 +172,16 @@ class MisskeyAction(
      * {@inheritDoc}
      */
     override suspend fun userMe(): User {
+        return fetchUserMe()
+    }
+
+    /**
+     * Overrides the base `userMeWithCache()` and routes both it and `userMe()`
+     * through this private function to avoid the Kotlin/JS yield* crash caused by
+     * the unwired virtual suspend bridge for base→abstract `userMe()` delegation.
+     * See AGENTS.md "Kotlin/JS yield* Bug".
+     */
+    private suspend fun fetchUserMe(): User {
         return proceed {
             val misskey = auth.accessor
             val response = misskey.accounts().i(IRequest())
@@ -182,6 +192,10 @@ class MisskeyAction(
                 service(),
             ).also { this.me = it }
         }
+    }
+
+    override suspend fun userMeWithCache(): User {
+        return me ?: fetchUserMe()
     }
 
     /**

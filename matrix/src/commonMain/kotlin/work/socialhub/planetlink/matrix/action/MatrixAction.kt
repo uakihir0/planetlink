@@ -78,6 +78,16 @@ class MatrixAction(
     private val accessor get() = auth.accessor
 
     override suspend fun userMe(): User {
+        return fetchUserMe()
+    }
+
+    /**
+     * Overrides the base `userMeWithCache()` and routes both it and `userMe()`
+     * through this private function to avoid the Kotlin/JS yield* crash caused by
+     * the unwired virtual suspend bridge for base→abstract `userMe()` delegation.
+     * See AGENTS.md "Kotlin/JS yield* Bug".
+     */
+    private suspend fun fetchUserMe(): User {
         return proceed {
             val whoami = accessor.accounts().whoami().data
             val profile = accessor.profile().getProfile(whoami.userId).data
@@ -85,6 +95,10 @@ class MatrixAction(
             me = user
             user
         }
+    }
+
+    override suspend fun userMeWithCache(): User {
+        return me ?: fetchUserMe()
     }
 
     override suspend fun user(id: Identify): User {
