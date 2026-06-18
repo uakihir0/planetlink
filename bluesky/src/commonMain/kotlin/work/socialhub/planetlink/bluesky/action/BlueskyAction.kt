@@ -180,6 +180,13 @@ class BlueskyAction(
      * {@inheritDoc}
      */
     override suspend fun userMe(): User {
+        return fetchUserMe()
+    }
+
+    // Free-standing impl + userMeWithCache override so the base-class
+    // userMeWithCache() -> userMe() virtual suspend bridge (unwired on JS) is
+    // never reached. See AGENTS.md "Kotlin/JS yield* Bug".
+    private suspend fun fetchUserMe(): User {
         return proceed {
             val response = auth.accessor.actor().getProfile(
                 ActorGetProfileRequest(authProvider())
@@ -189,6 +196,10 @@ class BlueskyAction(
             Mapper.user(response.data, service())
                 .also { this.me = it }
         }
+    }
+
+    override suspend fun userMeWithCache(): User {
+        return me ?: fetchUserMe()
     }
 
     /**
