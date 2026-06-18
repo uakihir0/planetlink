@@ -243,6 +243,13 @@ Three presentations of the same defect:
 
 Cross-**class** suspend calls (calling a method on a *different* object, e.g. `auth.accessor.slack.chat().chatPostMessage(...)`, or a separate helper class) are codegen'd correctly and do NOT hit the broken bridge. A call to a `private` (non-exported, non-virtual) suspend function is also safe — it compiles to a direct generator call.
 
+**Why some same-class calls are safe and others crash (the key distinction).** It comes down to whether the *callee* is an interface/base **`override`** or a **class-owned** member:
+
+- **Callee is `override suspend fun`** (implements an interface/base method, e.g. `comment`, `user`, `likeComment`, `reactionComment`, `postComment`, `channelTimeLine`) → its `name$suspendBridge` is declared on the **interface side** (core) and **never wired onto the subclass prototype**. A same-class `yield* this.callee$suspendBridge(...)` hits `undefined` → **crash**.
+- **Callee is a plain class-owned `suspend fun`** (no `override`; declared only on the concrete adapter, e.g. `commentContext`, `getEmojis`, `homeTimeLineStream`, `notificationStream`, `getBots`, and every `private fetchX`/`doX`) → the compiler emits a **wired dispatcher method** `*name$suspendBridge(){ this.name === protoOf(C).name ? yield* internal : await_0(this.name()) }` on that class → **safe**.
+
+This is a 100% predictor across this repo: every crash had an `override` callee; every method that "worked before the fix" called a non-`override` class-owned method. That's exactly why the `private fetchX`/`doX` fix works — a private function is class-owned and gets a direct call, never the unwired interface bridge. (Verify a callee's status: `grep "suspend fun <name>(" Adapter.kt` — leading `override` = risky as a same-class callee.)
+
 #### The fix: route same-class calls through a private free-standing function
 
 The universal rule: **a public/overridden suspend method must never call another public/overridden suspend method of the same class.** Extract the callee's body into a `private suspend fun` and have BOTH the public override and any same-class caller invoke the private one. A `private` function compiles to a direct generator call, bypassing the virtual bridge.
