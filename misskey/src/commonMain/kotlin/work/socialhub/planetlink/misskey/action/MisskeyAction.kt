@@ -82,6 +82,7 @@ import work.socialhub.planetlink.misskey.define.MisskeyReactionType.Renote
 import work.socialhub.planetlink.misskey.model.MisskeyPaging
 import work.socialhub.planetlink.misskey.model.MisskeyPoll
 import work.socialhub.planetlink.model.*
+import work.socialhub.planetlink.model.error.NotImplementedException
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.error.SocialHubException
@@ -204,6 +205,12 @@ class MisskeyAction(
     override suspend fun user(
         id: Identify
     ): User {
+        return fetchUser(id)
+    }
+
+    // Free-standing impl so same-class callers (user(url)) don't route through
+    // the unwired JS virtual suspend bridge. See AGENTS.md "Kotlin/JS yield* Bug".
+    private suspend fun fetchUser(id: Identify): User {
         return proceed {
             val misskey = auth.accessor
             val user: UsersShowResponse
@@ -250,11 +257,11 @@ class MisskeyAction(
 
             if (identify.contains("@")) {
                 val format = ("@$identify")
-                return user(Identify(service())
+                return fetchUser(Identify(service())
                     .also { it.id = ID(format) })
             } else {
                 val format = ("@$identify@$host")
-                return user(Identify(service())
+                return fetchUser(Identify(service())
                     .also { it.id = ID(format) })
             }
         }
@@ -617,8 +624,9 @@ class MisskeyAction(
         req: CommentForm
     ) {
         if (req.isMessage) {
-            postMessage(req)
-            return
+            // Misskey has no message API; inline the default postMessage() behavior
+            // instead of calling it (same-class suspend call -> JS yield* bug).
+            throw NotImplementedException()
         }
 
         proceed {
@@ -683,6 +691,12 @@ class MisskeyAction(
     override suspend fun comment(
         id: Identify
     ): Comment {
+        return fetchComment(id)
+    }
+
+    // Free-standing impl so same-class callers (comment(url)) don't route through
+    // the unwired JS virtual suspend bridge. See AGENTS.md "Kotlin/JS yield* Bug".
+    private suspend fun fetchComment(id: Identify): Comment {
         return proceed {
             val misskey = auth.accessor
             val response = misskey.notes().show(
@@ -710,7 +724,7 @@ class MisskeyAction(
         val matcher = regex.find(url)
 
         if (matcher != null) {
-            return comment(
+            return fetchComment(
                 Identify(service()).also {
                     it.id = ID(matcher.groupValues[2])
                 })
@@ -725,6 +739,12 @@ class MisskeyAction(
     override suspend fun likeComment(
         id: Identify
     ) {
+        doLikeComment(id)
+    }
+
+    // Free-standing impls so same-class callers (reactionComment) don't route
+    // through the unwired JS virtual suspend bridge. See AGENTS.md "Kotlin/JS yield* Bug".
+    private suspend fun doLikeComment(id: Identify) {
         proceedUnit {
             auth.accessor.reactions().create(
                 ReactionsCreateRequest().also {
@@ -740,6 +760,10 @@ class MisskeyAction(
     override suspend fun unlikeComment(
         id: Identify
     ) {
+        doUnlikeComment(id)
+    }
+
+    private suspend fun doUnlikeComment(id: Identify) {
         proceedUnit {
             auth.accessor.reactions().delete(
                 ReactionsDeleteRequest().also {
@@ -754,6 +778,10 @@ class MisskeyAction(
     override suspend fun shareComment(
         id: Identify
     ) {
+        doShareComment(id)
+    }
+
+    private suspend fun doShareComment(id: Identify) {
         proceedUnit {
             auth.accessor.notes().create(
                 NotesCreateRequest().also {
@@ -768,6 +796,10 @@ class MisskeyAction(
     override suspend fun unshareComment(
         id: Identify
     ) {
+        doUnshareComment(id)
+    }
+
+    private suspend fun doUnshareComment(id: Identify) {
         proceedUnit {
             auth.accessor.notes().unrenote(
                 NoteUnrenoteRequest().also {
@@ -787,11 +819,11 @@ class MisskeyAction(
             val type = reaction.lowercase()
 
             if (Favorite.codes.contains(type)) {
-                likeComment(id)
+                doLikeComment(id)
                 return
             }
             if (Renote.codes.contains(type)) {
-                shareComment(id)
+                doShareComment(id)
                 return
             }
 
@@ -819,11 +851,11 @@ class MisskeyAction(
             val type = reaction.lowercase()
 
             if (Favorite.codes.contains(type)) {
-                unlikeComment(id)
+                doUnlikeComment(id)
                 return
             }
             if (Renote.codes.contains(type)) {
-                unshareComment(id)
+                doUnshareComment(id)
                 return
             }
 

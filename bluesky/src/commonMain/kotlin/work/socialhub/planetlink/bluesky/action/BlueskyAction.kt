@@ -917,6 +917,12 @@ class BlueskyAction(
     override suspend fun likeComment(
         id: Identify
     ) {
+        doLikeComment(id)
+    }
+
+    // Free-standing impls so same-class callers (reactionComment) don't route
+    // through the unwired JS virtual suspend bridge. See AGENTS.md "Kotlin/JS yield* Bug".
+    private suspend fun doLikeComment(id: Identify) {
         val c = commentWithCheck(id)
         proceedUnit {
             auth.accessor.feed().like(
@@ -932,6 +938,10 @@ class BlueskyAction(
     override suspend fun unlikeComment(
         id: Identify
     ) {
+        doUnlikeComment(id)
+    }
+
+    private suspend fun doUnlikeComment(id: Identify) {
         val c = commentWithCheck(id)
         proceed {
             auth.accessor.feed().deleteLike(
@@ -947,6 +957,10 @@ class BlueskyAction(
     override suspend fun shareComment(
         id: Identify
     ) {
+        doShareComment(id)
+    }
+
+    private suspend fun doShareComment(id: Identify) {
         val c = commentWithCheck(id)
         proceed {
             auth.accessor.feed().repost(
@@ -962,6 +976,10 @@ class BlueskyAction(
     override suspend fun unshareComment(
         id: Identify
     ) {
+        doUnshareComment(id)
+    }
+
+    private suspend fun doUnshareComment(id: Identify) {
         val c = commentWithCheck(id)
         proceed {
             auth.accessor.feed().deleteRepost(
@@ -982,11 +1000,11 @@ class BlueskyAction(
             val type = reaction.lowercase()
 
             if (BlueskyReactionType.Like.codes.contains(type)) {
-                likeComment(id)
+                doLikeComment(id)
                 return
             }
             if (BlueskyReactionType.Repost.codes.contains(type)) {
-                shareComment(id)
+                doShareComment(id)
                 return
             }
         }
@@ -1004,11 +1022,11 @@ class BlueskyAction(
             val type = reaction.lowercase()
 
             if (BlueskyReactionType.Like.codes.contains(type)) {
-                unlikeComment(id)
+                doUnlikeComment(id)
                 return
             }
             if (BlueskyReactionType.Repost.codes.contains(type)) {
-                unshareComment(id)
+                doUnshareComment(id)
                 return
             }
         }

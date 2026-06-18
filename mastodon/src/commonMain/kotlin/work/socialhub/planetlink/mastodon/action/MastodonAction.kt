@@ -157,6 +157,12 @@ class MastodonAction(
     override suspend fun user(
         id: Identify
     ): User {
+        return fetchUser(id)
+    }
+
+    // Free-standing impls so same-class callers (user(url)) don't route through
+    // the unwired JS virtual suspend bridge. See AGENTS.md "Kotlin/JS yield* Bug".
+    private suspend fun fetchUser(id: Identify): User {
         return proceed {
             val account = auth.accessor.accounts().account(
                 AccountsAccountRequest()
@@ -187,7 +193,7 @@ class MastodonAction(
             val screenName = matcher.groupValues[2]
 
             val format: String = ("@$screenName@$host")
-            val users = searchUsers(format, Paging(10))
+            val users = doSearchUsers(format, Paging(10))
             return users.entities.first { it.accountIdentify == format }
 
         } else {
@@ -196,7 +202,7 @@ class MastodonAction(
 
             if (matcher != null) {
                 val id = matcher.groupValues[2]
-                return user(Identify(service(), ID(id)))
+                return fetchUser(Identify(service(), ID(id)))
 
             } else {
                 throw SocialHubException("this url is not supported format.")
@@ -390,6 +396,13 @@ class MastodonAction(
      * {@inheritDoc}
      */
     override suspend fun searchUsers(
+        query: String,
+        paging: Paging
+    ): Pageable<User> {
+        return doSearchUsers(query, paging)
+    }
+
+    private suspend fun doSearchUsers(
         query: String,
         paging: Paging
     ): Pageable<User> {
@@ -633,6 +646,14 @@ class MastodonAction(
     override suspend fun postComment(
         req: CommentForm
     ) {
+        doPostComment(req)
+    }
+
+    // Free-standing impl so same-class callers (postMessage) don't route through
+    // the unwired JS virtual suspend bridge. See AGENTS.md "Kotlin/JS yield* Bug".
+    private suspend fun doPostComment(
+        req: CommentForm
+    ) {
         proceedUnit {
             val post = StatusesPostStatusRequest()
 
@@ -701,6 +722,12 @@ class MastodonAction(
     override suspend fun comment(
         id: Identify
     ): Comment {
+        return fetchComment(id)
+    }
+
+    // Free-standing impl so same-class callers (comment(url)) don't route through
+    // the unwired JS virtual suspend bridge. See AGENTS.md "Kotlin/JS yield* Bug".
+    private suspend fun fetchComment(id: Identify): Comment {
         return proceed {
             val status = auth.accessor.statuses().status(
                 StatusesStatusRequest().also {
@@ -733,7 +760,7 @@ class MastodonAction(
         if (matcher != null) {
             val id = matcher.groupValues[3]
             val identify = Identify(service(), ID(id))
-            return comment(identify)
+            return fetchComment(identify)
 
         } else {
             regex = "https://(.+?)/web/statuses/(.+)".toRegex()
@@ -742,7 +769,7 @@ class MastodonAction(
             if (matcher != null) {
                 val id = matcher.groupValues[2]
                 val identify = Identify(service(), ID(id))
-                return comment(identify)
+                return fetchComment(identify)
 
             } else {
                 throw SocialHubException("this url is not supported format.")
@@ -756,6 +783,12 @@ class MastodonAction(
     override suspend fun likeComment(
         id: Identify
     ) {
+        doLikeComment(id)
+    }
+
+    // Free-standing impls so same-class callers (reactionComment) don't route
+    // through the unwired JS virtual suspend bridge. See AGENTS.md "Kotlin/JS yield* Bug".
+    private suspend fun doLikeComment(id: Identify) {
         proceedUnit {
             val status = auth.accessor.statuses().favourite(
                 StatusesFavouriteRequest().also {
@@ -775,6 +808,10 @@ class MastodonAction(
     override suspend fun unlikeComment(
         id: Identify
     ) {
+        doUnlikeComment(id)
+    }
+
+    private suspend fun doUnlikeComment(id: Identify) {
         proceedUnit {
             val status = auth.accessor.statuses().unfavourite(
                 StatusesUnfavouriteRequest().also {
@@ -794,6 +831,10 @@ class MastodonAction(
     override suspend fun shareComment(
         id: Identify
     ) {
+        doShareComment(id)
+    }
+
+    private suspend fun doShareComment(id: Identify) {
         proceedUnit {
             val status = auth.accessor.statuses().reblog(
                 StatusesReblogRequest().also {
@@ -813,6 +854,10 @@ class MastodonAction(
     override suspend fun unshareComment(
         id: Identify
     ) {
+        doUnshareComment(id)
+    }
+
+    private suspend fun doUnshareComment(id: Identify) {
         proceedUnit {
             val status = auth.accessor.statuses().unreblog(
                 StatusesUnreblogRequest().also {
@@ -837,11 +882,11 @@ class MastodonAction(
             val type = reaction.lowercase()
 
             if (Favorite.codes.contains(type)) {
-                likeComment(id)
+                doLikeComment(id)
                 return
             }
             if (Reblog.codes.contains(type)) {
-                shareComment(id)
+                doShareComment(id)
                 return
             }
         }
@@ -859,11 +904,11 @@ class MastodonAction(
             val type = reaction.lowercase()
 
             if (Favorite.codes.contains(type)) {
-                unlikeComment(id)
+                doUnlikeComment(id)
                 return
             }
             if (Reblog.codes.contains(type)) {
-                unshareComment(id)
+                doUnshareComment(id)
                 return
             }
         }
@@ -1155,7 +1200,7 @@ class MastodonAction(
     override suspend fun postMessage(
         req: CommentForm
     ) {
-        postComment(req)
+        doPostComment(req)
     }
 
     // ============================================================== //
