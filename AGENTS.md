@@ -207,60 +207,55 @@ If authentication credentials are required for testing, create `secrets.json` (r
 
 ### Kotlin/JS yield* Bug — MUST READ
 
-**Known runtime bug in Kotlin/JS suspend coroutine transformation.**
-
-Calling **another suspend function of the same class** inside a suspend lambda such as `proceed { }` / `proceedUnit { }` causes a runtime error on the JS target only:
+**Known Kotlin/JS code-generation defect** (Kotlin 2.4.0, `es2015` generator target + `-XXLanguage:+JsAllowExportingSuspendFunctions`). Manifests at runtime on the JS target only:
 
 ```
 TypeError: yield* (intermediate value)(...) is not iterable
 ```
 
-#### Rules
+#### Root cause
 
-1. **Only external object API calls are allowed inside `proceed { }` / `proceedUnit { }`**
-   - OK: `auth.accessor.slack.chat().chatPostMessage(...)` (external object)
-   - NG: `getUserWithCache(id)` (same-class suspend fun)
-   - NG: `validateToken { ... }` (same-class suspend fun)
-   - NG: `loadTeam()` (same-class suspend fun)
+With the `es2015` target each suspend function is lowered to an ES generator and every suspension point becomes `yield* callee()`. For **`@JsExport` classes**, calls to a suspend member that is dispatched **virtually** (abstract/`open`, overridden in a subclass) are routed through a generated `name$suspendBridge` method. In some shapes the compiler emits the bridge under a mangled name that is **never wired onto the prototype**, so `yield*` delegates to `undefined` / a non-generator and the coroutine driver throws "is not iterable". It is NOT a compile-time error and only fires on the path that actually reaches the call (e.g. a cache *miss*). Related upstream: KT-84710, KT-86934.
 
-2. **Move same-class suspend calls outside the lambda**
+Two distinct shapes have bitten this repo:
+
+1. **Base→override virtual suspend delegation.** A base-class `open suspend fun` that calls an abstract/overridden suspend fun. Concretely `AccountActionImpl.userMeWithCache()` (open) → `userMe()` (abstract, overridden per platform). The inherited `userMeWithCache` bridge delegates to the wrong mangled `userMe$suspendBridge`.
+
+2. **Same-class suspend call from inside a suspend lambda** (`proceed { }` / `proceedUnit { }` / `coroutineScope { }`). Calling a sibling/self suspend method inside the lambda hits the same broken bridge.
+
+Cross-**class** suspend calls (calling a method on a *different* object, e.g. `auth.accessor.slack.chat().chatPostMessage(...)`, or a separate helper class) are codegen'd correctly and do NOT hit the broken bridge.
+
+#### Fixes (by shape), all proven in-repo
+
+1. **Override the wrapper + call a private free-standing function** — for the `userMeWithCache → userMe` shape. Override `userMeWithCache()` in the subclass and route it (and `userMe()`) through a `private suspend fun fetchUserMe()`. A private function compiles to a direct generator call, bypassing the virtual bridge. Live in `NostrAction` and `SlackAction`.
    ```kotlin
-   // NG — breaks on JS
-   suspend fun likeComment(id: Identify) {
-       proceedUnit {
-           val c = commentWithCheck(id)  // same-class suspend
-           api.like(c.ref())
-       }
-   }
+   override suspend fun userMe(): User = fetchUserMe()
+   override suspend fun userMeWithCache(): User = me ?: fetchUserMe()
+   private suspend fun fetchUserMe(): User { /* real API + cache into me */ }
+   ```
 
+2. **Move same-class suspend calls outside the lambda** — hoist the call to plain function scope, pass the result in.
+   ```kotlin
    // OK — called outside the lambda
    suspend fun likeComment(id: Identify) {
-       val c = commentWithCheck(id)  // outside the lambda
-       proceedUnit {
-           api.like(c.ref())          // external API only
-       }
+       val c = commentWithCheck(id)   // outside proceed
+       proceedUnit { api.like(c.ref()) }  // lambda: external API only
    }
    ```
 
-3. **Embedding `proceed { }` inside the callee is also a valid pattern**
-   ```kotlin
-   // getUserWithCache itself wraps with proceed
-   private suspend fun getUserWithCache(id: Identify): User {
-       val cached = cache[key]
-       if (cached != null) return cached
-       return proceed {
-           api.usersInfo(...)  // only external APIs inside lambda
-       }
-   }
-   ```
+3. **Extract shared suspend logic into a separate (non-exported) helper class** — delegate via `helper.foo()`. Cross-class calls are safe. Live in `SlackActionHelper`. NOTE: this alone does NOT fix shape #1 — a helper calling back into `action.userMe()` still routes through the virtual bridge; combine with fix #1.
 
-4. **Do not lose error handling** — when removing `proceed` from the caller, embed `proceed` inside the callee or integrate exception classification logic (as done with `validateToken` in TumblrAction)
+4. **Embed `proceed { }` inside the callee** and keep only external API calls inside any lambda — preserves error classification when hoisting (or integrate `ExceptionHandler.classify` as in `TumblrAction.validateToken`).
+
+#### How to diagnose precisely
+
+Compile to JS and inspect the generated `.mjs` (`./gradlew :all:jsNodeDevelopmentLibraryDistribution`, output under `all/build/dist/js/developmentLibrary/`). Search for a `xxx$suspendBridge_*` that is referenced in a `yield*` but never assigned to any prototype (`grep -n "<mangle>" *.mjs | grep -v 'yield\*'` returns nothing). That unwired bridge in the failing call chain is the bug.
 
 #### Scope
 
-- JS target only (JVM / Native are unaffected due to different coroutine implementations)
-- No compile-time error — only manifests at runtime
-- Other suspend lambdas (`coroutineScope { }`, `withContext { }`, etc.) are equally affected
+- JS target only (JVM / Native use a different coroutine implementation)
+- No compile-time error — runtime only, often only on a cache-miss path
+- At-risk modules call `userMeWithCache()` without overriding it: **misskey, mastodon, tumblr, matrix** (only nostr + slack carry the override). Apply fix #1 there if the crash surfaces.
 
 ### Capabilities Discovery
 
