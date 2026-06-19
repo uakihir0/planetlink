@@ -67,6 +67,10 @@ class SlackAction(
     internal val helper = SlackActionHelper(this)
 
     override suspend fun userMe(): User {
+        return fetchUserMe()
+    }
+
+    private suspend fun fetchUserMe(): User {
         val teamObj = helper.loadTeam()
         return proceed<User> {
             val testResponse = auth.accessor.slack.auth().authTest(
@@ -93,6 +97,20 @@ class SlackAction(
             me = user
             user!!
         }
+    }
+
+    /**
+     * Overrides the base `AccountActionImpl.userMeWithCache()`.
+     *
+     * The base implementation is an `open suspend fun` that delegates to the
+     * abstract `userMe()`. On Kotlin/JS that delegation goes through a generated
+     * `userMe$suspendBridge` which is never wired onto the prototype, causing the
+     * `yield* ... is not iterable` runtime crash. Overriding here and calling the
+     * private `fetchUserMe()` (a free-standing suspend function, not a virtual
+     * member) avoids the broken bridge entirely — same pattern as NostrAction.
+     */
+    override suspend fun userMeWithCache(): User {
+        return me ?: fetchUserMe()
     }
 
     override suspend fun user(id: Identify): User {

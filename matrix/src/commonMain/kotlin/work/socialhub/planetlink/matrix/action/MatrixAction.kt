@@ -78,6 +78,16 @@ class MatrixAction(
     private val accessor get() = auth.accessor
 
     override suspend fun userMe(): User {
+        return fetchUserMe()
+    }
+
+    /**
+     * Overrides the base `userMeWithCache()` and routes both it and `userMe()`
+     * through this private function to avoid the Kotlin/JS yield* crash caused by
+     * the unwired virtual suspend bridge for base→abstract `userMe()` delegation.
+     * See AGENTS.md "Kotlin/JS yield* Bug".
+     */
+    private suspend fun fetchUserMe(): User {
         return proceed {
             val whoami = accessor.accounts().whoami().data
             val profile = accessor.profile().getProfile(whoami.userId).data
@@ -85,6 +95,10 @@ class MatrixAction(
             me = user
             user
         }
+    }
+
+    override suspend fun userMeWithCache(): User {
+        return me ?: fetchUserMe()
     }
 
     override suspend fun user(id: Identify): User {
@@ -215,6 +229,13 @@ class MatrixAction(
     }
 
     override suspend fun postComment(req: CommentForm) {
+        doPostComment(req)
+    }
+
+    // Free-standing impls so same-class callers (postMessage, likeComment, etc.)
+    // don't route through the unwired JS virtual suspend bridge.
+    // See AGENTS.md "Kotlin/JS yield* Bug".
+    private suspend fun doPostComment(req: CommentForm) {
         proceedUnit {
             val roomId = req.params[MatrixComment.ROOM_KEY] as? String
                 ?: throw SocialHubException("Room ID is required for Matrix messages")
@@ -259,11 +280,11 @@ class MatrixAction(
     }
 
     override suspend fun likeComment(id: Identify) {
-        reactionComment(id, "\uD83D\uDC4D")
+        doReactionComment(id, "\uD83D\uDC4D")
     }
 
     override suspend fun unlikeComment(id: Identify) {
-        unreactionComment(id, "\uD83D\uDC4D")
+        doUnreactionComment(id, "\uD83D\uDC4D")
     }
 
     override suspend fun shareComment(id: Identify) {
@@ -275,6 +296,10 @@ class MatrixAction(
     }
 
     override suspend fun reactionComment(id: Identify, reaction: String) {
+        doReactionComment(id, reaction)
+    }
+
+    private suspend fun doReactionComment(id: Identify, reaction: String) {
         proceedUnit {
             val comment = id as? MatrixComment
                 ?: throw SocialHubException("Not a Matrix comment")
@@ -293,6 +318,10 @@ class MatrixAction(
     }
 
     override suspend fun unreactionComment(id: Identify, reaction: String) {
+        doUnreactionComment(id, reaction)
+    }
+
+    private suspend fun doUnreactionComment(id: Identify, reaction: String) {
         proceedUnit {
             val comment = id as? MatrixComment
                 ?: throw SocialHubException("Not a Matrix comment")
@@ -358,6 +387,10 @@ class MatrixAction(
     }
 
     override suspend fun channelTimeLine(id: Identify, paging: Paging): Pageable<Comment> {
+        return doChannelTimeLine(id, paging)
+    }
+
+    private suspend fun doChannelTimeLine(id: Identify, paging: Paging): Pageable<Comment> {
         return proceed {
             val roomId = id.id!!.value<String>()
             val mp = MatrixPaging.fromPaging(paging)
@@ -418,14 +451,18 @@ class MatrixAction(
     }
 
     override suspend fun messageTimeLine(id: Identify, paging: Paging): Pageable<Comment> {
-        return channelTimeLine(id, paging)
+        return doChannelTimeLine(id, paging)
     }
 
     override suspend fun postMessage(req: CommentForm) {
-        postComment(req)
+        doPostComment(req)
     }
 
     override suspend fun setHomeTimeLineStream(callback: EventCallback): Stream {
+        return doSetHomeTimeLineStream(callback)
+    }
+
+    private suspend fun doSetHomeTimeLineStream(callback: EventCallback): Stream {
         return proceed {
             val kmatrixStream = MatrixStreamFactory.instance(
                 auth.host,
@@ -438,7 +475,7 @@ class MatrixAction(
     }
 
     override suspend fun setNotificationStream(callback: EventCallback): Stream {
-        return setHomeTimeLineStream(callback)
+        return doSetHomeTimeLineStream(callback)
     }
 
     override fun request(): RequestAction {

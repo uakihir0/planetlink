@@ -102,6 +102,16 @@ class TumblrAction(
      * {@inheritDoc}
      */
     override suspend fun userMe(): User {
+        return fetchUserMe()
+    }
+
+    /**
+     * Overrides the base `userMeWithCache()` and routes both it and `userMe()`
+     * through this private function to avoid the Kotlin/JS yield* crash caused by
+     * the unwired virtual suspend bridge for base→abstract `userMe()` delegation.
+     * See AGENTS.md "Kotlin/JS yield* Bug".
+     */
+    private suspend fun fetchUserMe(): User {
         val user = validateToken {
             auth.accessor.user().user()
         }.data.response?.user
@@ -128,12 +138,22 @@ class TumblrAction(
         return result
     }
 
+    override suspend fun userMeWithCache(): User {
+        return me ?: fetchUserMe()
+    }
+
     /**
      * {@inheritDoc}
      */
     override suspend fun user(
         id: Identify
     ): User {
+        return fetchUser(id)
+    }
+
+    // Free-standing impl so same-class callers (user(url), relationship) don't route
+    // through the unwired JS virtual suspend bridge. See AGENTS.md "Kotlin/JS yield* Bug".
+    private suspend fun fetchUser(id: Identify): User {
         val blog = validateToken {
             auth.accessor.blog().blogInfo(
                 BlogInfoRequest().also {
@@ -171,7 +191,7 @@ class TumblrAction(
         url: String
     ): User {
         val name = url.split("/").last()
-        return user(Identify(service(), ID(name)))
+        return fetchUser(Identify(service(), ID(name)))
     }
 
     /**
@@ -252,7 +272,7 @@ class TumblrAction(
         }
 
         // ユーザーの一部なのでそれを返却
-        val user = user(id)
+        val user = fetchUser(id)
         if (user is TumblrUser) {
             return user.relationship!!
         }
@@ -553,6 +573,12 @@ class TumblrAction(
     override suspend fun likeComment(
         id: Identify
     ) {
+        doLikeComment(id)
+    }
+
+    // Free-standing impls so same-class callers (reactionComment) don't route
+    // through the unwired JS virtual suspend bridge. See AGENTS.md "Kotlin/JS yield* Bug".
+    private suspend fun doLikeComment(id: Identify) {
         if (id is TumblrComment) {
             validateToken {
                 auth.accessor.user().like(
@@ -574,6 +600,10 @@ class TumblrAction(
     override suspend fun unlikeComment(
         id: Identify
     ) {
+        doUnlikeComment(id)
+    }
+
+    private suspend fun doUnlikeComment(id: Identify) {
         if (id is TumblrComment) {
             validateToken {
                 auth.accessor.user().unlike(
@@ -595,6 +625,10 @@ class TumblrAction(
     override suspend fun shareComment(
         id: Identify
     ) {
+        doShareComment(id)
+    }
+
+    private suspend fun doShareComment(id: Identify) {
         if (id is TumblrComment) {
             val blog = userMeWithCache()
             validateToken {
@@ -632,11 +666,11 @@ class TumblrAction(
             val type = reaction.lowercase()
 
             if (TumblrReactionType.Like.codes.contains(type)) {
-                likeComment(id)
+                doLikeComment(id)
                 return
             }
             if (TumblrReactionType.Reblog.codes.contains(type)) {
-                shareComment(id)
+                doShareComment(id)
                 return
             }
         }
@@ -654,7 +688,7 @@ class TumblrAction(
             val type = reaction.lowercase()
 
             if (TumblrReactionType.Like.codes.contains(type)) {
-                unlikeComment(id)
+                doUnlikeComment(id)
                 return
             }
         }

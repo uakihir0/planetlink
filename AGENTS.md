@@ -207,60 +207,104 @@ If authentication credentials are required for testing, create `secrets.json` (r
 
 ### Kotlin/JS yield* Bug — MUST READ
 
-**Known runtime bug in Kotlin/JS suspend coroutine transformation.**
-
-Calling **another suspend function of the same class** inside a suspend lambda such as `proceed { }` / `proceedUnit { }` causes a runtime error on the JS target only:
+**Known Kotlin/JS code-generation defect** (Kotlin 2.4.0, `es2015` generator target + `-XXLanguage:+JsAllowExportingSuspendFunctions`). Manifests at runtime on the JS target only:
 
 ```
 TypeError: yield* (intermediate value)(...) is not iterable
 ```
 
-#### Rules
+#### Root cause
 
-1. **Only external object API calls are allowed inside `proceed { }` / `proceedUnit { }`**
-   - OK: `auth.accessor.slack.chat().chatPostMessage(...)` (external object)
-   - NG: `getUserWithCache(id)` (same-class suspend fun)
-   - NG: `validateToken { ... }` (same-class suspend fun)
-   - NG: `loadTeam()` (same-class suspend fun)
+With the `es2015` target each suspend function is lowered to an ES generator and every suspension point becomes `yield* callee()`. For **`@JsExport` classes**, calls to a suspend member that is dispatched **virtually** (abstract/`open`, overridden in a subclass) are routed through a generated `name$suspendBridge` method. In some shapes the compiler emits the bridge under a mangled name that is **never wired onto the prototype**, so `yield*` delegates to `undefined` / a non-generator and the coroutine driver throws "is not iterable". It is NOT a compile-time error and only fires on the path that actually reaches the call (e.g. a cache *miss*). Related upstream: KT-84710, KT-86934.
 
-2. **Move same-class suspend calls outside the lambda**
-   ```kotlin
-   // NG — breaks on JS
-   suspend fun likeComment(id: Identify) {
-       proceedUnit {
-           val c = commentWithCheck(id)  // same-class suspend
-           api.like(c.ref())
-       }
-   }
+The general trigger is: **a suspend method calls another suspend method of the same class that is itself an `@JsExport` override (or an overload that shares the exported name) — the call routes through that method's `name$suspendBridge`, which is unwired.** This is NOT limited to `userMe`. Empirically reproduced (Node, driving the generated `.mjs`) across many methods:
 
-   // OK — called outside the lambda
-   suspend fun likeComment(id: Identify) {
-       val c = commentWithCheck(id)  // outside the lambda
-       proceedUnit {
-           api.like(c.ref())          // external API only
-       }
-   }
-   ```
+| caller | callee (overridden) | modules |
+|---|---|---|
+| `userMeWithCache()` | `userMe()` | all (base class) |
+| `comment(url)` | `comment(id)` | misskey, mastodon |
+| `user(url)` | `user(id)` / `searchUsers()` | misskey, mastodon, tumblr |
+| `reactionComment()` | `likeComment()` / `shareComment()` | bluesky, misskey, mastodon, tumblr |
+| `unreactionComment()` | `unlikeComment()` / `unshareComment()` | bluesky, misskey, mastodon, tumblr |
+| `postMessage()` | `postComment()` | mastodon, matrix |
+| `postComment()` | `postMessage()` | misskey |
+| `relationship()` | `user()` | tumblr |
+| `messageTimeLine()` | `channelTimeLine()` | matrix |
+| `likeComment()`/`unlikeComment()` | `reactionComment()` | matrix |
+| `setNotificationStream()` | `setHomeTimeLineStream()` | matrix |
 
-3. **Embedding `proceed { }` inside the callee is also a valid pattern**
-   ```kotlin
-   // getUserWithCache itself wraps with proceed
-   private suspend fun getUserWithCache(id: Identify): User {
-       val cached = cache[key]
-       if (cached != null) return cached
-       return proceed {
-           api.usersInfo(...)  // only external APIs inside lambda
-       }
-   }
-   ```
+Three presentations of the same defect:
 
-4. **Do not lose error handling** — when removing `proceed` from the caller, embed `proceed` inside the callee or integrate exception classification logic (as done with `validateToken` in TumblrAction)
+1. **Base→override virtual suspend delegation.** A base-class `open suspend fun` calls an abstract/overridden suspend fun — `AccountActionImpl.userMeWithCache()` (open) → `userMe()`.
+
+2. **Same-class override→override call** (direct or inside `proceed { }` / `coroutineScope { }`). One overridden suspend method calls another on the same class — e.g. `reactionComment()` → `likeComment()`, `comment(url)` → `comment(id)`.
+
+3. **Same-class suspend call from inside a suspend lambda.** Same as #2 but the call sits inside `proceed { }` / `proceedUnit { }`.
+
+Cross-**class** suspend calls (calling a method on a *different* object, e.g. `auth.accessor.slack.chat().chatPostMessage(...)`, or a separate helper class) are codegen'd correctly and do NOT hit the broken bridge. A call to a `private` (non-exported, non-virtual) suspend function is also safe — it compiles to a direct generator call.
+
+**Why some same-class calls are safe and others crash (the key distinction).** It comes down to whether the *callee* is an interface/base **`override`** or a **class-owned** member:
+
+- **Callee is `override suspend fun`** (implements an interface/base method, e.g. `comment`, `user`, `likeComment`, `reactionComment`, `postComment`, `channelTimeLine`) → its `name$suspendBridge` is declared on the **interface side** (core) and **never wired onto the subclass prototype**. A same-class `yield* this.callee$suspendBridge(...)` hits `undefined` → **crash**.
+- **Callee is a plain class-owned `suspend fun`** (no `override`; declared only on the concrete adapter, e.g. `commentContext`, `getEmojis`, `homeTimeLineStream`, `notificationStream`, `getBots`, and every `private fetchX`/`doX`) → the compiler emits a **wired dispatcher method** `*name$suspendBridge(){ this.name === protoOf(C).name ? yield* internal : await_0(this.name()) }` on that class → **safe**.
+
+This is a 100% predictor across this repo: every crash had an `override` callee; every method that "worked before the fix" called a non-`override` class-owned method. That's exactly why the `private fetchX`/`doX` fix works — a private function is class-owned and gets a direct call, never the unwired interface bridge. (Verify a callee's status: `grep "suspend fun <name>(" Adapter.kt` — leading `override` = risky as a same-class callee.)
+
+#### The fix: route same-class calls through a private free-standing function
+
+The universal rule: **a public/overridden suspend method must never call another public/overridden suspend method of the same class.** Extract the callee's body into a `private suspend fun` and have BOTH the public override and any same-class caller invoke the private one. A `private` function compiles to a direct generator call, bypassing the virtual bridge.
+
+```kotlin
+// userMe / userMeWithCache (NostrAction, SlackAction, + all adapters)
+override suspend fun userMe(): User = fetchUserMe()
+override suspend fun userMeWithCache(): User = me ?: fetchUserMe()
+private suspend fun fetchUserMe(): User { /* real API + cache into me */ }
+
+// reactionComment -> likeComment/shareComment (all adapters)
+override suspend fun likeComment(id: Identify) = doLikeComment(id)
+override suspend fun reactionComment(id: Identify, r: String) {
+    if (isLike(r)) { doLikeComment(id); return }   // NOT likeComment(id)
+    ...
+}
+private suspend fun doLikeComment(id: Identify) { /* real impl */ }
+
+// comment(url) -> comment(id), user(url) -> user(id), relationship -> user, etc.
+override suspend fun comment(id: Identify): Comment = fetchComment(id)
+override suspend fun comment(url: String): Comment = fetchComment(parse(url))   // NOT comment(id)
+private suspend fun fetchComment(id: Identify): Comment { /* real impl */ }
+```
+
+Naming convention used in-repo: `fetchX` for getters (`fetchUserMe`, `fetchUser`, `fetchComment`), `doX` for actions (`doLikeComment`, `doPostComment`, `doChannelTimeLine`).
+
+Other valid patterns:
+- **Extract shared suspend logic into a separate (non-exported) helper class** — cross-class calls are safe (`SlackActionHelper`). Note: a helper calling back into `action.userMe()` still hits the bridge; combine with the private-function rule.
+- **Inline the callee** when it's trivial (e.g. Misskey `postComment` for a message just throws `NotImplementedException` directly instead of calling `postMessage()`).
+- When hoisting out of `proceed { }`, keep error handling: embed `proceed { }` in the private callee or integrate `ExceptionHandler.classify` (as in `TumblrAction.validateToken`).
+
+#### How to diagnose / verify precisely
+
+Compile to JS (`./gradlew :all:jsNodeDevelopmentLibraryDistribution`, output under `all/build/dist/js/developmentLibrary/`), then scan for **reachable unwired bridges** — a `X$suspendBridge_...` referenced via an unguarded `yield* this.X$suspendBridge(...)` but never defined as a `*X$suspendBridge(` method anywhere:
+
+```sh
+cd all/build/dist/js/developmentLibrary
+grep -rhoE '\*[A-Za-z0-9_]+\$suspendBridge_[a-z0-9]+_k\$\(' *.mjs | sed 's/^\*//;s/($//' | sort -u > /tmp/defs.txt
+for f in planetlink-*.mjs; do
+  grep -hoE 'yield\* this\.[A-Za-z0-9_]+\$suspendBridge_[a-z0-9]+_k\$' "$f" | sed 's/yield\* this\.//' | sort -u > /tmp/r.txt
+  bad=$(comm -23 /tmp/r.txt /tmp/defs.txt); [ -n "$bad" ] && echo "$f: $bad"
+done
+# (a guarded `jsIsFunction(...) ? ... : await_0(...)` reference is SAFE; only unguarded `yield* this.X` is the bug)
+```
+Zero output = no reachable unwired bridges. Then build an action with a fake token and drive the suspect methods via `promisify`; a fixed method reaches a network/logic error, a broken one throws `yield* ... is not iterable`.
 
 #### Scope
 
-- JS target only (JVM / Native are unaffected due to different coroutine implementations)
-- No compile-time error — only manifests at runtime
-- Other suspend lambdas (`coroutineScope { }`, `withContext { }`, etc.) are equally affected
+- JS target only (JVM / Native use a different coroutine implementation)
+- No compile-time error — runtime only, and often only on a specific path (cache-miss, a particular URL overload, a reaction code branch)
+- All known call sites fixed in: core (`userMeWithCache`/`userMe` via per-adapter overrides), bluesky, misskey, mastodon, tumblr, matrix, slack, nostr. Verified: 0 reachable unwired bridges remain across all adapter `.mjs`.
+
+#### Why it surfaced only in Slack first
+
+The defect is latent in many call sites but only fires when the broken path is actually executed. `userMeWithCache → userMe` only hits the bridge on a cache *miss* (`me == null`); most adapters call `userMe()` at login (warming `me`) before any timeline, so they took the cache-hit branch. Slack's `homeTimeLine` (polling/stream orchestrator) reached `userMeWithCache()` while `me` was still null → crash. Likewise `comment(url)`/`reactionComment` etc. only crash when those specific entry points run. "Module X works" only meant "X's broken paths weren't exercised yet" — not that X was safe.
 
 ### Capabilities Discovery
 
