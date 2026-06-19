@@ -1236,12 +1236,13 @@ class MisskeyAction(
                 instanceHost,
             )
 
-            val connectionListener = MisskeyConnectionListener(callback) {
+            val plStream = work.socialhub.planetlink.misskey.model.MisskeyStream(stream)
+            val connectionListener = MisskeyConnectionListener(callback, { plStream.closedByCaller }) {
                 stream.homeTimeLine(commentsListener)
             }
 
             setStreamConnectionCallback(stream, connectionListener)
-            work.socialhub.planetlink.misskey.model.MisskeyStream(stream)
+            plStream
         }
     }
 
@@ -1281,12 +1282,13 @@ class MisskeyAction(
                 userMeWithCache()
             )
 
-            val connectionListener = MisskeyConnectionListener(callback) {
+            val plStream = work.socialhub.planetlink.misskey.model.MisskeyStream(stream)
+            val connectionListener = MisskeyConnectionListener(callback, { plStream.closedByCaller }) {
                 stream.main(notificationListener)
             }
 
             setStreamConnectionCallback(stream, connectionListener)
-            work.socialhub.planetlink.misskey.model.MisskeyStream(stream)
+            plStream
         }
     }
 
@@ -1384,11 +1386,12 @@ class MisskeyAction(
                 instanceHost,
             )
 
-            val connectionListener = MisskeyConnectionListener(callback) {
+            val plStream = work.socialhub.planetlink.misskey.model.MisskeyStream(stream)
+            val connectionListener = MisskeyConnectionListener(callback, { plStream.closedByCaller }) {
                 stream.localTimeline(commentsListener)
             }
             setStreamConnectionCallback(stream, connectionListener)
-            work.socialhub.planetlink.misskey.model.MisskeyStream(stream)
+            plStream
         }
     }
 
@@ -1407,12 +1410,13 @@ class MisskeyAction(
                 service(),
                 instanceHost,
             )
-            val connectionListener = MisskeyConnectionListener(callback) {
+            val plStream = work.socialhub.planetlink.misskey.model.MisskeyStream(stream)
+            val connectionListener = MisskeyConnectionListener(callback, { plStream.closedByCaller }) {
                 stream.globalTimeline(commentsListener)
             }
 
             setStreamConnectionCallback(stream, connectionListener)
-            work.socialhub.planetlink.misskey.model.MisskeyStream(stream)
+            plStream
         }
     }
 
@@ -1521,6 +1525,7 @@ class MisskeyAction(
     // 通信に対してのコールバック設定
     internal class MisskeyConnectionListener(
         val listener: EventCallback,
+        val closedByCaller: () -> Boolean = { false },
         val runnable: suspend () -> Unit
     ) : OpenedCallback,
         ClosedCallback,
@@ -1536,7 +1541,10 @@ class MisskeyAction(
         }
 
         override fun onClosed() {
-            if (listener is DisconnectCallback) {
+            // Suppress the disconnect signal for a caller-initiated close() so
+            // the consumer does not treat its own teardown as a dropped
+            // connection.
+            if (!closedByCaller() && listener is DisconnectCallback) {
                 listener.onDisconnect()
             }
         }

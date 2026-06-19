@@ -1214,11 +1214,12 @@ class MastodonAction(
     ): Stream {
         return proceed {
             val stream = auth.accessor.stream().userStream()
+            val plStream = MastodonStream(stream)
             stream.register(
                 MastodonCommentListener(callback, service()),
-                MastodonConnectionListener(callback),
+                MastodonConnectionListener(callback) { plStream.closedByCaller },
             )
-            MastodonStream(stream)
+            plStream
         }
     }
 
@@ -1427,11 +1428,12 @@ class MastodonAction(
     ): Stream {
         return proceed {
             val stream = auth.accessor.stream().publicStream(PublicType.LOCAL)
+            val plStream = MastodonStream(stream)
             stream.register(
                 MastodonCommentListener(callback, service()),
-                MastodonConnectionListener(callback),
+                MastodonConnectionListener(callback) { plStream.closedByCaller },
             )
-            MastodonStream(stream)
+            plStream
         }
     }
 
@@ -1443,11 +1445,12 @@ class MastodonAction(
     ): Stream {
         return proceed {
             val stream = auth.accessor.stream().publicStream(PublicType.ALL)
+            val plStream = MastodonStream(stream)
             stream.register(
                 MastodonCommentListener(callback, service()),
-                MastodonConnectionListener(callback),
+                MastodonConnectionListener(callback) { plStream.closedByCaller },
             )
-            MastodonStream(stream)
+            plStream
         }
     }
 
@@ -1756,11 +1759,12 @@ class MastodonAction(
     ): Stream {
         return proceed {
             val stream = auth.accessor.stream().directStream()
+            val plStream = MastodonStream(stream)
             stream.register(
                 DirectMastodonCommentListener(callback, service()),
-                MastodonConnectionListener(callback),
+                MastodonConnectionListener(callback) { plStream.closedByCaller },
             )
-            MastodonStream(stream)
+            plStream
         }
     }
 
@@ -1884,6 +1888,7 @@ class MastodonAction(
     // 通信に対してのコールバック設定
     internal class MastodonConnectionListener(
         private val listener: EventCallback,
+        private val closedByCaller: () -> Boolean = { false },
     ) : LifeCycleListener {
 
         override fun onConnect() {
@@ -1893,7 +1898,10 @@ class MastodonAction(
         }
 
         override fun onDisconnect() {
-            if (listener is DisconnectCallback) {
+            // Suppress the disconnect signal for a caller-initiated close() so
+            // the consumer does not treat its own teardown as a dropped
+            // connection.
+            if (!closedByCaller() && listener is DisconnectCallback) {
                 listener.onDisconnect()
             }
         }

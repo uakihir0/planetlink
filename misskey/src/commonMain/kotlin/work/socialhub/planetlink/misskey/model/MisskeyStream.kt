@@ -9,11 +9,20 @@ class MisskeyStream(
     val stream: MMisskeyStream
 ) : Stream {
 
+    /**
+     * Set to true once the caller invokes [close], so the connection listener
+     * can suppress the disconnect signal for an intentional teardown rather
+     * than reporting it as a dropped connection.
+     */
+    var closedByCaller: Boolean = false
+        private set
+
     override suspend fun open() {
         stream.open()
     }
 
     override fun close() {
+        closedByCaller = true
         stream.close()
     }
 
