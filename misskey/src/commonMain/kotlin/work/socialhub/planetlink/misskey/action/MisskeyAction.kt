@@ -81,6 +81,7 @@ import work.socialhub.planetlink.misskey.define.MisskeyReactionType.Favorite
 import work.socialhub.planetlink.misskey.define.MisskeyReactionType.Renote
 import work.socialhub.planetlink.misskey.model.MisskeyPaging
 import work.socialhub.planetlink.misskey.model.MisskeyPoll
+import work.socialhub.planetlink.misskey.model.MisskeyStream as PlanetMisskeyStream
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.error.NotImplementedException
 import work.socialhub.planetlink.model.error.NotSupportedException
@@ -1236,13 +1237,13 @@ class MisskeyAction(
                 instanceHost,
             )
 
-            val plStream = work.socialhub.planetlink.misskey.model.MisskeyStream(stream)
-            val connectionListener = MisskeyConnectionListener(callback, { plStream.closedByCaller }) {
+            val serviceStream = PlanetMisskeyStream(stream)
+            val connectionListener = MisskeyConnectionListener(callback, { serviceStream.closedByCaller }) {
                 stream.homeTimeLine(commentsListener)
             }
 
             setStreamConnectionCallback(stream, connectionListener)
-            plStream
+            serviceStream
         }
     }
 
@@ -1282,13 +1283,13 @@ class MisskeyAction(
                 userMeWithCache()
             )
 
-            val plStream = work.socialhub.planetlink.misskey.model.MisskeyStream(stream)
-            val connectionListener = MisskeyConnectionListener(callback, { plStream.closedByCaller }) {
+            val serviceStream = PlanetMisskeyStream(stream)
+            val connectionListener = MisskeyConnectionListener(callback, { serviceStream.closedByCaller }) {
                 stream.main(notificationListener)
             }
 
             setStreamConnectionCallback(stream, connectionListener)
-            plStream
+            serviceStream
         }
     }
 
@@ -1386,12 +1387,12 @@ class MisskeyAction(
                 instanceHost,
             )
 
-            val plStream = work.socialhub.planetlink.misskey.model.MisskeyStream(stream)
-            val connectionListener = MisskeyConnectionListener(callback, { plStream.closedByCaller }) {
+            val serviceStream = PlanetMisskeyStream(stream)
+            val connectionListener = MisskeyConnectionListener(callback, { serviceStream.closedByCaller }) {
                 stream.localTimeline(commentsListener)
             }
             setStreamConnectionCallback(stream, connectionListener)
-            plStream
+            serviceStream
         }
     }
 
@@ -1410,13 +1411,13 @@ class MisskeyAction(
                 service(),
                 instanceHost,
             )
-            val plStream = work.socialhub.planetlink.misskey.model.MisskeyStream(stream)
-            val connectionListener = MisskeyConnectionListener(callback, { plStream.closedByCaller }) {
+            val serviceStream = PlanetMisskeyStream(stream)
+            val connectionListener = MisskeyConnectionListener(callback, { serviceStream.closedByCaller }) {
                 stream.globalTimeline(commentsListener)
             }
 
             setStreamConnectionCallback(stream, connectionListener)
-            plStream
+            serviceStream
         }
     }
 

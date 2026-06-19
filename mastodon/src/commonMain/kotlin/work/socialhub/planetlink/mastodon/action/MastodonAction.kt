@@ -1214,12 +1214,12 @@ class MastodonAction(
     ): Stream {
         return proceed {
             val stream = auth.accessor.stream().userStream()
-            val plStream = MastodonStream(stream)
+            val serviceStream = MastodonStream(stream)
             stream.register(
                 MastodonCommentListener(callback, service()),
-                MastodonConnectionListener(callback) { plStream.closedByCaller },
+                MastodonConnectionListener(callback) { serviceStream.closedByCaller },
             )
-            plStream
+            serviceStream
         }
     }
 
@@ -1428,12 +1428,12 @@ class MastodonAction(
     ): Stream {
         return proceed {
             val stream = auth.accessor.stream().publicStream(PublicType.LOCAL)
-            val plStream = MastodonStream(stream)
+            val serviceStream = MastodonStream(stream)
             stream.register(
                 MastodonCommentListener(callback, service()),
-                MastodonConnectionListener(callback) { plStream.closedByCaller },
+                MastodonConnectionListener(callback) { serviceStream.closedByCaller },
             )
-            plStream
+            serviceStream
         }
     }
 
@@ -1445,12 +1445,12 @@ class MastodonAction(
     ): Stream {
         return proceed {
             val stream = auth.accessor.stream().publicStream(PublicType.ALL)
-            val plStream = MastodonStream(stream)
+            val serviceStream = MastodonStream(stream)
             stream.register(
                 MastodonCommentListener(callback, service()),
-                MastodonConnectionListener(callback) { plStream.closedByCaller },
+                MastodonConnectionListener(callback) { serviceStream.closedByCaller },
             )
-            plStream
+            serviceStream
         }
     }
 
@@ -1759,12 +1759,12 @@ class MastodonAction(
     ): Stream {
         return proceed {
             val stream = auth.accessor.stream().directStream()
-            val plStream = MastodonStream(stream)
+            val serviceStream = MastodonStream(stream)
             stream.register(
                 DirectMastodonCommentListener(callback, service()),
-                MastodonConnectionListener(callback) { plStream.closedByCaller },
+                MastodonConnectionListener(callback) { serviceStream.closedByCaller },
             )
-            plStream
+            serviceStream
         }
     }
 

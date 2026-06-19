@@ -45,6 +45,7 @@ import work.socialhub.kbsky.auth.BearerTokenAuthProvider
 import work.socialhub.kbsky.stream.BlueskyStreamFactory
 import work.socialhub.kbsky.stream.api.entity.app.bsky.JetStreamSubscribeRequest
 import work.socialhub.kbsky.stream.entity.app.bsky.callback.JetStreamEventCallback
+import work.socialhub.kbsky.stream.entity.callback.ErrorCallback as KbskyErrorCallback
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Event
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeedsPref
@@ -1318,7 +1319,7 @@ class BlueskyAction(
                     // Connect/disconnect are aggregated across all chunked
                     // clients by BlueskyStream; only the per-client error is
                     // wired here.
-                    client.errorCallback(object : work.socialhub.kbsky.stream.entity.callback.ErrorCallback {
+                    client.errorCallback(object : KbskyErrorCallback {
                         override fun onError(e: Exception) {
                             if (callback is ErrorCallback) {
                                 val classified = if (e is SocialHubException) e
@@ -1398,7 +1399,7 @@ class BlueskyAction(
                     // Connect/disconnect are aggregated across all chunked
                     // clients by BlueskyStream; only the per-client error is
                     // wired here.
-                    client.errorCallback(object : work.socialhub.kbsky.stream.entity.callback.ErrorCallback {
+                    client.errorCallback(object : KbskyErrorCallback {
                         override fun onError(e: Exception) {
                             if (callback is ErrorCallback) {
                                 val classified = if (e is SocialHubException) e
