@@ -83,8 +83,6 @@ import work.socialhub.planetlink.bluesky.model.BlueskyUser
 import work.socialhub.planetlink.bluesky.support.Utils
 import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.action.callback.comment.UpdateCommentCallback
-import work.socialhub.planetlink.action.callback.lifecycle.ConnectCallback
-import work.socialhub.planetlink.action.callback.lifecycle.DisconnectCallback
 import work.socialhub.planetlink.action.callback.lifecycle.ErrorCallback
 import net.socialhub.planetlink.model.event.CommentEvent
 import work.socialhub.planetlink.model.Account
@@ -1317,22 +1315,9 @@ class BlueskyAction(
                         }
                     })
 
-                    client.openedCallback(object : work.socialhub.kbsky.stream.entity.callback.OpenedCallback {
-                        override fun onOpened() {
-                            if (callback is ConnectCallback) {
-                                callback.onConnect()
-                            }
-                        }
-                    })
-
-                    client.closedCallback(object : work.socialhub.kbsky.stream.entity.callback.ClosedCallback {
-                        override fun onClosed() {
-                            if (callback is DisconnectCallback) {
-                                callback.onDisconnect()
-                            }
-                        }
-                    })
-
+                    // Connect/disconnect are aggregated across all chunked
+                    // clients by BlueskyStream; only the per-client error is
+                    // wired here.
                     client.errorCallback(object : work.socialhub.kbsky.stream.entity.callback.ErrorCallback {
                         override fun onError(e: Exception) {
                             if (callback is ErrorCallback) {
@@ -1350,7 +1335,7 @@ class BlueskyAction(
                     client
                 }
 
-            BlueskyStream(clients)
+            BlueskyStream(clients, callback)
         }
     }
 
@@ -1410,22 +1395,9 @@ class BlueskyAction(
                         }
                     })
 
-                    client.openedCallback(object : work.socialhub.kbsky.stream.entity.callback.OpenedCallback {
-                        override fun onOpened() {
-                            if (callback is ConnectCallback) {
-                                callback.onConnect()
-                            }
-                        }
-                    })
-
-                    client.closedCallback(object : work.socialhub.kbsky.stream.entity.callback.ClosedCallback {
-                        override fun onClosed() {
-                            if (callback is DisconnectCallback) {
-                                callback.onDisconnect()
-                            }
-                        }
-                    })
-
+                    // Connect/disconnect are aggregated across all chunked
+                    // clients by BlueskyStream; only the per-client error is
+                    // wired here.
                     client.errorCallback(object : work.socialhub.kbsky.stream.entity.callback.ErrorCallback {
                         override fun onError(e: Exception) {
                             if (callback is ErrorCallback) {
@@ -1443,7 +1415,7 @@ class BlueskyAction(
                     client
                 }
 
-            BlueskyStream(clients)
+            BlueskyStream(clients, callback)
         }
     }
 
