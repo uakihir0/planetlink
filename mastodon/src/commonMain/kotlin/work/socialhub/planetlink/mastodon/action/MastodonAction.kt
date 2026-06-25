@@ -708,6 +708,11 @@ class MastodonAction(
                 post.pollExpiresIn = poll.expiresIn * 60
             }
 
+            // 予約投稿 (Mastodon は scheduled_at で予約。5分以上先である必要がある)
+            req.scheduledAt?.let {
+                post.scheduledAt = it
+            }
+
             val status = auth.accessor.statuses().postStatus(post)
             service().rateLimit.addInfo(
                 SocialActionType.PostComment,
