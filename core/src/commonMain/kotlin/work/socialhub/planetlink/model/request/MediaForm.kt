@@ -10,8 +10,13 @@ class MediaForm(
     /** Media File Name  */
     var name: String,
 ) {
+    /** Alt text / media description (where the platform supports it)  */
+    var description: String? = null
+
     /** Copy this object  */
     fun copy(): MediaForm {
-        return MediaForm(data, name)
+        return MediaForm(data, name).also {
+            it.description = description
+        }
     }
 }
