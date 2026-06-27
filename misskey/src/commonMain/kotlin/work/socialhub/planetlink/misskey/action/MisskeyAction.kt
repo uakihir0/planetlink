@@ -660,6 +660,7 @@ class MisskeyAction(
                             it.sensitive = req.isSensitive
                             it.bytes = image.data
                             it.name = image.name
+                            it.comment = image.description
                             it.force = true
                         }).data.id
                 }

@@ -690,6 +690,7 @@ class MastodonAction(
                         MediasPostMediaRequest().also {
                             it.bytes = image.data
                             it.name = image.name
+                            it.description = image.description
                         }
                     )
                     attachment.data.id!!

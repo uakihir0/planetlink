@@ -728,19 +728,19 @@ class BlueskyAction(
 
                         if (blobs.size <= 4) {
                             val embedImages = EmbedImages()
-                            embedImages.images = blobs.map { blob ->
+                            embedImages.images = blobs.mapIndexed { index, blob ->
                                 EmbedImagesImage().also {
                                     it.image = blob
-                                    it.alt = ""
+                                    it.alt = req.images[index].description ?: ""
                                 }
                             }
                             embedMedia = embedImages
                         } else {
                             val embedGallery = EmbedGallery()
-                            embedGallery.items = blobs.map { blob ->
+                            embedGallery.items = blobs.mapIndexed { index, blob ->
                                 EmbedGalleryImage(
                                     image = blob,
-                                    alt = "",
+                                    alt = req.images[index].description ?: "",
                                 )
                             }
                             embedMedia = embedGallery
