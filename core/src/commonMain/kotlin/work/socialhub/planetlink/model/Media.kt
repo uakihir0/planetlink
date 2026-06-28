@@ -19,6 +19,12 @@ class Media {
     /** Link of preview image url */
     var previewUrl: String? = null
 
+    /** Width of this media (pixels) if known */
+    var width: Int? = null
+
+    /** Height of this media (pixels) if known */
+    var height: Int? = null
+
     /** Request header for media. */
     val requestHeader = mutableMapOf<String, String>()
 }
