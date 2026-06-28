@@ -9,6 +9,7 @@ import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsViewerState
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Commit
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Event
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedExternal
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedGallery
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedGalleryView
@@ -436,6 +437,8 @@ object BlueskyMapper {
             type = MediaType.Image
             previewUrl = img.thumb
             sourceUrl = img.fullsize
+            width = img.aspectRatio?.width
+            height = img.aspectRatio?.height
         }
     }
 
@@ -446,6 +449,8 @@ object BlueskyMapper {
             type = MediaType.Image
             previewUrl = img.thumbnail
             sourceUrl = img.fullsize
+            width = img.aspectRatio?.width
+            height = img.aspectRatio?.height
         }
     }
 
@@ -768,20 +773,20 @@ object BlueskyMapper {
         when (embed) {
             is EmbedImages -> {
                 embed.images?.forEach { img ->
-                    mediaFromBlob(img.image, did)?.let {
+                    mediaFromBlob(img.image, did, img.aspectRatio)?.let {
                         model.medias = model.medias.plus(it)
                     }
                 }
             }
             is EmbedGallery -> {
                 embed.items?.forEach { img ->
-                    mediaFromBlob(img.image, did)?.let {
+                    mediaFromBlob(img.image, did, img.aspectRatio)?.let {
                         model.medias = model.medias.plus(it)
                     }
                 }
             }
             is EmbedVideo -> {
-                mediaFromVideoBlob(embed.video, did)?.let {
+                mediaFromVideoBlob(embed.video, did, embed.aspectRatio)?.let {
                     model.medias = model.medias.plus(it)
                 }
             }
@@ -802,21 +807,33 @@ object BlueskyMapper {
         }
     }
 
-    private fun mediaFromBlob(blob: Blob?, did: String): Media? {
+    private fun mediaFromBlob(
+        blob: Blob?,
+        did: String,
+        aspectRatio: EmbedDefsAspectRatio? = null,
+    ): Media? {
         val cid = blob?.ref?.link ?: return null
         return Media().apply {
             type = MediaType.Image
             sourceUrl = blobCdnUrl(did, blob, "feed_fullsize")
             previewUrl = blobCdnUrl(did, blob, "feed_thumbnail")
+            width = aspectRatio?.width
+            height = aspectRatio?.height
         }
     }
 
-    private fun mediaFromVideoBlob(blob: Blob?, did: String): Media? {
+    private fun mediaFromVideoBlob(
+        blob: Blob?,
+        did: String,
+        aspectRatio: EmbedDefsAspectRatio? = null,
+    ): Media? {
         val cid = blob?.ref?.link ?: return null
         return Media().apply {
             type = MediaType.Movie
             sourceUrl = blobCdnUrl(did, blob, "feed_fullsize")
             previewUrl = blobCdnUrl(did, blob, "feed_thumbnail")
+            width = aspectRatio?.width
+            height = aspectRatio?.height
         }
     }
 
