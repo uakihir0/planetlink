@@ -22,6 +22,7 @@ import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecordWithMedia
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecordWithMediaView
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedUnion
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedVideo
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedVideoView
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedViewUnion
 import work.socialhub.kbsky.model.share.Blob
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsFeedViewPost
@@ -271,6 +272,11 @@ object BlueskyMapper {
             model.medias = model.medias.plus(medias)
         }
 
+        // Video (also covers GIF-style autoplay videos)
+        if (embed is EmbedVideoView) {
+            model.medias = model.medias.plus(media(embed))
+        }
+
         // Quote
         if (embed is EmbedRecordView) {
             embedRecord(model, embed, service)
@@ -446,6 +452,19 @@ object BlueskyMapper {
             type = MediaType.Image
             previewUrl = img.thumbnail
             sourceUrl = img.fullsize
+        }
+    }
+
+    private fun media(
+        video: EmbedVideoView
+    ): Media {
+        return Media().apply {
+            // GIF-style videos (presentation=gif) are treated as videos too,
+            // consistent with how Mastodon's gifv maps to MediaType.Movie.
+            type = MediaType.Movie
+            // playlist is an HLS (.m3u8) manifest hosted on video.bsky.app.
+            sourceUrl = video.playlist
+            previewUrl = video.thumbnail
         }
     }
 
@@ -814,14 +833,31 @@ object BlueskyMapper {
     private fun mediaFromVideoBlob(blob: Blob?, did: String): Media? {
         val cid = blob?.ref?.link ?: return null
         return Media().apply {
+            // GIF-style videos are treated as videos too (see media(EmbedVideoView)).
             type = MediaType.Movie
-            sourceUrl = blobCdnUrl(did, blob, "feed_fullsize")
-            previewUrl = blobCdnUrl(did, blob, "feed_thumbnail")
+            // Videos are served from video.bsky.app (HLS), NOT the image CDN.
+            sourceUrl = videoPlaylistUrl(did, cid)
+            previewUrl = videoThumbnailUrl(did, cid)
         }
     }
 
     private fun blobCdnUrl(did: String, blob: Blob, variant: String): String {
         val cid = blob.ref?.link ?: return ""
         return "https://cdn.bsky.app/img/$variant/plain/$did/$cid@jpeg"
+    }
+
+    // video.bsky.app serves the resolved blob as an HLS playlist / JPEG thumbnail.
+    // The DID is path-encoded (colons -> %3A), matching the #view URLs returned by the API.
+    private fun videoBaseUrl(did: String, cid: String): String {
+        val encodedDid = did.replace(":", "%3A")
+        return "https://video.bsky.app/watch/$encodedDid/$cid"
+    }
+
+    private fun videoPlaylistUrl(did: String, cid: String): String {
+        return "${videoBaseUrl(did, cid)}/playlist.m3u8"
+    }
+
+    private fun videoThumbnailUrl(did: String, cid: String): String {
+        return "${videoBaseUrl(did, cid)}/thumbnail.jpg"
     }
 }
