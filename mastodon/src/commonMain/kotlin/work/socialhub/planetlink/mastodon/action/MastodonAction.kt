@@ -662,7 +662,10 @@ class MastodonAction(
             // Validate the scheduled time up front, before any network work
             // (media uploads) so an invalid value fails fast without wasted requests.
             // (Mastodon only accepts an ISO-8601 date-time at least 5 minutes ahead)
-            req.scheduledAt?.let { validateScheduledAt(it) }
+            req.scheduledAt?.let {
+                validateScheduledAt(it)
+                post.scheduledAt = it
+            }
 
             // コンテンツ
             post.status = req.text
@@ -685,25 +688,6 @@ class MastodonAction(
             // ダイレクトメッセージの場合
             if (req.isMessage) {
                 post.visibility = MastodonVisibility.Direct.code
-            }
-
-            // 予約投稿: ISO-8601 形式かつ5分以上先であることを事前検証
-            req.scheduledAt?.let {
-                val scheduled = try {
-                    Instant.parse(it)
-                } catch (e: IllegalArgumentException) {
-                    throw SocialHubException(
-                        "Invalid scheduledAt format. Must be ISO-8601 datetime."
-                    )
-                }
-
-                if (scheduled <= Clock.System.now().plus(5.minutes)) {
-                    throw SocialHubException(
-                        "scheduledAt must be at least 5 minutes in the future."
-                    )
-                }
-
-                post.scheduledAt = it
             }
 
             // 画像の処理
