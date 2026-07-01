@@ -91,6 +91,9 @@ class PostCommentTest {
 
         @Test
         fun testMastodonScheduledPostTooSoon() = runTest {
+            // Mastodon requires scheduled_at to be at least 5 minutes in the future.
+            // Using plusSeconds(60) intentionally violates this to trigger the
+            // SocialHubException from the up-front validation.
             assertFailsWith<SocialHubException> {
                 mastodon().action.postComment(
                     CommentForm().also {
@@ -99,6 +102,7 @@ class PostCommentTest {
                     })
             }
         }
+
     }
 
     @Nested
