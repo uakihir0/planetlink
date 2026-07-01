@@ -1,6 +1,8 @@
 package work.socialhub.planetlink.mastodon.action
 
 
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 import net.socialhub.planetlink.model.event.CommentEvent
 import work.socialhub.kmastodon.MastodonException
@@ -657,6 +659,11 @@ class MastodonAction(
         proceedUnit {
             val post = StatusesPostStatusRequest()
 
+            // Validate the scheduled time up front, before any network work
+            // (media uploads) so an invalid value fails fast without wasted requests.
+            // (Mastodon only accepts an ISO-8601 date-time at least 5 minutes ahead)
+            req.scheduledAt?.let { validateScheduledAt(it) }
+
             // コンテンツ
             post.status = req.text
 
@@ -718,6 +725,23 @@ class MastodonAction(
             service().rateLimit.addInfo(
                 SocialActionType.PostComment,
                 MastodonMapper.rateLimit(status)
+            )
+        }
+    }
+
+    // Validate the scheduled post time.
+    // Throws if it cannot be parsed as ISO-8601, or is less than 5 minutes from now.
+    private fun validateScheduledAt(scheduledAt: String) {
+        val scheduled = try {
+            Instant.parse(scheduledAt)
+        } catch (e: IllegalArgumentException) {
+            throw SocialHubException(
+                "scheduledAt must be a valid ISO-8601 date-time: $scheduledAt", e
+            )
+        }
+        if (scheduled < Clock.System.now() + 5.minutes) {
+            throw SocialHubException(
+                "scheduledAt must be at least 5 minutes in the future: $scheduledAt"
             )
         }
     }
