@@ -687,6 +687,25 @@ class MastodonAction(
                 post.visibility = MastodonVisibility.Direct.code
             }
 
+            // 予約投稿: ISO-8601 形式かつ5分以上先であることを事前検証
+            req.scheduledAt?.let {
+                val scheduled = try {
+                    Instant.parse(it)
+                } catch (e: IllegalArgumentException) {
+                    throw SocialHubException(
+                        "Invalid scheduledAt format. Must be ISO-8601 datetime."
+                    )
+                }
+
+                if (scheduled <= Clock.System.now().plus(5.minutes)) {
+                    throw SocialHubException(
+                        "scheduledAt must be at least 5 minutes in the future."
+                    )
+                }
+
+                post.scheduledAt = it
+            }
+
             // 画像の処理
             if (req.images.isNotEmpty()) {
 
@@ -714,11 +733,6 @@ class MastodonAction(
                 post.pollOptions = poll.options.toTypedArray()
                 post.pollMultiple = poll.multiple
                 post.pollExpiresIn = poll.expiresIn * 60
-            }
-
-            // 予約投稿 (Mastodon は scheduled_at で予約。5分以上先である必要がある)
-            req.scheduledAt?.let {
-                post.scheduledAt = it
             }
 
             val status = auth.accessor.statuses().postStatus(post)
