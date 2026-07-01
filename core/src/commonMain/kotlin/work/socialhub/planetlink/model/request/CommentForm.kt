@@ -36,6 +36,9 @@ class CommentForm {
     /** Other params */
     var params = mutableMapOf<String, Any>()
 
+    /** Scheduled time (ISO-8601). Currently honoured by Mastodon only. */
+    var scheduledAt: String? = null
+
     /** Copy this object */
     fun copy(): CommentForm {
         return CommentForm().also {
@@ -46,6 +49,7 @@ class CommentForm {
             it.visibility(visibility)
             it.isSensitive(isSensitive)
             it.isMessage(isMessage)
+            it.scheduledAt = scheduledAt
 
             images.forEach { img ->
                 it.addImage(img.copy())
