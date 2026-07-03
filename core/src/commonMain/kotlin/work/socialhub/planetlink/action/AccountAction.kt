@@ -6,6 +6,7 @@ import work.socialhub.planetlink.define.emoji.EmojiVariationType
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.error.NotImplementedException
 import work.socialhub.planetlink.model.request.CommentForm
+import work.socialhub.planetlink.model.request.ProfileForm
 import kotlin.js.JsExport
 
 /**
@@ -97,6 +98,41 @@ interface AccountAction {
      * 認証アカウントとの関係を取得
      */
     suspend fun relationship(id: Identify): Relationship {
+        throw NotImplementedException()
+    }
+
+    /**
+     * Accept Follow Request
+     * フォローリクエストを承認 (id = 申請者)
+     */
+    suspend fun acceptFollowRequest(id: Identify) {
+        throw NotImplementedException()
+    }
+
+    /**
+     * Reject Follow Request
+     * フォローリクエストを拒否 (id = 申請者)
+     */
+    suspend fun rejectFollowRequest(id: Identify) {
+        throw NotImplementedException()
+    }
+
+    /**
+     * Report User
+     * ユーザーを通報
+     */
+    suspend fun reportUser(
+        id: Identify,
+        comment: String? = null,
+    ) {
+        throw NotImplementedException()
+    }
+
+    /**
+     * Update Profile
+     * 自身のプロフィールを更新
+     */
+    suspend fun updateProfile(form: ProfileForm) {
         throw NotImplementedException()
     }
 
@@ -229,6 +265,16 @@ interface AccountAction {
         throw NotImplementedException()
     }
 
+    /**
+     * Mark Notifications as Read
+     * 通知を既読にする (upToId 指定時はそこまで、未指定時は全件)
+     */
+    suspend fun markNotificationsRead(
+        upToId: Identify? = null,
+    ) {
+        throw NotImplementedException()
+    }
+
     // ============================================================== //
     // Comment API
     // コメント関連 API
@@ -339,6 +385,28 @@ interface AccountAction {
     }
 
     /**
+     * Edit Comment
+     * 自分のコメントを編集
+     */
+    suspend fun editComment(
+        id: Identify,
+        req: CommentForm,
+    ) {
+        throw NotImplementedException()
+    }
+
+    /**
+     * Report Comment
+     * コメントを通報
+     */
+    suspend fun reportComment(
+        id: Identify,
+        comment: String? = null,
+    ) {
+        throw NotImplementedException()
+    }
+
+    /**
      * Bookmark Comment
      * コメントをブックマーク
      */
@@ -430,6 +498,39 @@ interface AccountAction {
         id: Identify,
         paging: Paging,
     ): Pageable<User> {
+        throw NotImplementedException()
+    }
+
+    /**
+     * Create List (Channel)
+     * リスト (チャンネル) を作成
+     */
+    suspend fun createList(
+        name: String,
+        description: String? = null,
+    ): Channel {
+        throw NotImplementedException()
+    }
+
+    /**
+     * Add User to List (Channel)
+     * リスト (チャンネル) にユーザーを追加
+     */
+    suspend fun addUserToList(
+        channel: Identify,
+        user: Identify,
+    ) {
+        throw NotImplementedException()
+    }
+
+    /**
+     * Remove User from List (Channel)
+     * リスト (チャンネル) からユーザーを削除
+     */
+    suspend fun removeUserFromList(
+        channel: Identify,
+        user: Identify,
+    ) {
         throw NotImplementedException()
     }
 
