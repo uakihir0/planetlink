@@ -16,4 +16,5 @@ enum class MastodonActionType : ActionType {
     UnblockDomain,
     PinComment,
     UnpinComment,
+    ClearNotifications,
 }
