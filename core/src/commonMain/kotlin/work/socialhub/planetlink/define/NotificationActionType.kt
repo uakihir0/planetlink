@@ -15,4 +15,5 @@ enum class NotificationActionType(
     SHARE("share"),
     LIKE("like"),
     REACTION("reaction"),
+    POLL("poll"),
 }
