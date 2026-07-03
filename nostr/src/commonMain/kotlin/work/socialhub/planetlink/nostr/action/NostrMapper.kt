@@ -131,6 +131,8 @@ object NostrMapper {
                 sourceUrl = media.url
                 previewUrl = media.thumbnailUrl ?: media.url
                 type = MediaType.Image
+                description = media.alt
+                blurhash = media.blurhash
             }
         }
     }
