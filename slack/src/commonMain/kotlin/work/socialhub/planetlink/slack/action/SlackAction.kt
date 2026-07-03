@@ -3,6 +3,7 @@ package work.socialhub.planetlink.slack.action
 import work.socialhub.kslack.api.methods.SlackApiException
 import work.socialhub.kslack.api.methods.request.auth.AuthTestRequest
 import work.socialhub.kslack.api.methods.request.chat.ChatDeleteRequest
+import work.socialhub.kslack.api.methods.request.chat.ChatUpdateRequest
 import work.socialhub.kslack.api.methods.request.conversations.*
 import work.socialhub.kslack.api.methods.request.reactions.ReactionsAddRequest
 import work.socialhub.kslack.api.methods.request.reactions.ReactionsRemoveRequest
@@ -44,6 +45,7 @@ class SlackAction(
                 SocialActionType.UnlikeComment,
                 SocialActionType.ReactionComment,
                 SocialActionType.UnreactionComment,
+                SocialActionType.EditComment,
                 SocialActionType.GetChannels,
 
                 TimeLineActionType.HomeTimeLine,
@@ -271,6 +273,47 @@ class SlackAction(
                     ts = ts,
                     channel = channelId,
                     isAsUser = false
+                )
+            )
+        }
+    }
+
+    override suspend fun editComment(
+        id: Identify,
+        req: CommentForm,
+    ) {
+        proceedUnit {
+            val channelId = getChannelId(id)
+            val ts = id.id!!.value<String>()
+            auth.accessor.slack.chat().chatUpdate(
+                ChatUpdateRequest(
+                    token = auth.accessor.token,
+                    channel = channelId,
+                    ts = ts,
+                    text = req.text,
+                    user = null,
+                    isAsUser = false,
+                    blocks = null,
+                    blocksAsString = null,
+                    attachments = null,
+                    attachmentsAsString = null,
+                    isLinkNames = false,
+                    parse = null
+                )
+            )
+        }
+    }
+
+    /** Slack-specific: set the read cursor in a conversation up to the given message. */
+    suspend fun markConversationRead(id: Identify) {
+        proceedUnit {
+            val channelId = getChannelId(id)
+            val ts = id.id!!.value<String>()
+            auth.accessor.slack.conversations().conversationsMark(
+                ConversationsMarkRequest(
+                    token = auth.accessor.token,
+                    channel = channelId,
+                    ts = ts
                 )
             )
         }
