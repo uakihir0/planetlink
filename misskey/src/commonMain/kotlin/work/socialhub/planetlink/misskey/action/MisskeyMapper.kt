@@ -202,6 +202,8 @@ object MisskeyMapper {
                 it.sourceUrl = file.url
                 // サムネイル画像が設定されている場合
                 it.previewUrl = file.thumbnailUrl ?: file.url
+                it.description = file.comment
+                it.blurhash = file.blurhash
             }
         }
 
@@ -212,6 +214,19 @@ object MisskeyMapper {
                 it.sourceUrl = file.url
                 // サムネイル画像が設定されている場合
                 it.previewUrl = file.thumbnailUrl
+                it.description = file.comment
+                it.blurhash = file.blurhash
+            }
+        }
+
+        // 音声の場合
+        if (file.type.startsWith("audio/")) {
+            return Media().also {
+                it.type = MediaType.Audio
+                it.sourceUrl = file.url
+                it.previewUrl = file.thumbnailUrl
+                it.description = file.comment
+                it.blurhash = file.blurhash
             }
         }
 

@@ -21,7 +21,7 @@ enum class MisskeyNotificationType(
 
     REACTION(NotificationActionType.REACTION, NotificationType.REACTION.code),
     MENTION(NotificationActionType.MENTION, NotificationType.MENTION.code),
-    POLL(null, NotificationType.POLL_VOTE.code),
+    POLL(NotificationActionType.POLL, NotificationType.POLL_ENDED.code),
     ;
 
     companion object {
