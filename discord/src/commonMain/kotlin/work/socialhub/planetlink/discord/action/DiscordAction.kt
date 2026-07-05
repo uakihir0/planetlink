@@ -4,6 +4,7 @@ import work.socialhub.kdiscord.DiscordException
 import work.socialhub.planetlink.action.AccountActionImpl
 import work.socialhub.planetlink.action.Capabilities
 import work.socialhub.planetlink.action.RequestAction
+import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.define.action.MessageActionType
 import work.socialhub.planetlink.define.action.SocialActionType
@@ -12,10 +13,13 @@ import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Channel
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Identify
+import work.socialhub.planetlink.define.action.StreamActionType
 import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Paging
+import work.socialhub.planetlink.model.Stream
 import work.socialhub.planetlink.model.Thread
 import work.socialhub.planetlink.model.User
+import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.utils.ExceptionHandler
 import kotlin.js.JsExport
@@ -110,6 +114,18 @@ class DiscordAction(
     }
 
     // ---------------------------------------------------------------- //
+    // Stream
+    // ---------------------------------------------------------------- //
+
+    override suspend fun setHomeTimeLineStream(callback: EventCallback): Stream {
+        return helper.homeTimeLineStream(callback)
+    }
+
+    override suspend fun setNotificationStream(callback: EventCallback): Stream {
+        throw NotSupportedException("Discord has no REST/Gateway notification stream.")
+    }
+
+    // ---------------------------------------------------------------- //
     // Meta
     // ---------------------------------------------------------------- //
 
@@ -165,6 +181,8 @@ class DiscordAction(
                 MessageActionType.GetMessageThread,
                 MessageActionType.GetMessageTimeLine,
                 MessageActionType.PostMessage,
+
+                StreamActionType.HomeTimeLineStream,
             )
         )
     }

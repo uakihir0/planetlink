@@ -3,14 +3,18 @@ package work.socialhub.planetlink.discord.action
 import work.socialhub.kdiscord.api.request.messages.MessagesCreateRequest
 import work.socialhub.kdiscord.api.request.messages.MessagesListRequest
 import work.socialhub.kdiscord.entity.share.FileContent
+import work.socialhub.kdiscord.stream.DiscordStreamFactory
+import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.discord.model.DiscordComment
 import work.socialhub.planetlink.discord.model.DiscordIdentify
 import work.socialhub.planetlink.discord.model.DiscordPaging
+import work.socialhub.planetlink.discord.model.DiscordStream
 import work.socialhub.planetlink.model.Channel
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Paging
+import work.socialhub.planetlink.model.Stream
 import work.socialhub.planetlink.model.Thread
 import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.error.SocialHubException
@@ -152,6 +156,21 @@ internal class DiscordActionHelper(
             val response = auth.accessor.discord.channels().listDmChannels()
             DiscordMapper.threads(response.data.toList(), service, paging)
         }
+    }
+
+    // ---------------------------------------------------------------- //
+    // Streaming
+    // ---------------------------------------------------------------- //
+
+    fun homeTimeLineStream(callback: EventCallback): Stream {
+        val kStream = auth.apiHost
+            ?.let { DiscordStreamFactory.instance(auth.accessor.token, it) }
+            ?: DiscordStreamFactory.instance(auth.accessor.token)
+
+        kStream.addEventListener(
+            DiscordStreamListenerImpl(callback, service)
+        )
+        return DiscordStream(kStream)
     }
 
     // ---------------------------------------------------------------- //
