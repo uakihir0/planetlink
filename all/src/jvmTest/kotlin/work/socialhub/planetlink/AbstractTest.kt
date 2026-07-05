@@ -4,6 +4,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import work.socialhub.planetlink.bluesky.expand.PlanetLinkEx.bluesky
+import work.socialhub.planetlink.discord.expand.PlanetLinkEx.discord
 import work.socialhub.planetlink.mastodon.expand.PlanetLinkEx.mastodon
 import work.socialhub.planetlink.misskey.expand.PlanetLinkEx.misskey
 import work.socialhub.planetlink.model.Account
@@ -112,6 +113,15 @@ open class AbstractTest {
             c["SLACK_CLIENT_SECRET"],
         ).getAccountWithToken(
             checkNotNull(c["SLACK_USER_TOKEN"]),
+        )
+    }
+
+    fun discord(): Account {
+        val c = checkNotNull(config)
+        return PlanetLink.discord(
+            c["DISCORD_API_HOST"]?.takeIf { it.isNotEmpty() },
+        ).getAccountWithToken(
+            checkNotNull(c["DISCORD_USER_TOKEN"]),
         )
     }
 
