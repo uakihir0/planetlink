@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.discord.action
 
+import work.socialhub.kdiscord.api.request.channels.ChannelsCreateDmRequest
 import work.socialhub.kdiscord.api.request.messages.MessagesCreateRequest
 import work.socialhub.kdiscord.api.request.messages.MessagesListRequest
 import work.socialhub.kdiscord.entity.share.FileContent
@@ -9,6 +10,7 @@ import work.socialhub.planetlink.discord.model.DiscordComment
 import work.socialhub.planetlink.discord.model.DiscordIdentify
 import work.socialhub.planetlink.discord.model.DiscordPaging
 import work.socialhub.planetlink.discord.model.DiscordStream
+import work.socialhub.planetlink.discord.model.DiscordUser
 import work.socialhub.planetlink.model.Channel
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Identify
@@ -86,7 +88,7 @@ internal class DiscordActionHelper(
     }
 
     suspend fun postComment(req: CommentForm) {
-        val channelId = getChannelIdFromForm(req)
+        val channelId = resolveChannelId(req)
         action.proceedUnit {
             auth.accessor.discord.messages().create(
                 MessagesCreateRequest(channelId).also {
@@ -187,12 +189,30 @@ internal class DiscordActionHelper(
         )
     }
 
-    private fun getChannelIdFromForm(req: CommentForm): String {
+    /**
+     * Resolve the target channel id for a post/message form. Prefers an explicit
+     * channel param; otherwise opens (or fetches) a DM channel for the recipient
+     * user id carried by [DiscordUser.messageForm]. This runs inside `proceed`
+     * error handling because it may perform a network call (createDm).
+     */
+    private suspend fun resolveChannelId(req: CommentForm): String {
         val channelId = req.params[DiscordComment.CHANNEL_KEY] as? String
-        return channelId?.takeIf { it.isNotEmpty() }
-            ?: throw SocialHubException(
-                "Channel id is required in the comment form (params[\"channel\"])."
-            )
+        if (!channelId.isNullOrEmpty()) return channelId
+
+        val recipientId = req.params[DiscordUser.RECIPIENT_KEY] as? String
+        if (!recipientId.isNullOrEmpty()) {
+            return action.proceed {
+                val response = auth.accessor.discord.channels().createDm(
+                    ChannelsCreateDmRequest(recipientId)
+                )
+                response.data.id
+                    ?: throw SocialHubException("Failed to open DM channel for recipient $recipientId.")
+            }
+        }
+
+        throw SocialHubException(
+            "Channel id is required. Provide params[\"channel\"] or a recipient via User.messageForm."
+        )
     }
 
     companion object {

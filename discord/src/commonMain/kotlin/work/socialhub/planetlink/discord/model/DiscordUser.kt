@@ -34,5 +34,14 @@ class DiscordUser(
     override val messageForm: CommentForm
         get() = CommentForm().also {
             it.isMessage(true)
+            // Carry the recipient user id so postComment can open a DM channel.
+            id?.value<String>()?.let { userId ->
+                it.addParam(RECIPIENT_KEY, userId)
+            }
         }
+
+    companion object {
+        /** CommentForm param key carrying the DM recipient user id. */
+        const val RECIPIENT_KEY = "recipient"
+    }
 }
