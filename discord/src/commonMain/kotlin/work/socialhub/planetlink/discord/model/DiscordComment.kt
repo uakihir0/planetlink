@@ -30,11 +30,7 @@ class DiscordComment(
         set(_) {}
 
     override var reactions: List<Reaction>
-        get() {
-            val base = super.reactions.toMutableList()
-            _reactions?.let { base.addAll(it) }
-            return base
-        }
+        get() = _reactions ?: emptyList()
         set(value) {
             _reactions = value.toMutableList()
         }
