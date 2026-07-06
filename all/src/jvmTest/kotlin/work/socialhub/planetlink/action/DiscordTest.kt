@@ -4,6 +4,7 @@ import kotlinx.coroutines.test.runTest
 import work.socialhub.planetlink.AbstractTest
 import work.socialhub.planetlink.PrintClass.dump
 import work.socialhub.planetlink.discord.model.DiscordIdentify
+import work.socialhub.planetlink.discord.model.DiscordPaging
 import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.request.CommentForm
@@ -36,7 +37,9 @@ class DiscordTest : AbstractTest() {
         val id = DiscordIdentify(Service(account.service.type, account)).also {
             it.id = ID(channelId)
         }
-        val timeline = account.action.channelTimeLine(id, DiscordPagingCount())
+        val timeline = account.action.channelTimeLine(
+            id, DiscordPaging().also { it.count = 20 }
+        )
         timeline.entities.forEach { println("${it.user?.name}: ${it.text?.displayText}") }
     }
 
@@ -52,8 +55,4 @@ class DiscordTest : AbstractTest() {
             }
         )
     }
-
-    /** Simple paging with a small count. */
-    private fun DiscordPagingCount() =
-        work.socialhub.planetlink.discord.model.DiscordPaging().also { it.count = 20 }
 }
