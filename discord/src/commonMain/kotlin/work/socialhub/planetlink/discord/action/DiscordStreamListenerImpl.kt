@@ -10,9 +10,10 @@ import work.socialhub.planetlink.action.callback.comment.UpdateCommentCallback
 import work.socialhub.planetlink.action.callback.lifecycle.ConnectCallback
 import work.socialhub.planetlink.action.callback.lifecycle.DisconnectCallback
 import work.socialhub.planetlink.action.callback.lifecycle.ErrorCallback
+import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.Service
-import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.model.event.IdentifyEvent
+import work.socialhub.planetlink.utils.ExceptionHandler
 
 /**
  * Translates kdiscord Gateway events into planetlink [EventCallback] invocations.
@@ -56,9 +57,10 @@ internal class DiscordStreamListenerImpl(
 
     override fun onError(error: Exception) {
         if (callback is ErrorCallback) {
+            // Classify through ExceptionHandler so the exception carries the
+            // Discord serviceType, consistent with the other adapters.
             callback.onError(
-                error as? SocialHubException
-                    ?: SocialHubException(error.message, error)
+                ExceptionHandler.classify(error, ServiceType.Discord)
             )
         }
     }
