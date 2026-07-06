@@ -246,8 +246,6 @@ object TumblrMapper {
         model: TumblrComment,
         post: Post
     ) {
-        val medias = mutableListOf<Media>()
-
         // Trail から優先的に取得
         post.trail?.let { trail ->
             if (trail.isNotEmpty()) {
@@ -258,7 +256,7 @@ object TumblrMapper {
         }
 
         if (post is LegacyPhotoPost) {
-            medias.addAll(photos(post.photos!!))
+            model.medias = model.medias.plus(photos(post.photos!!))
             if (model.text == null) {
                 textMedia(model, removeSharedBlogLink(post.caption!!))
             }
@@ -314,6 +312,11 @@ object TumblrMapper {
                 it.previewUrl = video.displayText
             })
         }
+
+        // テキストから抽出したメディアを蓄積
+        // (Accumulate media extracted from the text so photo posts and
+        //  posts with embedded <img>/<video> are not lost)
+        model.medias = model.medias.plus(medias)
     }
 
     /**
