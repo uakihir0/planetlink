@@ -31,7 +31,7 @@ enum class MastodonNotificationType(
     ),
 
     STATUS(null, "status"),
-    POLL(null, "poll"),
+    POLL(NotificationActionType.POLL, "poll"),
     ;
 
     companion object {

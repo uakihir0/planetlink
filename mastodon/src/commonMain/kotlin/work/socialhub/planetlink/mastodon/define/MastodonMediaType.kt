@@ -8,6 +8,7 @@ enum class MastodonMediaType(
 ) {
     Image("image"),
     Video("video", "gifv"),
+    Audio("audio"),
     Unknown("unknown");
 
     companion object {

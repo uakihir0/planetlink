@@ -34,6 +34,15 @@ import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphGetFollowersRequest
 import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphGetFollowsRequest
 import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphMuteActorRequest
 import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphUnmuteActorRequest
+import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphCreateListRequest
+import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphAddUserToListRequest
+import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphGetListRequest
+import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphRemoveUserFromListRequest
+import work.socialhub.kbsky.api.entity.app.bsky.actor.ActorUpdateProfileRequest
+import work.socialhub.kbsky.api.entity.com.atproto.moderation.ModerationCreateReportRequest
+import work.socialhub.kbsky.model.com.atproto.moderation.ModerationReasonType
+import work.socialhub.kbsky.model.com.atproto.repo.RepoRef
+import work.socialhub.kbsky.model.share.Blob
 import work.socialhub.kbsky.api.entity.app.bsky.notification.NotificationListNotificationsRequest
 import work.socialhub.kbsky.api.entity.app.bsky.notification.NotificationUpdateSeenRequest
 import work.socialhub.kbsky.api.entity.com.atproto.identity.IdentityResolveHandleRequest
@@ -107,6 +116,8 @@ import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.utils.ExceptionHandler
 import work.socialhub.planetlink.model.request.CommentForm
+import work.socialhub.planetlink.model.request.ProfileForm
+import work.socialhub.planetlink.bluesky.model.BlueskyChannel
 import work.socialhub.planetlink.utils.CollectionUtil.takeUntil
 import kotlin.js.JsExport
 import kotlin.math.min
@@ -147,6 +158,13 @@ class BlueskyAction(
                 SocialActionType.GetNotification,
                 SocialActionType.BookmarkComment,
                 SocialActionType.UnbookmarkComment,
+                SocialActionType.ReportUser,
+                SocialActionType.ReportComment,
+                SocialActionType.UpdateProfile,
+                SocialActionType.CreateList,
+                SocialActionType.AddUserToList,
+                SocialActionType.RemoveUserFromList,
+                SocialActionType.MarkNotificationsRead,
 
                 TimeLineActionType.HomeTimeLine,
                 TimeLineActionType.MentionTimeLine,
@@ -863,6 +881,199 @@ class BlueskyAction(
                 service(),
             ) as BlueskyComment
         }
+    }
+
+    // ============================================================== //
+    // Report / Profile / List / Notification (SocialHub additions)
+    // ============================================================== //
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun reportUser(
+        id: Identify,
+        comment: String?,
+    ) {
+        proceedUnit {
+            val did = resolveDid(id)
+            auth.accessor.moderation().createReport(
+                ModerationCreateReportRequest(
+                    reasonType = ModerationReasonType.OTHER,
+                    reason = comment,
+                    subject = RepoRef(did),
+                    auth = authProvider(),
+                )
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun reportComment(
+        id: Identify,
+        comment: String?,
+    ) {
+        val c = commentWithCheck(id)
+        proceedUnit {
+            auth.accessor.moderation().createReport(
+                ModerationCreateReportRequest(
+                    reasonType = ModerationReasonType.OTHER,
+                    reason = comment,
+                    subject = c.ref(),
+                    auth = authProvider(),
+                )
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun updateProfile(
+        form: ProfileForm
+    ) {
+        proceedUnit {
+            var avatarBlob: Blob? = null
+            var bannerBlob: Blob? = null
+
+            if (form.avatar != null) {
+                val response = auth.accessor.repo().uploadBlob(
+                    RepoUploadBlobRequest(
+                        auth = authProvider(),
+                        bytes = form.avatar!!,
+                        name = form.avatarName ?: "avatar",
+                    )
+                )
+                avatarBlob = response.data.blob
+            }
+
+            if (form.banner != null) {
+                val response = auth.accessor.repo().uploadBlob(
+                    RepoUploadBlobRequest(
+                        auth = authProvider(),
+                        bytes = form.banner!!,
+                        name = form.bannerName ?: "banner",
+                    )
+                )
+                bannerBlob = response.data.blob
+            }
+
+            auth.accessor.actor().updateProfile(
+                ActorUpdateProfileRequest(
+                    auth = authProvider(),
+                    displayName = form.displayName,
+                    description = form.description,
+                    avatar = avatarBlob,
+                    banner = bannerBlob,
+                )
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun createList(
+        name: String,
+        description: String?,
+    ): Channel {
+        return proceed {
+            val response = auth.accessor.graph().createList(
+                GraphCreateListRequest(
+                    auth = authProvider(),
+                    name = name,
+                    description = description,
+                )
+            )
+
+            BlueskyChannel(service()).also {
+                it.id = ID(response.data.uri)
+                it.cid = response.data.cid
+                it.name = name
+                it.description = description
+                it.isPublic = true
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun addUserToList(
+        channel: Identify,
+        user: Identify,
+    ) {
+        proceedUnit {
+            val userDid = resolveDid(user)
+            auth.accessor.graph().addUserToList(
+                GraphAddUserToListRequest(authProvider()).also {
+                    it.userDid = userDid
+                    it.listUri = channel.id!!.value<String>()
+                }
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun removeUserFromList(
+        channel: Identify,
+        user: Identify,
+    ) {
+        proceedUnit {
+            val userDid = resolveDid(user)
+            val listUri = channel.id!!.value<String>()
+
+            // list item の record uri を探索 (delete には listitem レコード URI が必要)
+            var cursor: String? = null
+            var targetUri: String? = null
+            do {
+                val response = auth.accessor.graph().getList(
+                    GraphGetListRequest(authProvider()).also {
+                        it.list = listUri
+                        it.limit = 100
+                        it.cursor = cursor
+                    }
+                )
+                targetUri = response.data.items
+                    .firstOrNull { it.subject?.did == userDid }?.uri
+                cursor = response.data.cursor
+            } while (targetUri == null && cursor != null)
+
+            checkNotNull(targetUri) { "User is not a member of the list." }
+            auth.accessor.graph().removeUserFromList(
+                GraphRemoveUserFromListRequest(authProvider()).also {
+                    it.uri = targetUri
+                }
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * Bluesky には per-id 既読がないため upToId は無視して全件既読にする。
+     */
+    override suspend fun markNotificationsRead(
+        upToId: Identify?,
+    ) {
+        proceedUnit {
+            auth.accessor.notification().updateSeen(
+                NotificationUpdateSeenRequest(authProvider())
+            )
+        }
+    }
+
+    // BlueskyUser ids are already DIDs; a raw handle is resolved via
+    // identity().resolveHandle. Private (different-class + private calls only)
+    // so the JS suspend-bridge yield* bug is not triggered.
+    private suspend fun resolveDid(id: Identify): String {
+        val value = id.id!!.value<String>()
+        if (value.startsWith("did:")) return value
+        val response = auth.accessor.identity().resolveHandle(
+            IdentityResolveHandleRequest().handle(value)
+        )
+        return response.data.did
     }
 
     /**

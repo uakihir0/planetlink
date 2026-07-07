@@ -9,6 +9,7 @@ import work.socialhub.kmatrix.api.request.notifications.NotificationsGetRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsGetMessagesRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsRedactEventRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsSendMessageRequest
+import work.socialhub.kmatrix.api.request.rooms.RoomsSetReadMarkersRequest
 import work.socialhub.kmatrix.api.request.userdirectory.UserDirectorySearchRequest
 import work.socialhub.kmatrix.api.response.events.EventsGetContextResponse
 import work.socialhub.kmatrix.api.response.events.EventsGetEventResponse
@@ -339,6 +340,25 @@ class MatrixAction(
                 RoomsRedactEventRequest().apply {
                     roomId = comment.roomId
                     eventId = comment.eventId
+                }
+            )
+        }
+    }
+
+    /**
+     * Matrix-specific extra: mark a room as read up to [eventId].
+     * fully-read マーカーと公開/非公開の既読レシートを [eventId] に設定する。
+     * 統一 AccountAction 外のため capability には登録しない。
+     */
+    suspend fun markRoomRead(room: Identify, eventId: String) {
+        proceedUnit {
+            val roomId = room.id!!.value<String>()
+            accessor.rooms().setReadMarkers(
+                RoomsSetReadMarkersRequest().apply {
+                    this.roomId = roomId
+                    fullyRead = eventId
+                    read = eventId
+                    readPrivate = eventId
                 }
             )
         }

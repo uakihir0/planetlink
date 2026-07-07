@@ -11,6 +11,7 @@ import work.socialhub.kmastodon.entity.Status
 import work.socialhub.kmastodon.entity.share.Link
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.mastodon.define.MastodonMediaType
+import work.socialhub.planetlink.mastodon.define.MastodonMediaType.Audio
 import work.socialhub.planetlink.mastodon.define.MastodonMediaType.Image
 import work.socialhub.planetlink.mastodon.define.MastodonMediaType.Video
 import work.socialhub.planetlink.mastodon.define.MastodonNotificationType
@@ -191,11 +192,14 @@ object MastodonMapper {
         return Media().also {
             it.sourceUrl = attachment.url
             it.previewUrl = attachment.previewUrl
+            it.description = attachment.description
+            it.blurhash = attachment.blurhash
 
             val type = MastodonMediaType.of(attachment.type!!)
             it.type = when (type) {
                 Image -> MediaType.Image
                 Video -> MediaType.Movie
+                Audio -> MediaType.Audio
                 else -> MediaType.Other
             }
         }

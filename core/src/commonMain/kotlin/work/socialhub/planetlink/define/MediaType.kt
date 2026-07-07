@@ -10,6 +10,7 @@ enum class MediaType {
     Link,
     Image,
     Movie,
+    Audio,
     File,
     Other,
 }

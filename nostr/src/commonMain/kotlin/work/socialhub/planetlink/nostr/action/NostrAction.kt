@@ -5,6 +5,7 @@ import kotlinx.coroutines.sync.withLock
 import work.socialhub.knostr.EventKind
 import work.socialhub.knostr.entity.Nip19Entity
 import work.socialhub.knostr.entity.NostrFilter
+import work.socialhub.knostr.entity.NostrProfile
 import work.socialhub.knostr.social.model.NostrDirectMessage
 import work.socialhub.knostr.social.model.NostrNote
 import work.socialhub.knostr.social.model.NostrUser as KnostrUser
@@ -34,6 +35,7 @@ import work.socialhub.planetlink.utils.ExceptionHandler
 import net.socialhub.planetlink.model.event.CommentEvent
 import work.socialhub.planetlink.model.event.NotificationEvent
 import work.socialhub.planetlink.model.request.CommentForm
+import work.socialhub.planetlink.model.request.ProfileForm
 import work.socialhub.planetlink.nostr.model.NostrComment
 import work.socialhub.planetlink.nostr.model.NostrPaging
 import work.socialhub.planetlink.nostr.model.NostrUser
@@ -69,6 +71,7 @@ class NostrAction(
                 SocialActionType.ReactionComment,
                 SocialActionType.UnreactionComment,
                 SocialActionType.GetNotification,
+                SocialActionType.UpdateProfile,
 
                 TimeLineActionType.HomeTimeLine,
                 TimeLineActionType.MentionTimeLine,
@@ -236,6 +239,60 @@ class NostrAction(
             social.mutes().unmute(id.id!!.value<String>())
         }
     }
+
+    /**
+     * {@inheritDoc}
+     * kind:0 は全置換のため、既存プロフィールを取得してマージする。
+     * avatar/banner は NIP-96 サーバー (auth.nip96Server) にアップロードして URL を設定。
+     */
+    override suspend fun updateProfile(form: ProfileForm) {
+        ensureRelayConnected()
+        proceedUnit {
+            val existing = social.users().getProfile(pubkey).data
+
+            var picture = existing.picture
+            var banner = existing.banner
+
+            form.avatar?.let { bytes ->
+                val uploaded = social.media().upload(
+                    serverUrl = auth.nip96Server,
+                    fileData = bytes,
+                    fileName = form.avatarName ?: "avatar",
+                    mimeType = guessImageMimeType(form.avatarName),
+                )
+                if (uploaded.data.url.isNotEmpty()) picture = uploaded.data.url
+            }
+            form.banner?.let { bytes ->
+                val uploaded = social.media().upload(
+                    serverUrl = auth.nip96Server,
+                    fileData = bytes,
+                    fileName = form.bannerName ?: "banner",
+                    mimeType = guessImageMimeType(form.bannerName),
+                )
+                if (uploaded.data.url.isNotEmpty()) banner = uploaded.data.url
+            }
+
+            val profile = NostrProfile(
+                name = existing.name,
+                about = form.description ?: existing.about,
+                picture = picture,
+                banner = banner,
+                nip05 = existing.nip05,
+                displayName = form.displayName ?: existing.displayName,
+                website = existing.website,
+                lud16 = existing.lud16,
+            )
+            social.users().updateProfile(profile)
+        }
+    }
+
+    private fun guessImageMimeType(fileName: String?): String =
+        when (fileName?.substringAfterLast('.', "")?.lowercase()) {
+            "png" -> "image/png"
+            "gif" -> "image/gif"
+            "webp" -> "image/webp"
+            else -> "image/jpeg"
+        }
 
     override suspend fun blockUser(id: Identify) {
         throw NotSupportedException("Nostr does not support blocking users")

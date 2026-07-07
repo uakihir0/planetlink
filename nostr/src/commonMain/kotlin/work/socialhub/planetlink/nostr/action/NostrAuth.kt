@@ -15,6 +15,8 @@ import work.socialhub.planetlink.model.Service
 class NostrAuth(
     var relays: List<String> = listOf(),
     var nsec: String? = null,
+    /** NIP-96 media server used for avatar/banner uploads (updateProfile). */
+    var nip96Server: String = "https://nostr.build",
 ) : ServiceAuth<NostrAuth.NostrAccessor> {
 
     private var _accessor: NostrAccessor? = null

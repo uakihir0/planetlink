@@ -442,6 +442,7 @@ object BlueskyMapper {
             type = MediaType.Image
             previewUrl = img.thumb
             sourceUrl = img.fullsize
+            description = img.alt
         }
     }
 
@@ -452,6 +453,7 @@ object BlueskyMapper {
             type = MediaType.Image
             previewUrl = img.thumbnail
             sourceUrl = img.fullsize
+            description = img.alt
         }
     }
 
@@ -465,6 +467,7 @@ object BlueskyMapper {
             // playlist is an HLS (.m3u8) manifest hosted on video.bsky.app.
             sourceUrl = video.playlist
             previewUrl = video.thumbnail
+            description = video.alt
         }
     }
 
@@ -787,20 +790,20 @@ object BlueskyMapper {
         when (embed) {
             is EmbedImages -> {
                 embed.images?.forEach { img ->
-                    mediaFromBlob(img.image, did)?.let {
+                    mediaFromBlob(img.image, did, img.alt)?.let {
                         model.medias = model.medias.plus(it)
                     }
                 }
             }
             is EmbedGallery -> {
                 embed.items?.forEach { img ->
-                    mediaFromBlob(img.image, did)?.let {
+                    mediaFromBlob(img.image, did, img.alt)?.let {
                         model.medias = model.medias.plus(it)
                     }
                 }
             }
             is EmbedVideo -> {
-                mediaFromVideoBlob(embed.video, did)?.let {
+                mediaFromVideoBlob(embed.video, did, embed.alt)?.let {
                     model.medias = model.medias.plus(it)
                 }
             }
@@ -821,16 +824,17 @@ object BlueskyMapper {
         }
     }
 
-    private fun mediaFromBlob(blob: Blob?, did: String): Media? {
+    private fun mediaFromBlob(blob: Blob?, did: String, alt: String? = null): Media? {
         val cid = blob?.ref?.link ?: return null
         return Media().apply {
             type = MediaType.Image
             sourceUrl = blobCdnUrl(did, blob, "feed_fullsize")
             previewUrl = blobCdnUrl(did, blob, "feed_thumbnail")
+            description = alt
         }
     }
 
-    private fun mediaFromVideoBlob(blob: Blob?, did: String): Media? {
+    private fun mediaFromVideoBlob(blob: Blob?, did: String, alt: String? = null): Media? {
         val cid = blob?.ref?.link ?: return null
         return Media().apply {
             // GIF-style videos are treated as videos too (see media(EmbedVideoView)).
@@ -838,6 +842,7 @@ object BlueskyMapper {
             // Videos are served from video.bsky.app (HLS), NOT the image CDN.
             sourceUrl = videoPlaylistUrl(did, cid)
             previewUrl = videoThumbnailUrl(did, cid)
+            description = alt
         }
     }
 

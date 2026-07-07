@@ -15,8 +15,15 @@ import work.socialhub.kmisskey.api.request.favorites.FavoritesCreateRequest
 import work.socialhub.kmisskey.api.request.favorites.FavoritesDeleteRequest
 import work.socialhub.kmisskey.api.request.i.IFavoritesRequest
 import work.socialhub.kmisskey.api.request.i.INotificationsRequest
+import work.socialhub.kmisskey.api.request.notifications.NotificationsMarkAllAsReadRequest
 import work.socialhub.kmisskey.api.request.i.IRequest
+import work.socialhub.kmisskey.api.request.i.IUpdateRequest
+import work.socialhub.kmisskey.api.request.following.FollowingRequestsAcceptRequest
+import work.socialhub.kmisskey.api.request.following.FollowingRequestsRejectRequest
+import work.socialhub.kmisskey.api.request.lists.UsersListsCreateRequest
 import work.socialhub.kmisskey.api.request.lists.UsersListsListRequest
+import work.socialhub.kmisskey.api.request.lists.UsersListsPullRequest
+import work.socialhub.kmisskey.api.request.lists.UsersListsPushRequest
 import work.socialhub.kmisskey.api.request.lists.UsersListsShowRequest
 import work.socialhub.kmisskey.api.request.meta.EmojisRequest
 import work.socialhub.kmisskey.api.request.mutes.MutesCreateRequest
@@ -43,6 +50,7 @@ import work.socialhub.kmisskey.api.request.reactions.ReactionsDeleteRequest
 import work.socialhub.kmisskey.api.request.users.UsersFollowersRequest
 import work.socialhub.kmisskey.api.request.users.UsersFollowingsRequest
 import work.socialhub.kmisskey.api.request.users.UsersRelationRequest
+import work.socialhub.kmisskey.api.request.users.UsersReportAbuseRequest
 import work.socialhub.kmisskey.api.request.users.UsersSearchRequest
 import work.socialhub.kmisskey.api.request.users.UsersShowMultipleRequest
 import work.socialhub.kmisskey.api.request.users.UsersShowSingleRequest
@@ -91,6 +99,7 @@ import work.socialhub.planetlink.model.event.NotificationEvent
 import work.socialhub.planetlink.model.event.UserEvent
 import work.socialhub.planetlink.model.paging.OffsetPaging
 import work.socialhub.planetlink.model.request.CommentForm
+import work.socialhub.planetlink.model.request.ProfileForm
 import kotlin.js.JsExport
 import work.socialhub.kmisskey.entity.Notification as MNotification
 import work.socialhub.kmisskey.entity.user.User as MUser
@@ -127,6 +136,15 @@ class MisskeyAction(
                 SocialActionType.BookmarkComment,
                 SocialActionType.UnbookmarkComment,
                 SocialActionType.VotePoll,
+                SocialActionType.ReportUser,
+                SocialActionType.ReportComment,
+                SocialActionType.UpdateProfile,
+                SocialActionType.CreateList,
+                SocialActionType.AddUserToList,
+                SocialActionType.RemoveUserFromList,
+                SocialActionType.AcceptFollowRequest,
+                SocialActionType.RejectFollowRequest,
+                SocialActionType.MarkNotificationsRead,
 
                 TimeLineActionType.HomeTimeLine,
                 TimeLineActionType.MentionTimeLine,
@@ -368,6 +386,183 @@ class MisskeyAction(
             MisskeyMapper.relationship(
                 response.data[0]
             )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun reportUser(
+        id: Identify,
+        comment: String?,
+    ) {
+        doReportAbuse(id.id<String>(), comment)
+    }
+
+    /**
+     * {@inheritDoc}
+     * Misskey の通報はユーザー単位。ノートの投稿者を解決して通報する。
+     */
+    override suspend fun reportComment(
+        id: Identify,
+        comment: String?,
+    ) {
+        proceedUnit {
+            val misskey = auth.accessor
+            // ノートを取得して投稿者の userId を解決
+            val note = misskey.notes().show(
+                NotesShowRequest().also {
+                    it.noteId = id.id<String>()
+                }).data
+
+            misskey.users().reportAbuse(
+                UsersReportAbuseRequest().also {
+                    it.userId = note.user.id
+                    it.comment = comment ?: ""
+                })
+        }
+    }
+
+    // Free-standing impl so same-class callers (reportUser) don't route through
+    // the unwired JS virtual suspend bridge. See AGENTS.md "Kotlin/JS yield* Bug".
+    private suspend fun doReportAbuse(userId: String, comment: String?) {
+        proceedUnit {
+            auth.accessor.users().reportAbuse(
+                UsersReportAbuseRequest().also {
+                    it.userId = userId
+                    it.comment = comment ?: ""
+                })
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun updateProfile(
+        form: ProfileForm
+    ) {
+        proceedUnit {
+            val misskey = auth.accessor
+            val request = IUpdateRequest()
+
+            form.displayName?.let { request.name = it }
+            form.description?.let { request.description = it }
+
+            // アバター画像をアップロードして ID を設定
+            form.avatar?.let { bytes ->
+                request.avatarId = doUploadFile(bytes, form.avatarName)
+            }
+            // バナー画像をアップロードして ID を設定
+            form.banner?.let { bytes ->
+                request.bannerId = doUploadFile(bytes, form.bannerName)
+            }
+
+            misskey.accounts().iUpdate(request)
+        }
+    }
+
+    // Free-standing upload helper (private -> safe from JS yield* bug).
+    private suspend fun doUploadFile(
+        bytes: ByteArray,
+        name: String?,
+    ): String {
+        return auth.accessor.files().create(
+            FilesCreateRequest().also {
+                it.bytes = bytes
+                it.name = name
+                it.force = true
+            }).data.id
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun acceptFollowRequest(
+        id: Identify
+    ) {
+        proceedUnit {
+            auth.accessor.following().acceptRequest(
+                FollowingRequestsAcceptRequest().also {
+                    it.userId = id.id<String>()
+                })
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun rejectFollowRequest(
+        id: Identify
+    ) {
+        proceedUnit {
+            auth.accessor.following().rejectRequest(
+                FollowingRequestsRejectRequest().also {
+                    it.userId = id.id<String>()
+                })
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * Misskey は全件既読のみ対応。upToId は無視する。
+     */
+    override suspend fun markNotificationsRead(
+        upToId: Identify?
+    ) {
+        proceedUnit {
+            auth.accessor.accounts().notificationsMarkAllAsRead(
+                NotificationsMarkAllAsReadRequest())
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * Misskey のリスト作成は説明文 (description) 非対応のため無視する。
+     */
+    override suspend fun createList(
+        name: String,
+        description: String?,
+    ): Channel {
+        return proceed {
+            val response = auth.accessor.lists().create(
+                UsersListsCreateRequest(name))
+
+            MisskeyMapper.channel(
+                response.data,
+                service(),
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun addUserToList(
+        channel: Identify,
+        user: Identify,
+    ) {
+        proceedUnit {
+            auth.accessor.lists().push(
+                UsersListsPushRequest().also {
+                    it.listId = channel.id<String>()
+                    it.userId = user.id<String>()
+                })
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun removeUserFromList(
+        channel: Identify,
+        user: Identify,
+    ) {
+        proceedUnit {
+            auth.accessor.lists().pull(
+                UsersListsPullRequest().also {
+                    it.listId = channel.id<String>()
+                    it.userId = user.id<String>()
+                })
         }
     }
 
@@ -1202,7 +1397,8 @@ class MisskeyAction(
             builder.includeTypes = arrayOf(
                 NotificationType.FOLLOW.code,
                 NotificationType.REACTION.code,
-                NotificationType.RENOTE.code
+                NotificationType.RENOTE.code,
+                NotificationType.POLL_ENDED.code
             )
 
             val response = misskey.accounts()
