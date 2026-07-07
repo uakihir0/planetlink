@@ -14,8 +14,8 @@ import work.socialhub.kmisskey.api.request.hashtags.HashtagsTrendRequest
 import work.socialhub.kmisskey.api.request.favorites.FavoritesCreateRequest
 import work.socialhub.kmisskey.api.request.favorites.FavoritesDeleteRequest
 import work.socialhub.kmisskey.api.request.i.IFavoritesRequest
-import work.socialhub.kmisskey.api.request.i.INotificationsMarkAllAsReadRequest
 import work.socialhub.kmisskey.api.request.i.INotificationsRequest
+import work.socialhub.kmisskey.api.request.notifications.NotificationsMarkAllAsReadRequest
 import work.socialhub.kmisskey.api.request.i.IRequest
 import work.socialhub.kmisskey.api.request.i.IUpdateRequest
 import work.socialhub.kmisskey.api.request.following.FollowingRequestsAcceptRequest
@@ -511,7 +511,7 @@ class MisskeyAction(
     ) {
         proceedUnit {
             auth.accessor.accounts().notificationsMarkAllAsRead(
-                INotificationsMarkAllAsReadRequest())
+                NotificationsMarkAllAsReadRequest())
         }
     }
 
