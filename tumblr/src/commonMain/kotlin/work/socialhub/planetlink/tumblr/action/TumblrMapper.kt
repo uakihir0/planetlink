@@ -39,8 +39,7 @@ object TumblrMapper {
     // User
     // ============================================================== //
     /**
-     * ユーザーマッピング
-     * (Primary のブログをユーザーと設定)
+     * User mapping
      * (User is user's primary blog)
      */
     fun user(
@@ -48,7 +47,7 @@ object TumblrMapper {
         service: Service
     ): User {
 
-        // プライマリブログについての処理
+        // Process the primary blog
         for (blog in user.blogs!!) {
             if (blog.isPrimary == true) {
                 return user(blog, service)
@@ -61,8 +60,7 @@ object TumblrMapper {
     }
 
     /**
-     * ユーザーマッピング
-     * (ブログをユーザーと設定)
+     * User mapping
      * (User is user's blog)
      */
     fun user(
@@ -82,12 +80,12 @@ object TumblrMapper {
             it.followersCount = blog.followerCount
             it.postsCount = blog.postCount
 
-            // 説明文は HTML で記述
+            // Description is written in HTML
             blog.description?.let { d ->
                 it.description = AttributedString.tumblr(d)
             }
 
-            // Avatar がある場合とない場合を考慮
+            // Consider cases with and without an avatar
             it.iconImageUrl = blog.avatar?.get(0)?.url
                 ?: avatarUrl(host, S512)
 
@@ -99,8 +97,8 @@ object TumblrMapper {
     }
 
     /**
-     * ユーザーマッピング
-     * (そのブログの投稿に紐づくユーザーと設定)
+     * User mapping
+     * (Set the user associated with the post's blog)
      */
     fun user(
         post: Post,
@@ -122,8 +120,7 @@ object TumblrMapper {
     }
 
     /**
-     * ユーザーマッピング
-     * (Primary のブログをユーザーと設定)
+     * User mapping
      * (User is user's primary blog)
      */
     fun followerUser(
@@ -142,8 +139,8 @@ object TumblrMapper {
     }
 
     /**
-     * ユーザーマッピング
-     * (そのブログの投稿に紐づくユーザーと設定)
+     * User mapping
+     * (Set the user associated with the post's blog)
      */
     fun reblogUser(
         post: Post,
@@ -174,7 +171,7 @@ object TumblrMapper {
     // Comment
     // ============================================================== //
     /**
-     * コメントマッピング
+     * Comment mapping
      */
     fun comment(
         post: Post,
@@ -192,7 +189,7 @@ object TumblrMapper {
 
             it.user = user(post, trails, service)
 
-            // リブログ情報を設定
+            // Set reblog information
             if (post.parentPostUrl != null) {
                 it.sharedComment = reblogComment(post, trails, service)
                 it.medias = listOf()
@@ -205,7 +202,7 @@ object TumblrMapper {
                 }
 
             } else {
-                // コンテンツを格納
+                // Store the content
                 setMedia(it, post)
                 if (post.rebloggedRootId != null) {
                     it.rootId = post.rebloggedRootId
@@ -215,7 +212,7 @@ object TumblrMapper {
     }
 
     /**
-     * コメントマッピング
+     * Comment mapping
      * (Handle as shared post)
      */
    fun reblogComment(
@@ -246,7 +243,7 @@ object TumblrMapper {
         model: TumblrComment,
         post: Post
     ) {
-        // Trail から優先的に取得
+        // Retrieve preferentially from the trail
         post.trail?.let { trail ->
             if (trail.isNotEmpty()) {
                 trail.firstOrNull { it.isCurrentItem }?.also {
@@ -282,7 +279,7 @@ object TumblrMapper {
     }
 
     /**
-     * テキスト情報を設定
+     * Set the text information
      */
     private fun textMedia(
         model: TumblrComment,
@@ -295,7 +292,7 @@ object TumblrMapper {
         val images = attr.elements.filter { it.kind == IMAGE }
         val videos = attr.elements.filter { it.kind == VIDEO }
 
-        // 画像一覧を取得
+        // Collect the images
         for (image in images) {
             medias.add(Media().also {
                 it.type = MediaType.Image
@@ -304,7 +301,7 @@ object TumblrMapper {
             })
         }
 
-        // 動画一覧を選択
+        // Collect the videos
         for (video in videos) {
             medias.add(Media().also {
                 it.type = MediaType.Movie
@@ -313,14 +310,13 @@ object TumblrMapper {
             })
         }
 
-        // テキストから抽出したメディアを蓄積
-        // (Accumulate media extracted from the text so photo posts and
-        //  posts with embedded <img>/<video> are not lost)
+        // Accumulate media extracted from the text so that photo posts and
+        // posts with embedded <img>/<video> are not lost.
         model.medias = model.medias.plus(medias)
     }
 
     /**
-     * 画像マッピング
+     * Image mapping
      */
     private fun photos(
         photos: Array<Photo>
@@ -340,7 +336,7 @@ object TumblrMapper {
     // Timelines
     // ============================================================== //
     /**
-     * タイムラインマッピング
+     * Timeline mapping
      */
     fun timeLine(
         posts: Array<Post>,
@@ -360,7 +356,7 @@ object TumblrMapper {
     // UserList
     // ============================================================== //
     /**
-     * ユーザーマッピング
+     * User mapping
      */
     fun users(
         users: Array<KUser>,
@@ -385,7 +381,7 @@ object TumblrMapper {
     }
 
     /**
-     * ユーザーマッピング
+     * User mapping
      */
     fun usersByBlogs(
         blogs: Array<Blog>,
@@ -402,7 +398,7 @@ object TumblrMapper {
     // Supports
     // ============================================================== //
     /**
-     * ホスト名を取得 (プライマリを取得)
+     * Get the host name (of the primary blog)
      * Get primary blog host from url
      */
     fun userIdentify(
@@ -419,7 +415,7 @@ object TumblrMapper {
     }
 
     /**
-     * ホスト名を取得
+     * Get the host name
      * Get blog host from url
      */
     fun blogIdentify(
@@ -429,7 +425,7 @@ object TumblrMapper {
     }
 
     /**
-     * ホスト名を取得
+     * Get the host name
      * Get blog host from url
      */
     fun blogIdentify(
@@ -437,16 +433,16 @@ object TumblrMapper {
     ): String {
         var host = blogUrl.urlHost()
 
-        // ドメイン設定していないブログは www.tumblr.com になる (?)
+        // Blogs without a custom domain become www.tumblr.com (?)
         if (host == "www.tumblr.com") {
             val elements = blogUrl.split("/")
                 .dropLastWhile { it.isEmpty() }
                 .toTypedArray()
 
-            // 最後の三要素について確認するので、ループ回数を制限
+            // Limit the loop count since only the last three elements are checked
             for (i in 0..<(elements.size - 2)) {
 
-                // https://www.tumblr.com/blog/view/{uid}/xxx の形式で UID を取得
+                // Get the UID from the format https://www.tumblr.com/blog/view/{uid}/xxx
                 if (elements[i] == "blog" && elements[i + 1] == "view") {
                     host = host.replace("www", elements[i + 2])
                 }
@@ -462,14 +458,14 @@ object TumblrMapper {
     }
 
     /**
-     * ホスト名を取得
+     * Get the host name
      * Get host from url
      */
     private fun String.urlHost() =
         Url(this).host
 
     /**
-     * ユーザーの画面マップを取得
+     * Get the user's trail map
      * Get Trail Map
      */
     fun trailMap(
@@ -488,7 +484,7 @@ object TumblrMapper {
     }
 
     /**
-     * ユーザー情報のマージ処理
+     * Merge user information
      */
     fun margeUser(to: User?, from: User?) {
         if ((to != null) && (from != null)) {
@@ -497,7 +493,7 @@ object TumblrMapper {
     }
 
     /**
-     * アバター画像を取得
+     * Get the avatar image
      * Get avatar url
      */
     fun avatarUrl(
@@ -509,7 +505,7 @@ object TumblrMapper {
 
     /**
      * Remove Shared Post Prefix
-     * Share されたポストの定型句を削除
+     * Remove the boilerplate prefix of a shared post
      */
     private fun removeSharedBlogLink(
         text: String
@@ -522,7 +518,7 @@ object TumblrMapper {
             val v2 = result.groupValues[2]
             val v4 = result.groupValues[4]
 
-            // ブログへのリンクであることを確認
+            // Confirm that it is a link to a blog
             if (v2.contains("class=\"tumblr_blog\"") ||
                 v4.contains("class=\"tumblr_blog\"")
             ) {
