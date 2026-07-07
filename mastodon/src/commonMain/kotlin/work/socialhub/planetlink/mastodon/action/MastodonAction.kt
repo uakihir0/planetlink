@@ -1009,8 +1009,9 @@ class MastodonAction(
 
     /**
      * {@inheritDoc}
-     * Mastodon には既読 API がなく clearNotifications() で全通知を削除する。
-     * upToId は非対応のため無視する (破壊的操作)。
+     * 注意: Mastodon には通知を「既読」にする API がないため、
+     * clearNotifications() で全通知を削除する破壊的な挙動になる。
+     * upToId は非対応のため無視する。
      */
     override suspend fun markNotificationsRead(
         upToId: Identify?
@@ -1018,7 +1019,7 @@ class MastodonAction(
         proceedUnit {
             val response = auth.accessor.notifications().clearNotifications()
             service().rateLimit.addInfo(
-                MastodonActionType.ClearNotifications,
+                SocialActionType.MarkNotificationsRead,
                 MastodonMapper.rateLimit(response)
             )
         }
