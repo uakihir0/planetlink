@@ -5,6 +5,8 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import work.socialhub.kmatrix.api.request.events.EventsGetContextRequest
+import work.socialhub.kmatrix.api.request.media.MediaDownloadRequest
+import work.socialhub.kmatrix.api.request.media.MediaThumbnailRequest
 import work.socialhub.kmatrix.api.request.notifications.NotificationsGetRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsGetMessagesRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsRedactEventRequest
@@ -361,6 +363,54 @@ class MatrixAction(
                     readPrivate = eventId
                 }
             )
+        }
+    }
+
+    /**
+     * Matrix-specific extra: resolve an `mxc://{server}/{mediaId}` content URI
+     * to raw bytes via the (authenticated) media API, so callers can render it
+     * (e.g. as a blob/data URL). Matrix media cannot be fetched by a browser
+     * directly — mxc:// is not HTTP and authenticated media requires a token.
+     *
+     * When [width] and [height] are both provided a scaled thumbnail is fetched;
+     * otherwise the full-resolution file is downloaded. Fields such as avatars
+     * (`User.iconImageUrl`) and message media (`Media.sourceUrl`) hold raw mxc
+     * URIs that this method resolves.
+     *
+     * 統一 AccountAction 外のため capability には登録しない。
+     */
+    suspend fun resolveMedia(
+        mxcUrl: String,
+        width: Int? = null,
+        height: Int? = null,
+    ): ByteArray {
+        return proceed {
+            val parts = mxcUrl.removePrefix("mxc://").split("/", limit = 2)
+            val serverName = parts.getOrNull(0)
+                ?.takeIf { it.isNotEmpty() }
+                ?: throw SocialHubException("Invalid mxc URI: $mxcUrl")
+            val mediaId = parts.getOrNull(1)
+                ?.takeIf { it.isNotEmpty() }
+                ?: throw SocialHubException("Invalid mxc URI: $mxcUrl")
+
+            if (width != null && height != null) {
+                accessor.media().thumbnail(
+                    MediaThumbnailRequest().apply {
+                        this.serverName = serverName
+                        this.mediaId = mediaId
+                        this.width = width
+                        this.height = height
+                        this.method = "scale"
+                    }
+                )
+            } else {
+                accessor.media().download(
+                    MediaDownloadRequest().apply {
+                        this.serverName = serverName
+                        this.mediaId = mediaId
+                    }
+                )
+            }
         }
     }
 
