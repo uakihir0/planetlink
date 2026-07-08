@@ -16,6 +16,7 @@ import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.define.action.StreamActionType
 import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Paging
+import work.socialhub.planetlink.model.Space
 import work.socialhub.planetlink.model.Stream
 import work.socialhub.planetlink.model.Thread
 import work.socialhub.planetlink.model.User
@@ -102,8 +103,12 @@ class DiscordAction(
     }
 
     // ---------------------------------------------------------------- //
-    // Channels / Threads
+    // Spaces (Guilds) / Channels / Threads
     // ---------------------------------------------------------------- //
+
+    override suspend fun spaces(paging: Paging): Pageable<Space> {
+        return helper.fetchSpaces(paging)
+    }
 
     override suspend fun channels(id: Identify, paging: Paging): Pageable<Channel> {
         return helper.channels(id.id!!.value(), paging)
@@ -173,6 +178,7 @@ class DiscordAction(
                 SocialActionType.UnlikeComment,
                 SocialActionType.ReactionComment,
                 SocialActionType.UnreactionComment,
+                SocialActionType.GetSpaces,
                 SocialActionType.GetChannels,
 
                 TimeLineActionType.ChannelTimeLine,

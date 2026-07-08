@@ -4,6 +4,7 @@ import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.discord.model.DiscordChannel
 import work.socialhub.planetlink.discord.model.DiscordComment
 import work.socialhub.planetlink.discord.model.DiscordPaging
+import work.socialhub.planetlink.discord.model.DiscordSpace
 import work.socialhub.planetlink.discord.model.DiscordThread
 import work.socialhub.planetlink.discord.model.DiscordUser
 import work.socialhub.planetlink.model.Channel
@@ -14,12 +15,14 @@ import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Paging
 import work.socialhub.planetlink.model.Reaction
 import work.socialhub.planetlink.model.Service
+import work.socialhub.planetlink.model.Space
 import work.socialhub.planetlink.model.Thread
 import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.common.AttributedString
 import kotlin.time.Instant
 import work.socialhub.kdiscord.entity.Attachment
 import work.socialhub.kdiscord.entity.Channel as DcChannel
+import work.socialhub.kdiscord.entity.Guild
 import work.socialhub.kdiscord.entity.Message
 import work.socialhub.kdiscord.entity.Reaction as DcReaction
 import work.socialhub.kdiscord.entity.User as DcUser
@@ -81,6 +84,39 @@ object DiscordMapper {
         model.entities = messages
             .map { comment(it, userMe, service) }
             .sortedByDescending { it.createAt }
+        model.paging = DiscordPaging.fromPaging(paging)
+        return model
+    }
+
+    // ---------------------------------------------------------------- //
+    // Space (Guild)
+    // ---------------------------------------------------------------- //
+
+    fun space(
+        guild: Guild,
+        service: Service,
+    ): DiscordSpace {
+        return DiscordSpace(service).apply {
+            id = ID(guild.id ?: "")
+            name = guild.name
+            description = guild.description
+            owner = guild.owner
+            approximateMemberCount = guild.approximateMemberCount
+            guild.icon?.let { icon ->
+                guild.id?.let { gid ->
+                    iconUrl = "https://cdn.discordapp.com/icons/$gid/$icon.png"
+                }
+            }
+        }
+    }
+
+    fun spaces(
+        guilds: List<Guild>,
+        service: Service,
+        paging: Paging?,
+    ): Pageable<Space> {
+        val model = Pageable<Space>()
+        model.entities = guilds.map { space(it, service) }
         model.paging = DiscordPaging.fromPaging(paging)
         return model
     }
