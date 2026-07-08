@@ -67,4 +67,7 @@ enum class SocialActionType : ActionType {
 
     // Notification
     MarkNotificationsRead,
+
+    // Spaces
+    GetSpaces,
 }

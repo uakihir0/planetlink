@@ -1,6 +1,7 @@
 package work.socialhub.planetlink.discord.action
 
 import work.socialhub.kdiscord.api.request.channels.ChannelsCreateDmRequest
+import work.socialhub.kdiscord.api.request.guilds.GuildsListRequest
 import work.socialhub.kdiscord.api.request.messages.MessagesCreateRequest
 import work.socialhub.kdiscord.api.request.messages.MessagesListRequest
 import work.socialhub.kdiscord.entity.share.FileContent
@@ -16,6 +17,7 @@ import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Paging
+import work.socialhub.planetlink.model.Space
 import work.socialhub.planetlink.model.Stream
 import work.socialhub.planetlink.model.Thread
 import work.socialhub.planetlink.model.User
@@ -139,6 +141,36 @@ internal class DiscordActionHelper(
     }
 
     // ---------------------------------------------------------------- //
+    // Spaces (Guilds)
+    // ---------------------------------------------------------------- //
+
+    /**
+     * List the current user's guilds as Spaces.
+     *
+     * GET /users/@me/guilds returns guilds in ascending id order and treats the
+     * before/after cursors as mutually exclusive, so we send at most one cursor
+     * (after preferred). Typical accounts fit in a single page (limit <= 200).
+     */
+    suspend fun fetchSpaces(paging: Paging): Pageable<Space> {
+        return action.proceed {
+            val dp = DiscordPaging.fromPaging(paging)
+            val limit = (paging.count ?: MAX_GUILD_LIMIT).coerceAtMost(MAX_GUILD_LIMIT)
+            val response = auth.accessor.discord.guilds().getCurrentUserGuilds(
+                GuildsListRequest().also {
+                    it.limit = limit
+                    // before/after are mutually exclusive for this endpoint.
+                    if (dp.after != null) it.after = dp.after else it.before = dp.before
+                }
+            )
+            // Carry the effective limit so the returned paging has a non-null
+            // count; an empty guild list (user/bot in no guilds) would otherwise
+            // trip setMarkPagingEnd()'s `count!!` dereference and throw.
+            dp.count = limit
+            DiscordMapper.spaces(response.data.toList(), service, dp)
+        }
+    }
+
+    // ---------------------------------------------------------------- //
     // Channels / Guilds
     // ---------------------------------------------------------------- //
 
@@ -218,5 +250,8 @@ internal class DiscordActionHelper(
     companion object {
         /** Default emoji used for like/unlike (Discord has no dedicated "like"). */
         const val DEFAULT_LIKE_EMOJI = "👍" // 👍
+
+        /** Max guilds returnable by GET /users/@me/guilds in a single request. */
+        const val MAX_GUILD_LIMIT = 200
     }
 }
