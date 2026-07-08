@@ -465,12 +465,31 @@ interface AccountAction {
     }
 
     // ============================================================== //
-    // Channel (List) API
-    // チャンネル (リスト) 関連 API
+    // Space / Channel (List) API
+    // スペース / チャンネル (リスト) 関連 API
     // ============================================================== //
+    /**
+     * Get Spaces (top-level containers)
+     * スペース (上位コンテナ) の一覧を取得
+     *
+     * A Space is the container that holds channels: a Discord guild, a Slack
+     * workspace, a Matrix space, etc. Pass one of the returned Spaces to
+     * [channels] to fetch that Space's channels only.
+     */
+    suspend fun spaces(
+        paging: Paging,
+    ): Pageable<Space> {
+        throw NotImplementedException()
+    }
+
     /**
      * Get Channels (or Owned Lists)
      * 自分の閲覧可能なチャンネルを取得
+     *
+     * For Space-based platforms (Discord, ...), [id] is a Space id and only
+     * that Space's channels are returned. For list-based platforms
+     * (Mastodon / Misskey / Slack) [id] keeps its existing meaning
+     * (the authenticated user / a single workspace).
      */
     suspend fun channels(
         id: Identify,
