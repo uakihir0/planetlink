@@ -116,7 +116,13 @@ object DiscordMapper {
         paging: Paging?,
     ): Pageable<Space> {
         val model = Pageable<Space>()
-        model.entities = guilds.map { space(it, service) }
+        // GET /users/@me/guilds returns guilds ascending by id (oldest first),
+        // but DiscordPaging.newPage()/pastPage() expect entities newest-first
+        // (first = newest -> after cursor, last = oldest -> before cursor), same
+        // as timeLine(). Reverse so nextPage()/prevPage() advance without overlap.
+        model.entities = guilds
+            .map { space(it, service) }
+            .reversed()
         model.paging = DiscordPaging.fromPaging(paging)
         return model
     }
