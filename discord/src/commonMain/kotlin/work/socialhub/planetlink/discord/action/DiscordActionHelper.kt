@@ -154,14 +154,19 @@ internal class DiscordActionHelper(
     suspend fun fetchSpaces(paging: Paging): Pageable<Space> {
         return action.proceed {
             val dp = DiscordPaging.fromPaging(paging)
+            val limit = (paging.count ?: MAX_GUILD_LIMIT).coerceAtMost(MAX_GUILD_LIMIT)
             val response = auth.accessor.discord.guilds().getCurrentUserGuilds(
                 GuildsListRequest().also {
-                    it.limit = (paging.count ?: MAX_GUILD_LIMIT).coerceAtMost(MAX_GUILD_LIMIT)
+                    it.limit = limit
                     // before/after are mutually exclusive for this endpoint.
                     if (dp.after != null) it.after = dp.after else it.before = dp.before
                 }
             )
-            DiscordMapper.spaces(response.data.toList(), service, paging)
+            // Carry the effective limit so the returned paging has a non-null
+            // count; an empty guild list (user/bot in no guilds) would otherwise
+            // trip setMarkPagingEnd()'s `count!!` dereference and throw.
+            dp.count = limit
+            DiscordMapper.spaces(response.data.toList(), service, dp)
         }
     }
 
