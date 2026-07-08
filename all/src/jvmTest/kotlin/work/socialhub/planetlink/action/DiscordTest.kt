@@ -5,10 +5,12 @@ import work.socialhub.planetlink.AbstractTest
 import work.socialhub.planetlink.PrintClass.dump
 import work.socialhub.planetlink.discord.model.DiscordIdentify
 import work.socialhub.planetlink.discord.model.DiscordPaging
+import work.socialhub.planetlink.discord.model.DiscordSpace
 import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.request.CommentForm
 import kotlin.test.Test
+import kotlin.test.assertTrue
 
 /**
  * Live tests for the Discord adapter. They require DISCORD_USER_TOKEN (and,
@@ -27,6 +29,33 @@ class DiscordTest : AbstractTest() {
     fun testUserMe() = runTest {
         if (!hasToken()) return@runTest
         dump(discord().action.userMe())
+    }
+
+    @Test
+    fun testSpaces() = runTest {
+        if (!hasToken()) return@runTest
+        // Single request; proves there is no fan-out at the space level.
+        val spaces = discord().action.spaces(
+            DiscordPaging().also { it.count = 200 }
+        )
+        assertTrue(spaces.entities.isNotEmpty())
+        spaces.entities.forEach {
+            val space = it as DiscordSpace
+            println("${space.id?.value<String>()} > ${space.name} (${space.approximateMemberCount}) ${space.iconUrl}")
+        }
+    }
+
+    @Test
+    fun testSpaceChannels() = runTest {
+        if (!hasToken()) return@runTest
+        val account = discord()
+        // 1 request for the guild list, then 1 request for the chosen guild's
+        // channels — never a channel fetch per guild.
+        val spaces = account.action.spaces(DiscordPaging())
+        val space = spaces.entities.firstOrNull() ?: return@runTest
+        val channels = account.action.channels(space, DiscordPaging())
+        println("=== channels of ${space.name} ===")
+        channels.entities.forEach { println("  ${it.id?.value<String>()} > ${it.name}") }
     }
 
     @Test
