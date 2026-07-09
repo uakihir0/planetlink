@@ -16,10 +16,13 @@ import work.socialhub.planetlink.model.Notification
 import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Paging
 import work.socialhub.planetlink.model.Service
+import work.socialhub.planetlink.model.Space
+import work.socialhub.planetlink.model.Thread
 import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.matrix.model.MatrixComment
 import work.socialhub.planetlink.matrix.model.MatrixPaging
+import work.socialhub.planetlink.matrix.model.MatrixSpace
 import work.socialhub.planetlink.matrix.model.MatrixUser
 
 private val MATRIX_KINDS = listOf(
@@ -121,6 +124,82 @@ object MatrixMapper {
         return Channel(service).apply {
             id = ID(roomId)
             name = roomName ?: roomId
+        }
+    }
+
+    fun channel(
+        summary: MatrixRoomSummary,
+        service: Service,
+    ): Channel {
+        return Channel(service).apply {
+            id = ID(summary.roomId)
+            name = summary.displayName
+            description = summary.topic
+            summary.createAtMs?.let { createAt = Instant.fromEpochMilliseconds(it) }
+        }
+    }
+
+    fun channels(
+        summaries: List<MatrixRoomSummary>,
+        service: Service,
+        paging: Paging?,
+    ): Pageable<Channel> {
+        val model = Pageable<Channel>()
+        model.entities = summaries.map { channel(it, service) }
+        model.paging = pagingWithCount(paging, model.entities.size)
+        return model
+    }
+
+    fun space(
+        summary: MatrixRoomSummary,
+        service: Service,
+    ): MatrixSpace {
+        return MatrixSpace(service).apply {
+            id = ID(summary.roomId)
+            roomId = summary.roomId
+            name = summary.displayName
+            description = summary.topic
+            iconUrl = summary.avatarUrl
+            memberCount = summary.memberCount
+            summary.createAtMs?.let { createAt = Instant.fromEpochMilliseconds(it) }
+        }
+    }
+
+    fun spaces(
+        summaries: List<MatrixRoomSummary>,
+        service: Service,
+        paging: Paging?,
+    ): Pageable<Space> {
+        val model = Pageable<Space>()
+        model.entities = summaries.map { space(it, service) }
+        model.paging = pagingWithCount(paging, model.entities.size)
+        return model
+    }
+
+    fun threads(
+        summaries: List<MatrixRoomSummary>,
+        service: Service,
+        paging: Paging?,
+    ): Pageable<Thread> {
+        val model = Pageable<Thread>()
+        model.entities = summaries.map { summary ->
+            Thread(service).apply {
+                id = ID(summary.roomId)
+                description = summary.displayName
+            }
+        }
+        model.paging = pagingWithCount(paging, model.entities.size)
+        return model
+    }
+
+    /**
+     * Build a [MatrixPaging] with a non-null [Paging.count]. The `Pageable`
+     * paging setter runs [Paging.setMarkPagingEnd], which dereferences `count!!`
+     * — an empty list with a null count would otherwise throw.
+     */
+    private fun pagingWithCount(paging: Paging?, size: Int): MatrixPaging {
+        return MatrixPaging.fromPaging(paging).also {
+            it.count = it.count ?: size.coerceAtLeast(1)
         }
     }
 
