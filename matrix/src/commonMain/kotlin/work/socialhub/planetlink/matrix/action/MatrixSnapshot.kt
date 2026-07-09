@@ -94,7 +94,7 @@ object MatrixSnapshotParser {
 
         return MatrixRoomSummary(
             roomId = roomId,
-            displayName = roomDisplayName(state, selfUserId, heroes),
+            displayName = roomDisplayName(state, selfUserId, heroes, memberCount),
             topic = topic,
             avatarUrl = avatarUrl,
             createAtMs = createAtMs,
@@ -110,14 +110,18 @@ object MatrixSnapshotParser {
      * ("Calculating the display name for a room"):
      * `m.room.name` → `m.room.canonical_alias` → members/heroes fallback → "Empty room".
      *
-     * [heroes] (Phase 2, from the sync room `summary`) takes precedence over the
-     * member-event scan when present; otherwise the fallback is derived from the
-     * `m.room.member` state events, excluding the authenticated user.
+     * Ported from matrix-js-sdk `Room.calculateRoomName` + `memberNamesToRoomName`
+     * (element-web's naming). [heroes] (from the sync room `summary`) takes
+     * precedence over the member-event scan when present; otherwise the fallback
+     * is derived from the `m.room.member` state events, excluding the current
+     * user. [memberCount] is the joined+invited count (self included), used to
+     * form the "and N others" suffix the same way element does.
      */
     fun roomDisplayName(
         state: List<RoomEvent>,
         selfUserId: String,
         heroes: List<String>? = null,
+        memberCount: Int = 0,
     ): String {
         (lastStateEvent(state, "m.room.name")?.content?.get("name") as? String)
             ?.trim()?.takeIf { it.isNotEmpty() }?.let { return it }
@@ -131,7 +135,10 @@ object MatrixSnapshotParser {
             (member?.content?.get("displayname") as? String)?.trim()?.takeIf { it.isNotEmpty() } ?: uid
         }
 
-        val others: List<String> = if (!heroes.isNullOrEmpty()) {
+        // element counts other members as joined+invited-1 (excluding self), so
+        // "and N others" is accurate even when we only hold a few hero names.
+        val otherCount = (memberCount - 1).coerceAtLeast(0)
+        val otherNames: List<String> = if (!heroes.isNullOrEmpty()) {
             heroes.filter { it != selfUserId }.map(nameOf)
         } else {
             members
@@ -140,14 +147,21 @@ object MatrixSnapshotParser {
                 .filter { it != selfUserId }
                 .distinct()
                 .sorted()
+                .take(5) // imitate summary heroes
                 .map(nameOf)
         }
 
+        return memberNamesToRoomName(otherNames, otherCount)
+    }
+
+    /** Port of matrix-js-sdk `memberNamesToRoomName` ([count] excludes self). */
+    private fun memberNamesToRoomName(names: List<String>, count: Int): String {
         return when {
-            others.isEmpty() -> "Empty room"
-            others.size == 1 -> others[0]
-            others.size <= 3 -> others.joinToString(", ")
-            else -> "${others[0]} and ${others.size - 1} others"
+            names.isEmpty() -> "Empty room"
+            names.size == 1 && count <= 1 -> names[0]
+            names.size == 2 && count <= 2 -> "${names[0]} and ${names[1]}"
+            count > 1 -> "${names[0]} and $count others"
+            else -> "${names[0]} and 1 other"
         }
     }
 
