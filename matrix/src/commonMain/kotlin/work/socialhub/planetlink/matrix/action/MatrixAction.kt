@@ -91,12 +91,15 @@ class MatrixAction(
          * space / channel / DM lists (creation type, name, topic, avatar,
          * canonical alias, space children/parent, membership) plus the
          * top-level `m.direct` account data. `timeout=0` returns immediately.
-         * `lazy_load_members=false` keeps the member events the name fallback
-         * needs (Phase 2 flips this once the sync `summary`/heroes are used).
+         *
+         * `lazy_load_members=true` limits `m.room.member` events to the room's
+         * heroes / timeline senders; room names then come from the server
+         * `summary` (heroes + member counts), so large public rooms no longer
+         * dump their full member list. See [MatrixSnapshotParser].
          */
         private const val SNAPSHOT_FILTER_JSON =
             "{\"room\":{\"timeline\":{\"limit\":1}," +
-                "\"state\":{\"lazy_load_members\":false,\"types\":[" +
+                "\"state\":{\"lazy_load_members\":true,\"types\":[" +
                 "\"m.room.create\",\"m.room.name\",\"m.room.topic\",\"m.room.avatar\"," +
                 "\"m.room.canonical_alias\",\"m.space.child\",\"m.space.parent\"," +
                 "\"m.room.member\"]}," +

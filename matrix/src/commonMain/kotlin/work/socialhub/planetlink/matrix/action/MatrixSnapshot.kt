@@ -2,6 +2,7 @@ package work.socialhub.planetlink.matrix.action
 
 import work.socialhub.kmatrix.api.response.rooms.RoomEvent
 import work.socialhub.kmatrix.api.response.sync.SyncResponse
+import work.socialhub.kmatrix.api.response.sync.SyncRoomSummary
 
 /**
  * A parsed, per-room view of a single `/sync` response. Building this once lets
@@ -48,6 +49,7 @@ object MatrixSnapshotParser {
             summarize(
                 roomId = roomId,
                 state = room.state?.events?.toList() ?: emptyList(),
+                summary = room.summary,
                 directRoomIds = directRoomIds,
                 selfUserId = selfUserId,
             )
@@ -58,6 +60,7 @@ object MatrixSnapshotParser {
     private fun summarize(
         roomId: String,
         state: List<RoomEvent>,
+        summary: SyncRoomSummary?,
         directRoomIds: Set<String>,
         selfUserId: String,
     ): MatrixRoomSummary {
@@ -70,8 +73,12 @@ object MatrixSnapshotParser {
         val avatarUrl = (lastStateEvent(state, "m.room.avatar")?.content?.get("url") as? String)
             ?.takeIf { it.isNotEmpty() }
 
+        // Prefer the server-computed summary (works with lazy_load_members),
+        // falling back to counting the member state events when it is absent.
+        val heroes = summary?.heroes?.toList()
         val members = latestPerStateKey(state, "m.room.member")
-        val memberCount = members.count { membership(it) == "join" || membership(it) == "invite" }
+        val memberCount = summary?.joinedMemberCount
+            ?: members.count { membership(it) == "join" || membership(it) == "invite" }
 
         val childRoomIds = latestPerStateKey(state, "m.space.child")
             // An empty content (or one lacking `via`) marks a removed child.
@@ -87,7 +94,7 @@ object MatrixSnapshotParser {
 
         return MatrixRoomSummary(
             roomId = roomId,
-            displayName = roomDisplayName(state, selfUserId),
+            displayName = roomDisplayName(state, selfUserId, heroes),
             topic = topic,
             avatarUrl = avatarUrl,
             createAtMs = createAtMs,

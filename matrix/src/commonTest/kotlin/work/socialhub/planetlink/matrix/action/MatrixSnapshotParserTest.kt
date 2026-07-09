@@ -4,6 +4,7 @@ import work.socialhub.kmatrix.api.response.rooms.RoomEvent
 import work.socialhub.kmatrix.api.response.sync.SyncAccountData
 import work.socialhub.kmatrix.api.response.sync.SyncJoinedRoom
 import work.socialhub.kmatrix.api.response.sync.SyncResponse
+import work.socialhub.kmatrix.api.response.sync.SyncRoomSummary
 import work.socialhub.kmatrix.api.response.sync.SyncRooms
 import work.socialhub.kmatrix.api.response.sync.SyncState
 import work.socialhub.planetlink.matrix.model.MatrixSpace
@@ -44,9 +45,13 @@ class MatrixSnapshotParserTest {
         this.sender = self
     }
 
-    private fun joinedRoom(vararg events: RoomEvent): SyncJoinedRoom =
+    private fun joinedRoom(
+        vararg events: RoomEvent,
+        summary: SyncRoomSummary? = null,
+    ): SyncJoinedRoom =
         SyncJoinedRoom().apply {
             state = SyncState().apply { this.events = arrayOf(*events) }
+            this.summary = summary
         }
 
     private fun sync(
@@ -164,6 +169,25 @@ class MatrixSnapshotParserTest {
         assertTrue(summary.isDirect)
         assertEquals("Alice", summary.displayName)
         assertEquals(2, summary.memberCount)
+    }
+
+    @Test
+    fun testParseUsesServerSummaryWhenPresent() {
+        // With lazy_load_members, membership events are sparse; the summary
+        // (heroes + joined member count) drives the name and member count.
+        val room = joinedRoom(
+            memberEvent("@alice:example.org", "Alice"),
+            summary = SyncRoomSummary().apply {
+                heroes = arrayOf("@alice:example.org", "@bob:example.org")
+                joinedMemberCount = 8
+            },
+        )
+        val snapshot = MatrixSnapshotParser.parse(sync(mapOf("!r:example.org" to room)), self)
+        val summary = snapshot.rooms["!r:example.org"]!!
+
+        assertEquals(8, summary.memberCount)
+        // Bob has no member event, so it falls back to the raw id in the name.
+        assertEquals("Alice, @bob:example.org", summary.displayName)
     }
 
     @Test
