@@ -8,7 +8,7 @@ import kotlin.js.JsExport
  * メディアモデル
  */
 @JsExport
-class Media {
+open class Media {
 
     /** Type of this media */
     var type: MediaType? = null
