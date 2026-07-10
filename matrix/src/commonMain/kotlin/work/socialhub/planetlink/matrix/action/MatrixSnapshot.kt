@@ -154,13 +154,19 @@ object MatrixSnapshotParser {
         return memberNamesToRoomName(otherNames, otherCount)
     }
 
-    /** Port of matrix-js-sdk `memberNamesToRoomName` ([count] excludes self). */
+    /**
+     * Port of matrix-js-sdk `memberNamesToRoomName` ([count] is the number of
+     * other members, excluding self). The "and N others" suffix counts the
+     * members beyond the first named one (`count - 1`), so a room of 3 with a
+     * single known name renders "Alice and 1 other", not "Alice and 2 others".
+     */
     private fun memberNamesToRoomName(names: List<String>, count: Int): String {
+        val countWithoutMe = count - 1
         return when {
             names.isEmpty() -> "Empty room"
-            names.size == 1 && count <= 1 -> names[0]
-            names.size == 2 && count <= 2 -> "${names[0]} and ${names[1]}"
-            count > 1 -> "${names[0]} and $count others"
+            names.size == 1 && countWithoutMe <= 1 -> names[0]
+            names.size == 2 && countWithoutMe <= 2 -> "${names[0]} and ${names[1]}"
+            countWithoutMe > 1 -> "${names[0]} and $countWithoutMe others"
             else -> "${names[0]} and 1 other"
         }
     }

@@ -109,20 +109,21 @@ class MatrixSnapshotParserTest {
     @Test
     fun testNameForManyMembersSummarizes() {
         val state = (1..6).map { memberEvent("@u$it:example.org", "User$it") }
-        // 6 joined incl. self -> one name + "and N others" (N = count - 1 = 5).
-        assertEquals("User1 and 5 others", MatrixSnapshotParser.roomDisplayName(state, self, memberCount = 6))
+        // element: others = memberCount-1 = 5, then countWithoutMe = 5-1 = 4.
+        assertEquals("User1 and 4 others", MatrixSnapshotParser.roomDisplayName(state, self, memberCount = 6))
     }
 
     @Test
-    fun testNameForThreeMembersUsesOneOther() {
+    fun testNameForThreeMembersDropsToSingleName() {
         val state = listOf(
             memberEvent(self, "Me"),
             memberEvent("@alice:example.org", "Alice"),
             memberEvent("@bob:example.org", "Bob"),
         )
-        // Only one hero name known but count says 3 -> "Alice and 2 others".
+        // element: 3 members -> others = 2 -> countWithoutMe = 1, and with a
+        // single hero name that collapses to just "Alice" (matches matrix-js-sdk).
         assertEquals(
-            "Alice and 2 others",
+            "Alice",
             MatrixSnapshotParser.roomDisplayName(state, self, heroes = listOf("@alice:example.org"), memberCount = 3),
         )
     }
@@ -201,8 +202,8 @@ class MatrixSnapshotParserTest {
         val summary = snapshot.rooms["!r:example.org"]!!
 
         assertEquals(8, summary.memberCount)
-        // 8 joined members -> element formats as "<first hero> and N others".
-        assertEquals("Alice and 7 others", summary.displayName)
+        // element: others = 8-1 = 7, then countWithoutMe = 7-1 = 6.
+        assertEquals("Alice and 6 others", summary.displayName)
     }
 
     @Test
