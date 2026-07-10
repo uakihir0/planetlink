@@ -253,9 +253,15 @@ object MatrixMapper {
      * server include the `m.room.member` state events of the timeline's senders
      * in the response `state` block, so the sender display name / avatar can be
      * resolved without a per-sender profile lookup (no N+1).
+     *
+     * `include_redundant_members=true` keeps each page self-contained: without
+     * it the spec lets a homeserver omit member state it already sent to this
+     * access token on a previous page, which would drop later pages back to raw
+     * user ids. Setting it re-sends each page's senders so no client-side member
+     * cache is needed to page a room's history.
      */
     const val MESSAGES_FILTER_JSON: String =
-        "{\"lazy_load_members\":true}"
+        "{\"lazy_load_members\":true,\"include_redundant_members\":true}"
 
     fun createGetMessagesRequest(
         roomId: String,
