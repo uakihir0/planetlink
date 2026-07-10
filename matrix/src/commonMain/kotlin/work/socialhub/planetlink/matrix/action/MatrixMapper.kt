@@ -21,6 +21,7 @@ import work.socialhub.planetlink.model.Thread
 import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.matrix.model.MatrixComment
+import work.socialhub.planetlink.matrix.model.MatrixMedia
 import work.socialhub.planetlink.matrix.model.MatrixPaging
 import work.socialhub.planetlink.matrix.model.MatrixSpace
 import work.socialhub.planetlink.matrix.model.MatrixUser
@@ -85,16 +86,17 @@ object MatrixMapper {
 
     /**
      * mxc → HTTP URL using the media host recorded on [service] (`Service.host`,
-     * the account's homeserver). Used by the avatar/icon mappers below to expose
-     * a browser-loadable URL on the unified fields (`iconImageUrl`, `iconUrl`)
-     * instead of a raw mxc:// a plain <img> can't load.
+     * the account's homeserver). Used by the mappers below to expose a
+     * browser-loadable URL on the unified fields (`iconImageUrl`, `iconUrl`,
+     * `Media.sourceUrl`) instead of a raw mxc:// a plain <img> can't load. The
+     * mappers keep the original mxc on Matrix-specific fields
+     * (`MatrixUser.avatarUrl`, `MatrixMedia.sourceMxcUrl`) for the authenticated
+     * resolveMedia fallback.
      *
      * Returns the input unchanged when it is already null / non-mxc. Returns null
      * for an mxc input when the service has no host (mxcToHttpUrl can't build a
-     * URL) — the avatar callers treat that as "no icon" and fall back to initials
-     * rather than leaking a raw mxc. Message media is intentionally NOT routed
-     * through here (see comment()): it keeps its raw mxc for the authenticated
-     * resolveMedia fallback.
+     * URL); the avatar callers treat that as "no icon" (initials fallback) while
+     * the media caller falls back to the raw mxc it already retains.
      */
     private fun httpUrl(
         mxcUrl: String?,
@@ -195,18 +197,19 @@ object MatrixMapper {
             }
 
             if (url != null && (msgtype == "m.image" || msgtype == "m.file" || msgtype == "m.video")) {
-                // Message media keeps the raw mxc:// on sourceUrl/previewUrl: it
-                // is the only handle to the file, and on homeservers that require
-                // authenticated media the caller must fetch it via resolveMedia
-                // (a plain HTTP URL would 401 with no recoverable mxc left). The
-                // caller converts to HTTP or resolves bytes as its context allows
-                // (see MatrixAction.mxcToHttpUrl / resolveMedia). Avatars/icons,
-                // which are lower-risk and rendered by a bare <img>, are the ones
-                // normalised to HTTP in the user()/space() mappers.
+                // Expose a browser-loadable HTTP URL on the unified
+                // sourceUrl/previewUrl, but keep the original mxc:// on the
+                // Matrix-specific sourceMxcUrl/previewMxcUrl. On homeservers that
+                // disabled the unauthenticated v3 endpoints the HTTP URL 401s;
+                // the retained mxc lets the caller fall back to the authenticated
+                // MatrixAction.resolveMedia. Mirrors MatrixUser.avatarUrl.
+                val httpUrl = httpUrl(url, service) ?: url
                 medias = listOf(
-                    Media().apply {
-                        sourceUrl = url
-                        previewUrl = url
+                    MatrixMedia().apply {
+                        sourceUrl = httpUrl
+                        previewUrl = httpUrl
+                        sourceMxcUrl = url
+                        previewMxcUrl = url
                         type = when (msgtype) {
                             "m.image" -> MediaType.Image
                             "m.video" -> MediaType.Movie

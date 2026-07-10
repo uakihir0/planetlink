@@ -1,6 +1,7 @@
 package work.socialhub.planetlink.matrix.action
 
 import work.socialhub.kmatrix.api.response.rooms.RoomEvent
+import work.socialhub.planetlink.matrix.model.MatrixMedia
 import work.socialhub.planetlink.matrix.model.MatrixSpace
 import work.socialhub.planetlink.matrix.model.MatrixUser
 import work.socialhub.planetlink.model.Account
@@ -122,10 +123,11 @@ class MatrixMediaUrlTest {
     }
 
     @Test
-    fun testMessageMediaKeepsRawMxcForAuthFallback() {
-        // Message media intentionally keeps the raw mxc:// on sourceUrl/previewUrl
-        // so a caller can still fetch it via the authenticated resolveMedia path
-        // on homeservers that disabled the unauthenticated v3 endpoints.
+    fun testMessageMediaExposesHttpAndRetainsRawMxc() {
+        // The unified sourceUrl/previewUrl become browser-loadable HTTP URLs,
+        // while the Matrix-specific sourceMxcUrl/previewMxcUrl keep the raw mxc
+        // so a caller can still fetch via authenticated resolveMedia on
+        // homeservers that disabled the unauthenticated v3 endpoints.
         val event = RoomEvent().apply {
             type = "m.room.message"
             eventId = "\$img"
@@ -135,8 +137,35 @@ class MatrixMediaUrlTest {
             content = mapOf("msgtype" to "m.image", "body" to "pic", "url" to mxc)
         }
         val comment = MatrixMapper.comment(event, service(), userMe = null)!!
-        val media = comment.medias.first()
-        assertEquals(mxc, media.sourceUrl)
-        assertEquals(mxc, media.previewUrl)
+        val media = comment.medias.first() as MatrixMedia
+        assertTrue(
+            media.sourceUrl?.startsWith("https://") == true,
+            "sourceUrl should be http: ${media.sourceUrl}",
+        )
+        assertTrue(
+            media.previewUrl?.startsWith("https://") == true,
+            "previewUrl should be http: ${media.previewUrl}",
+        )
+        assertEquals(mxc, media.sourceMxcUrl)
+        assertEquals(mxc, media.previewMxcUrl)
+    }
+
+    @Test
+    fun testMessageMediaKeepsRawMxcWhenNoHost() {
+        // With no homeserver, sourceUrl falls back to the raw mxc (best effort)
+        // and sourceMxcUrl still holds it for the authenticated path.
+        val event = RoomEvent().apply {
+            type = "m.room.message"
+            eventId = "\$img"
+            sender = "@alice:matrix.org"
+            roomId = "!r:matrix.org"
+            originServerTs = 1_000
+            content = mapOf("msgtype" to "m.image", "body" to "pic", "url" to mxc)
+        }
+        val hostless = Service("matrix", Account())
+        val comment = MatrixMapper.comment(event, hostless, userMe = null)!!
+        val media = comment.medias.first() as MatrixMedia
+        assertEquals(mxc, media.sourceMxcUrl)
+        assertEquals(mxc, media.sourceUrl) // fell back to raw mxc, no host to build a URL
     }
 }
