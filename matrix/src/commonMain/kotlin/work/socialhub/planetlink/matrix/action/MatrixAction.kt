@@ -463,9 +463,11 @@ class MatrixAction(
      * unauthenticated endpoints; otherwise [mxcToHttpUrl] is simpler.
      *
      * When [width] and [height] are both provided a scaled thumbnail is fetched;
-     * otherwise the full-resolution file is downloaded. Fields such as avatars
-     * (`User.iconImageUrl`) and message media (`Media.sourceUrl`) hold raw mxc
-     * URIs that this method resolves.
+     * otherwise the full-resolution file is downloaded. Message media
+     * (`Media.sourceUrl` / `previewUrl`) and `MatrixUser.avatarUrl` hold the raw
+     * mxc URIs this resolves. (The unified `User.iconImageUrl` / `Space.iconUrl`
+     * are already normalised to HTTP by the mappers, so pass those raw fields —
+     * not the normalised ones — here.)
      *
      * 統一 AccountAction 外のため capability には登録しない。
      */

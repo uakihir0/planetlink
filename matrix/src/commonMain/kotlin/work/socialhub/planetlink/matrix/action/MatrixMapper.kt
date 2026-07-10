@@ -85,10 +85,16 @@ object MatrixMapper {
 
     /**
      * mxc → HTTP URL using the media host recorded on [service] (`Service.host`,
-     * the account's homeserver). Every Matrix model is built against such a
-     * service, so this is how the mappers below normalise avatars / media to
-     * browser-loadable URLs — no raw mxc:// ever reaches a caller. Returns the
-     * input unchanged when it is already null / non-mxc.
+     * the account's homeserver). Used by the avatar/icon mappers below to expose
+     * a browser-loadable URL on the unified fields (`iconImageUrl`, `iconUrl`)
+     * instead of a raw mxc:// a plain <img> can't load.
+     *
+     * Returns the input unchanged when it is already null / non-mxc. Returns null
+     * for an mxc input when the service has no host (mxcToHttpUrl can't build a
+     * URL) — the avatar callers treat that as "no icon" and fall back to initials
+     * rather than leaking a raw mxc. Message media is intentionally NOT routed
+     * through here (see comment()): it keeps its raw mxc for the authenticated
+     * resolveMedia fallback.
      */
     private fun httpUrl(
         mxcUrl: String?,
@@ -189,13 +195,18 @@ object MatrixMapper {
             }
 
             if (url != null && (msgtype == "m.image" || msgtype == "m.file" || msgtype == "m.video")) {
-                // Media urls in message content are mxc://; expose HTTP so the
-                // browser can load them directly (no raw mxc reaches the caller).
-                val httpMediaUrl = httpUrl(url, service) ?: url
+                // Message media keeps the raw mxc:// on sourceUrl/previewUrl: it
+                // is the only handle to the file, and on homeservers that require
+                // authenticated media the caller must fetch it via resolveMedia
+                // (a plain HTTP URL would 401 with no recoverable mxc left). The
+                // caller converts to HTTP or resolves bytes as its context allows
+                // (see MatrixAction.mxcToHttpUrl / resolveMedia). Avatars/icons,
+                // which are lower-risk and rendered by a bare <img>, are the ones
+                // normalised to HTTP in the user()/space() mappers.
                 medias = listOf(
                     Media().apply {
-                        sourceUrl = httpMediaUrl
-                        previewUrl = httpMediaUrl
+                        sourceUrl = url
+                        previewUrl = url
                         type = when (msgtype) {
                             "m.image" -> MediaType.Image
                             "m.video" -> MediaType.Movie

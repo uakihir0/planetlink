@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.matrix.action
 
+import work.socialhub.kmatrix.api.response.rooms.RoomEvent
 import work.socialhub.planetlink.matrix.model.MatrixSpace
 import work.socialhub.planetlink.matrix.model.MatrixUser
 import work.socialhub.planetlink.model.Account
@@ -106,5 +107,36 @@ class MatrixMediaUrlTest {
         val space = MatrixMapper.space(summary, service()) as MatrixSpace
         val icon = space.iconUrl
         assertTrue(icon != null && icon.startsWith("https://"), "icon should be http: $icon")
+    }
+
+    @Test
+    fun testUserIconFallsBackToNullWhenServiceHasNoHost() {
+        // With no homeserver on the service, an mxc can't be turned into a URL —
+        // the unified iconImageUrl must be null (caller shows initials), never a
+        // raw mxc leaking through.
+        val hostless = Service("matrix", Account()) // host == null
+        val user = MatrixMapper.user("@alice:matrix.org", "Alice", mxc, hostless) as MatrixUser
+        assertNull(user.iconImageUrl)
+        // The Matrix-specific field still keeps the raw mxc.
+        assertEquals(mxc, user.avatarUrl)
+    }
+
+    @Test
+    fun testMessageMediaKeepsRawMxcForAuthFallback() {
+        // Message media intentionally keeps the raw mxc:// on sourceUrl/previewUrl
+        // so a caller can still fetch it via the authenticated resolveMedia path
+        // on homeservers that disabled the unauthenticated v3 endpoints.
+        val event = RoomEvent().apply {
+            type = "m.room.message"
+            eventId = "\$img"
+            sender = "@alice:matrix.org"
+            roomId = "!r:matrix.org"
+            originServerTs = 1_000
+            content = mapOf("msgtype" to "m.image", "body" to "pic", "url" to mxc)
+        }
+        val comment = MatrixMapper.comment(event, service(), userMe = null)!!
+        val media = comment.medias.first()
+        assertEquals(mxc, media.sourceUrl)
+        assertEquals(mxc, media.previewUrl)
     }
 }
