@@ -44,6 +44,63 @@ class MatrixMemberInfo(
 object MatrixMapper {
 
     /**
+     * Convert an `mxc://<server>/<mediaId>` URI into an HTTP(S) URL an `<img>`
+     * can load directly, hitting the legacy **unauthenticated** media endpoint
+     * (`/_matrix/media/v3/{download,thumbnail}`) on [baseUri] (the caller's
+     * homeserver base URL, no trailing slash). Returns null for a non-mxc / empty
+     * input so the caller can fall back to initials.
+     *
+     * A [width]/[height] (both required) yields a `thumbnail` URL with
+     * `method=scale`; otherwise a full `download` URL. `allow_redirect=true` lets
+     * the homeserver 302 to the origin server's media when it federates.
+     *
+     * Note: this targets the v3 unauthenticated route on purpose — a plain
+     * `<img src>` cannot send the `Authorization` header the Matrix 1.11 (v1)
+     * authenticated endpoint requires. Homeservers that have frozen v3 will
+     * answer these with an error; for those, fetch the bytes via
+     * [work.socialhub.planetlink.matrix.action.MatrixAction.resolveMedia]
+     * (authenticated) and wrap them in a blob URL instead.
+     */
+    fun mxcToHttpUrl(
+        mxcUrl: String?,
+        baseUri: String?,
+        width: Int? = null,
+        height: Int? = null,
+    ): String? {
+        if (mxcUrl.isNullOrEmpty() || !mxcUrl.startsWith("mxc://")) return null
+        if (baseUri.isNullOrEmpty()) return null
+        val parts = mxcUrl.removePrefix("mxc://").split("/", limit = 2)
+        val serverName = parts.getOrNull(0)?.takeIf { it.isNotEmpty() } ?: return null
+        val mediaId = parts.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: return null
+
+        val base = baseUri.trimEnd('/')
+        return if (width != null && height != null) {
+            "$base/_matrix/media/v3/thumbnail/$serverName/$mediaId" +
+                "?width=$width&height=$height&method=scale&allow_redirect=true"
+        } else {
+            "$base/_matrix/media/v3/download/$serverName/$mediaId" +
+                "?allow_redirect=true"
+        }
+    }
+
+    /**
+     * mxc → HTTP URL using the media host recorded on [service] (`Service.host`,
+     * the account's homeserver). Every Matrix model is built against such a
+     * service, so this is how the mappers below normalise avatars / media to
+     * browser-loadable URLs — no raw mxc:// ever reaches a caller. Returns the
+     * input unchanged when it is already null / non-mxc.
+     */
+    private fun httpUrl(
+        mxcUrl: String?,
+        service: Service,
+        width: Int? = null,
+        height: Int? = null,
+    ): String? {
+        if (mxcUrl == null || !mxcUrl.startsWith("mxc://")) return mxcUrl
+        return mxcToHttpUrl(mxcUrl, service.host, width, height)
+    }
+
+    /**
      * Extract `userId -> member info` from a list of `m.room.member` state
      * events (e.g. the `state` block of a lazy-loaded `/messages` or `/sync`
      * response). The winning event per user is the last one in the list.
@@ -75,8 +132,10 @@ object MatrixMapper {
             id = ID(userId)
             name = profile?.displayname ?: userId
             this.displayName = profile?.displayname
+            // Keep the raw mxc on the Matrix-specific field, but expose only a
+            // browser-loadable HTTP URL on the unified iconImageUrl.
             avatarUrl = profile?.avatarUrl
-            profile?.avatarUrl?.let { iconImageUrl = it }
+            iconImageUrl = httpUrl(profile?.avatarUrl, service)
         }
     }
 
@@ -91,10 +150,9 @@ object MatrixMapper {
             id = ID(userId)
             name = displayName ?: userId
             this.displayName = displayName
+            // Raw mxc stays on avatarUrl; the unified iconImageUrl gets the HTTP URL.
             this.avatarUrl = avatarUrl
-            if (!avatarUrl.isNullOrEmpty()) {
-                iconImageUrl = avatarUrl
-            }
+            iconImageUrl = httpUrl(avatarUrl, service)
         }
     }
 
@@ -131,10 +189,13 @@ object MatrixMapper {
             }
 
             if (url != null && (msgtype == "m.image" || msgtype == "m.file" || msgtype == "m.video")) {
+                // Media urls in message content are mxc://; expose HTTP so the
+                // browser can load them directly (no raw mxc reaches the caller).
+                val httpMediaUrl = httpUrl(url, service) ?: url
                 medias = listOf(
                     Media().apply {
-                        sourceUrl = url
-                        previewUrl = url
+                        sourceUrl = httpMediaUrl
+                        previewUrl = httpMediaUrl
                         type = when (msgtype) {
                             "m.image" -> MediaType.Image
                             "m.video" -> MediaType.Movie
@@ -204,7 +265,8 @@ object MatrixMapper {
             roomId = summary.roomId
             name = summary.displayName
             description = summary.topic
-            iconUrl = summary.avatarUrl
+            // summary.avatarUrl is mxc://; expose an HTTP URL for the icon.
+            iconUrl = httpUrl(summary.avatarUrl, service)
             memberCount = summary.memberCount
             summary.createAtMs?.let { createAt = Instant.fromEpochMilliseconds(it) }
         }

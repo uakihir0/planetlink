@@ -430,10 +430,37 @@ class MatrixAction(
     }
 
     /**
+     * Matrix-specific extra: turn an `mxc://{server}/{mediaId}` content URI into
+     * an HTTP(S) URL an `<img>` can load directly, using this account's
+     * homeserver as the base. Targets the legacy **unauthenticated** media
+     * endpoints (`/_matrix/media/v3/download` and `/thumbnail`), which need no
+     * `Authorization` header — so unlike [resolveMedia] the caller renders it
+     * with a plain `src` and no byte fetch / blob wrapping.
+     *
+     * Prefer this for avatars and inline images on homeservers that still serve
+     * v3 (e.g. matrix.org). On servers that have frozen v3 the URL will error;
+     * fall back to [resolveMedia] (authenticated bytes) there. Returns null for a
+     * non-mxc / empty input.
+     *
+     * A [width]/[height] (both required) yields a scaled thumbnail URL; omitting
+     * them yields the full download URL.
+     *
+     * 統一 AccountAction 外のため capability には登録しない。
+     */
+    fun mxcToHttpUrl(
+        mxcUrl: String?,
+        width: Int? = null,
+        height: Int? = null,
+    ): String? {
+        return MatrixMapper.mxcToHttpUrl(mxcUrl, auth.host, width, height)
+    }
+
+    /**
      * Matrix-specific extra: resolve an `mxc://{server}/{mediaId}` content URI
      * to raw bytes via the (authenticated) media API, so callers can render it
-     * (e.g. as a blob/data URL). Matrix media cannot be fetched by a browser
-     * directly — mxc:// is not HTTP and authenticated media requires a token.
+     * (e.g. as a blob/data URL). Use this on homeservers that require
+     * authenticated media (Matrix 1.11 / MSC3916) and have frozen the legacy
+     * unauthenticated endpoints; otherwise [mxcToHttpUrl] is simpler.
      *
      * When [width] and [height] are both provided a scaled thumbnail is fetched;
      * otherwise the full-resolution file is downloaded. Fields such as avatars
