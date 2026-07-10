@@ -31,7 +31,39 @@ private val MATRIX_KINDS = listOf(
     AttributedTypeDef.phone,
 )
 
+/**
+ * A room member's presentation, as carried by an `m.room.member` state event
+ * (per-room: the same user can have a different display name / avatar in each
+ * room). Used to fill a comment's sender ([MatrixMapper.comment]).
+ */
+class MatrixMemberInfo(
+    val displayName: String?,
+    val avatarUrl: String?,
+)
+
 object MatrixMapper {
+
+    /**
+     * Extract `userId -> member info` from a list of `m.room.member` state
+     * events (e.g. the `state` block of a lazy-loaded `/messages` or `/sync`
+     * response). The winning event per user is the last one in the list.
+     * Members that left/were banned are still returned — their name is what a
+     * historical message should display.
+     */
+    fun memberInfoMap(state: List<RoomEvent>): Map<String, MatrixMemberInfo> {
+        return state
+            .filter { it.type == "m.room.member" }
+            .mapNotNull { event ->
+                val userId = event.stateKey ?: return@mapNotNull null
+                val displayName = (event.content["displayname"] as? String)
+                    ?.trim()?.takeIf { it.isNotEmpty() }
+                val avatarUrl = (event.content["avatar_url"] as? String)
+                    ?.takeIf { it.isNotEmpty() }
+                userId to MatrixMemberInfo(displayName, avatarUrl)
+            }
+            // Last event per user wins (toMap keeps the last on duplicate keys).
+            .toMap()
+    }
 
     fun user(
         userId: String,
@@ -70,6 +102,7 @@ object MatrixMapper {
         event: RoomEvent,
         service: Service,
         userMe: User?,
+        members: Map<String, MatrixMemberInfo>? = null,
     ): MatrixComment? {
         if (event.type != "m.room.message") return null
         if (event.content["m.encrypted"] != null) return null
@@ -85,6 +118,17 @@ object MatrixMapper {
             createAt = Instant.fromEpochMilliseconds(event.originServerTs)
             this.msgtype = msgtype
             text = body?.let { AttributedString.plain(it, MATRIX_KINDS) }
+
+            // Sender: reuse the cached self user when the event is our own,
+            // otherwise resolve the display name / avatar from the room member
+            // map (lazy-loaded state). Falls back to the bare user id.
+            val senderId = event.sender
+            user = if (senderId == (userMe as? MatrixUser)?.userId && userMe != null) {
+                userMe
+            } else {
+                val info = members?.get(senderId)
+                user(senderId, info?.displayName, info?.avatarUrl, service)
+            }
 
             if (url != null && (msgtype == "m.image" || msgtype == "m.file" || msgtype == "m.video")) {
                 medias = listOf(
@@ -107,10 +151,11 @@ object MatrixMapper {
         service: Service,
         paging: Paging?,
         userMe: User?,
+        members: Map<String, MatrixMemberInfo>? = null,
     ): Pageable<Comment> {
         val model = Pageable<Comment>()
         model.entities = events.mapNotNull { event ->
-            comment(event, service, userMe)
+            comment(event, service, userMe, members)
         }.sortedByDescending { it.createAt }
         model.paging = MatrixPaging.fromPaging(paging)
         return model
@@ -203,6 +248,21 @@ object MatrixMapper {
         }
     }
 
+    /**
+     * `RoomEventFilter` for `/messages`. `lazy_load_members=true` makes the
+     * server include the `m.room.member` state events of the timeline's senders
+     * in the response `state` block, so the sender display name / avatar can be
+     * resolved without a per-sender profile lookup (no N+1).
+     *
+     * `include_redundant_members=true` keeps each page self-contained: without
+     * it the spec lets a homeserver omit member state it already sent to this
+     * access token on a previous page, which would drop later pages back to raw
+     * user ids. Setting it re-sends each page's senders so no client-side member
+     * cache is needed to page a room's history.
+     */
+    const val MESSAGES_FILTER_JSON: String =
+        "{\"lazy_load_members\":true,\"include_redundant_members\":true}"
+
     fun createGetMessagesRequest(
         roomId: String,
         paging: MatrixPaging,
@@ -214,6 +274,7 @@ object MatrixMapper {
             to = paging.to
             dir = paging.direction ?: "b"
             limit = count
+            filter = MESSAGES_FILTER_JSON
         }
     }
 

@@ -565,12 +565,18 @@ class MatrixAction(
                 MatrixMapper.createGetMessagesRequest(roomId, mp, paging.count ?: 50)
             ).data
 
+            // The lazy_load_members filter makes the server return this chunk's
+            // senders' m.room.member state, so each message's display name /
+            // avatar resolves without a per-sender profile lookup.
+            val members = MatrixMapper.memberInfoMap(response.state?.toList() ?: emptyList())
+
             val userMe = userMeWithCache()
             val pageable = MatrixMapper.timeLine(
                 response.chunk.toList(),
                 service(),
                 paging,
                 userMe,
+                members,
             )
             pageable.paging = (pageable.paging as? MatrixPaging)?.apply {
                 from = response.start
