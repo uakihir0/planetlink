@@ -208,6 +208,7 @@ internal class SlackActionHelper(
 
     suspend fun getMessageThread(paging: Paging): Pageable<Thread> {
         val userMe = action.userMeWithCache()
+        val pageSize = paging.count
 
         val response = proceed {
             auth.accessor.slack.conversations().conversationsList(
@@ -215,7 +216,7 @@ internal class SlackActionHelper(
                     token = auth.accessor.token,
                     cursor = null,
                     isExcludeArchived = true,
-                    limit = 1000,
+                    limit = pageSize?.coerceIn(1, 1000) ?: 1000,
                     types = arrayOf(ConversationType.IM, ConversationType.MPIM)
                 )
             )
@@ -232,16 +233,27 @@ internal class SlackActionHelper(
         for (channel in response.channels.orEmpty()) {
             if (!SlackMapper.isVisibleThread(channel, userMeId)) continue
             val channelId = channel.id ?: continue
-            memberMap[channelId] = getThreadMemberIds(channel, userMeId)
+            try {
+                memberMap[channelId] = getThreadMemberIds(channel, userMeId)
+            } catch (e: Exception) {
+                // Skip channels that fail to resolve members
+            }
         }
 
         val allUserIds = memberMap.values.flatten().distinct()
-        val accountMap = allUserIds.associateWith { uid ->
-            getUserWithCache(Identify(service, ID(uid)))
-        }
+        val accountMap = allUserIds.mapNotNull { uid ->
+            try {
+                uid to getUserWithCache(Identify(service, ID(uid)))
+            } catch (e: Exception) {
+                null // Skip users that fail to resolve
+            }
+        }.toMap()
 
         val threads = SlackMapper.threads(response, memberMap, historyMap, accountMap, userMeId, service)
             .sortedByDescending { it.lastUpdate }
+            .let { list ->
+                if (pageSize != null) list.take(pageSize) else list
+            }
 
         return Pageable<Thread>().also {
             it.entities = threads
@@ -274,7 +286,7 @@ internal class SlackActionHelper(
             )
         }
         if (!response.isOk) {
-            throw SocialHubException(response.error ?: "Unknown error")
+            return emptyList()
         }
         return response.members
             ?.filter { it != userMeId }
