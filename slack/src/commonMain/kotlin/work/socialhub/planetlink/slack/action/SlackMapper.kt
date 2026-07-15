@@ -302,7 +302,7 @@ object SlackMapper {
         service: Service
     ): List<Thread> {
         return response.channels?.mapNotNull { c ->
-            if (c.isArchived == true) return@mapNotNull null
+            if (c.isArchived || !c.isOpen) return@mapNotNull null
 
             Thread(service).apply {
                 id = ID(c.id ?: "")
@@ -314,6 +314,29 @@ object SlackMapper {
                     ?: c.created?.let { Instant.fromEpochSeconds(it.toLong(), 0) }
             }
         } ?: emptyList()
+    }
+
+    internal fun threadMemberIds(
+        conversation: Conversation,
+        userMeId: String,
+    ): List<String> {
+        if (conversation.isIm) {
+            return listOfNotNull(conversation.user).distinct()
+        }
+
+        return conversation.members
+            ?.filter { it != userMeId }
+            ?.distinct()
+            ?: emptyList()
+    }
+
+    internal fun threadPaging(
+        paging: Paging,
+    ): Paging {
+        return Paging(paging.count).apply {
+            isHasNew = false
+            isHasPast = false
+        }
     }
 
     /** チームマッピング */

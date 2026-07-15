@@ -213,8 +213,8 @@ internal class SlackActionHelper(
                 ConversationsListRequest(
                     token = auth.accessor.token,
                     cursor = null,
-                    isExcludeArchived = false,
-                    limit = paging.count ?: 200,
+                    isExcludeArchived = true,
+                    limit = 1000,
                     types = arrayOf(ConversationType.IM, ConversationType.MPIM)
                 )
             )
@@ -226,13 +226,12 @@ internal class SlackActionHelper(
 
         val memberMap = mutableMapOf<String, List<String>>()
         val historyMap = mutableMapOf<String, Instant>()
+        val userMeId = userMe.id!!.value<String>()
 
         response.channels?.forEach { channel ->
-            val channelUser = channel.user
-            val channelId = channel.id
-            if (channelUser != null && channelId != null) {
-                memberMap[channelId] = listOf(userMe.id!!.value<String>(), channelUser)
-            }
+            if (channel.isArchived || !channel.isOpen) return@forEach
+            val channelId = channel.id ?: return@forEach
+            memberMap[channelId] = SlackMapper.threadMemberIds(channel, userMeId)
         }
 
         val allUserIds = memberMap.values.flatten().distinct()
@@ -245,7 +244,7 @@ internal class SlackActionHelper(
 
         return Pageable<Thread>().also {
             it.entities = threads
-            it.paging = paging
+            it.paging = SlackMapper.threadPaging(paging)
         }
     }
 
