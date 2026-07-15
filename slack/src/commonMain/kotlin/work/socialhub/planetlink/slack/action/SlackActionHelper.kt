@@ -1,6 +1,7 @@
 package work.socialhub.planetlink.slack.action
 
 import kotlin.time.Instant
+import kotlinx.coroutines.CancellationException
 import work.socialhub.kslack.api.methods.SlackApiException
 import work.socialhub.kslack.api.methods.request.bots.BotsInfoRequest
 import work.socialhub.kslack.api.methods.request.conversations.*
@@ -216,7 +217,7 @@ internal class SlackActionHelper(
                     token = auth.accessor.token,
                     cursor = null,
                     isExcludeArchived = true,
-                    limit = pageSize?.coerceIn(1, 1000) ?: 1000,
+                    limit = 1000,
                     types = arrayOf(ConversationType.IM, ConversationType.MPIM)
                 )
             )
@@ -235,6 +236,8 @@ internal class SlackActionHelper(
             val channelId = channel.id ?: continue
             try {
                 memberMap[channelId] = getThreadMemberIds(channel, userMeId)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 // Skip channels that fail to resolve members
             }
@@ -244,6 +247,8 @@ internal class SlackActionHelper(
         val accountMap = allUserIds.mapNotNull { uid ->
             try {
                 uid to getUserWithCache(Identify(service, ID(uid)))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 null // Skip users that fail to resolve
             }
