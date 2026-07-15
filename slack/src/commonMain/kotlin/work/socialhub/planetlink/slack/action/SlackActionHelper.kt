@@ -1,6 +1,7 @@
 package work.socialhub.planetlink.slack.action
 
 import kotlin.time.Instant
+import kotlinx.coroutines.CancellationException
 import work.socialhub.kslack.api.methods.SlackApiException
 import work.socialhub.kslack.api.methods.request.bots.BotsInfoRequest
 import work.socialhub.kslack.api.methods.request.conversations.*
@@ -8,6 +9,7 @@ import work.socialhub.kslack.api.methods.request.emoji.EmojiListRequest
 import work.socialhub.kslack.api.methods.request.team.TeamInfoRequest
 import work.socialhub.kslack.api.methods.request.users.UsersInfoRequest
 import work.socialhub.kslack.api.methods.request.users.UsersListRequest
+import work.socialhub.kslack.entity.Conversation
 import work.socialhub.kslack.entity.ConversationType
 import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.*
@@ -207,14 +209,15 @@ internal class SlackActionHelper(
 
     suspend fun getMessageThread(paging: Paging): Pageable<Thread> {
         val userMe = action.userMeWithCache()
+        val pageSize = paging.count
 
         val response = proceed {
             auth.accessor.slack.conversations().conversationsList(
                 ConversationsListRequest(
                     token = auth.accessor.token,
                     cursor = null,
-                    isExcludeArchived = false,
-                    limit = paging.count ?: 200,
+                    isExcludeArchived = true,
+                    limit = 1000,
                     types = arrayOf(ConversationType.IM, ConversationType.MPIM)
                 )
             )
@@ -226,27 +229,74 @@ internal class SlackActionHelper(
 
         val memberMap = mutableMapOf<String, List<String>>()
         val historyMap = mutableMapOf<String, Instant>()
+        val userMeId = userMe.id!!.value<String>()
 
-        response.channels?.forEach { channel ->
-            val channelUser = channel.user
-            val channelId = channel.id
-            if (channelUser != null && channelId != null) {
-                memberMap[channelId] = listOf(userMe.id!!.value<String>(), channelUser)
+        for (channel in response.channels.orEmpty()) {
+            if (!SlackMapper.isVisibleThread(channel, userMeId)) continue
+            val channelId = channel.id ?: continue
+            try {
+                memberMap[channelId] = getThreadMemberIds(channel, userMeId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Skip channels that fail to resolve members
             }
         }
 
         val allUserIds = memberMap.values.flatten().distinct()
-        val accountMap = allUserIds.associateWith { uid ->
-            getUserWithCache(Identify(service, ID(uid)))
-        }
+        val accountMap = allUserIds.mapNotNull { uid ->
+            try {
+                uid to getUserWithCache(Identify(service, ID(uid)))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null // Skip users that fail to resolve
+            }
+        }.toMap()
 
-        val threads = SlackMapper.threads(response, memberMap, historyMap, accountMap, service)
+        val threads = SlackMapper.threads(response, memberMap, historyMap, accountMap, userMeId, service)
             .sortedByDescending { it.lastUpdate }
+            .let { list ->
+                if (pageSize != null) list.take(pageSize) else list
+            }
 
         return Pageable<Thread>().also {
             it.entities = threads
-            it.paging = paging
+            it.paging = SlackMapper.threadPaging(paging)
         }
+    }
+
+    private suspend fun getThreadMemberIds(
+        conversation: Conversation,
+        userMeId: String,
+    ): List<String> {
+        val listedMemberIds = SlackMapper.threadMemberIds(conversation, userMeId)
+        val channelId = conversation.id
+        if (
+            listedMemberIds.isNotEmpty() ||
+            !SlackMapper.isGroupThread(conversation) ||
+            channelId == null
+        ) {
+            return listedMemberIds
+        }
+
+        val response = proceed {
+            auth.accessor.slack.conversations().conversationsMembers(
+                ConversationsMembersRequest(
+                    token = auth.accessor.token,
+                    channel = channelId,
+                    cursor = null,
+                    limit = 1000
+                )
+            )
+        }
+        if (!response.isOk) {
+            return emptyList()
+        }
+        return response.members
+            ?.filter { it != userMeId }
+            ?.distinct()
+            ?: emptyList()
     }
 
     suspend fun sendMessage(req: CommentForm) {
