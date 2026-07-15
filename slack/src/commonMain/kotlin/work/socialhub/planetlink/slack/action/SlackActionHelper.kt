@@ -8,6 +8,7 @@ import work.socialhub.kslack.api.methods.request.emoji.EmojiListRequest
 import work.socialhub.kslack.api.methods.request.team.TeamInfoRequest
 import work.socialhub.kslack.api.methods.request.users.UsersInfoRequest
 import work.socialhub.kslack.api.methods.request.users.UsersListRequest
+import work.socialhub.kslack.entity.Conversation
 import work.socialhub.kslack.entity.ConversationType
 import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.*
@@ -228,10 +229,10 @@ internal class SlackActionHelper(
         val historyMap = mutableMapOf<String, Instant>()
         val userMeId = userMe.id!!.value<String>()
 
-        response.channels?.forEach { channel ->
-            if (channel.isArchived || !channel.isOpen) return@forEach
-            val channelId = channel.id ?: return@forEach
-            memberMap[channelId] = SlackMapper.threadMemberIds(channel, userMeId)
+        for (channel in response.channels.orEmpty()) {
+            if (!SlackMapper.isVisibleThread(channel, userMeId)) continue
+            val channelId = channel.id ?: continue
+            memberMap[channelId] = getThreadMemberIds(channel, userMeId)
         }
 
         val allUserIds = memberMap.values.flatten().distinct()
@@ -239,13 +240,46 @@ internal class SlackActionHelper(
             getUserWithCache(Identify(service, ID(uid)))
         }
 
-        val threads = SlackMapper.threads(response, memberMap, historyMap, accountMap, service)
+        val threads = SlackMapper.threads(response, memberMap, historyMap, accountMap, userMeId, service)
             .sortedByDescending { it.lastUpdate }
 
         return Pageable<Thread>().also {
             it.entities = threads
             it.paging = SlackMapper.threadPaging(paging)
         }
+    }
+
+    private suspend fun getThreadMemberIds(
+        conversation: Conversation,
+        userMeId: String,
+    ): List<String> {
+        val listedMemberIds = SlackMapper.threadMemberIds(conversation, userMeId)
+        val channelId = conversation.id
+        if (
+            listedMemberIds.isNotEmpty() ||
+            !SlackMapper.isGroupThread(conversation) ||
+            channelId == null
+        ) {
+            return listedMemberIds
+        }
+
+        val response = proceed {
+            auth.accessor.slack.conversations().conversationsMembers(
+                ConversationsMembersRequest(
+                    token = auth.accessor.token,
+                    channel = channelId,
+                    cursor = null,
+                    limit = 1000
+                )
+            )
+        }
+        if (!response.isOk) {
+            throw SocialHubException(response.error ?: "Unknown error")
+        }
+        return response.members
+            ?.filter { it != userMeId }
+            ?.distinct()
+            ?: emptyList()
     }
 
     suspend fun sendMessage(req: CommentForm) {

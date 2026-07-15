@@ -66,27 +66,43 @@ class SlackThreadMapperTest {
     }
 
     @Test
-    fun testThreadsExcludeClosedAndArchivedConversations() {
+    fun testGroupThreadFallsBackToSlackGroupId() {
+        val group = conversation(id = "G1", isIm = false).apply {
+            isMpim = false
+        }
+
+        assertTrue(SlackMapper.isGroupThread(group))
+    }
+
+    @Test
+    fun testThreadsRetainSelfDmAndExcludeOtherClosedConversations() {
         val service = service()
         val response = ConversationsListResponse().apply {
             channels = arrayOf(
                 conversation(id = "D_OPEN", user = "U_OTHER"),
+                conversation(id = "D_SELF", isOpen = false, user = "U_ME"),
                 conversation(id = "D_CLOSED", isOpen = false, user = "U_CLOSED"),
-                conversation(id = "D_ARCHIVED", isArchived = true, user = "U_ARCHIVED"),
+                conversation(id = "D_ARCHIVED", isArchived = true, user = "U_ME"),
             )
         }
         val other = user("U_OTHER", service)
+        val self = user("U_ME", service)
 
         val threads = SlackMapper.threads(
             response = response,
-            memberMap = mapOf("D_OPEN" to listOf("U_OTHER")),
+            memberMap = mapOf(
+                "D_OPEN" to listOf("U_OTHER"),
+                "D_SELF" to listOf("U_ME"),
+            ),
             historyMap = emptyMap(),
-            accountMap = mapOf("U_OTHER" to other),
+            accountMap = mapOf("U_OTHER" to other, "U_ME" to self),
+            userMeId = "U_ME",
             service = service,
         )
 
-        assertEquals(listOf("D_OPEN"), threads.map { it.id?.value<String>() })
-        assertEquals(listOf("U_OTHER"), threads.single().users?.map { it.id?.value<String>() })
+        assertEquals(listOf("D_OPEN", "D_SELF"), threads.map { it.id?.value<String>() })
+        assertEquals(listOf("U_OTHER"), threads[0].users?.map { it.id?.value<String>() })
+        assertEquals(listOf("U_ME"), threads[1].users?.map { it.id?.value<String>() })
     }
 
     @Test

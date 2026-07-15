@@ -299,10 +299,11 @@ object SlackMapper {
         memberMap: Map<String, List<String>>,
         historyMap: Map<String, Instant>,
         accountMap: Map<String, User>,
+        userMeId: String,
         service: Service
     ): List<Thread> {
         return response.channels?.mapNotNull { c ->
-            if (c.isArchived || !c.isOpen) return@mapNotNull null
+            if (!isVisibleThread(c, userMeId)) return@mapNotNull null
 
             Thread(service).apply {
                 id = ID(c.id ?: "")
@@ -314,6 +315,20 @@ object SlackMapper {
                     ?: c.created?.let { Instant.fromEpochSeconds(it.toLong(), 0) }
             }
         } ?: emptyList()
+    }
+
+    internal fun isVisibleThread(
+        conversation: Conversation,
+        userMeId: String,
+    ): Boolean {
+        if (conversation.isArchived) return false
+        return conversation.isOpen ||
+            (conversation.isIm && conversation.user == userMeId)
+    }
+
+    internal fun isGroupThread(conversation: Conversation): Boolean {
+        return conversation.isMpim ||
+            (conversation.id?.startsWith("G") == true && !conversation.isIm)
     }
 
     internal fun threadMemberIds(
