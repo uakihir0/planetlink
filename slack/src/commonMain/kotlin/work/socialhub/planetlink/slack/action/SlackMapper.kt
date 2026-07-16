@@ -254,9 +254,11 @@ object SlackMapper {
         service: Service
     ): Pageable<Channel> {
         val model = Pageable<Channel>()
-        val entities = response.channels?.map { c ->
-            channel(c, service)
-        } ?: emptyList()
+        val entities = response.channels
+            // DM (IM) / グループ DM (MPIM) はチャンネル一覧に含めない (DM は別途取得)
+            ?.filter { !it.isIm && !it.isMpim }
+            ?.map { c -> channel(c, service) }
+            ?: emptyList()
 
         val pg = SlackPaging()
         pg.count = entities.size
