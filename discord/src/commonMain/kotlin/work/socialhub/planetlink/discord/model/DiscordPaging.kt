@@ -41,6 +41,17 @@ class DiscordPaging : Paging() {
         return pastPage
     }
 
+    override fun setMarkPagingEnd(entities: List<*>) {
+        val pageSize = count ?: return
+        if (isHasPast
+            && pageSize > 0
+            && entities.size < pageSize
+            && after == null
+        ) {
+            isHasPast = false
+        }
+    }
+
     override fun copy(): DiscordPaging {
         val p = DiscordPaging()
         copyTo(p)
