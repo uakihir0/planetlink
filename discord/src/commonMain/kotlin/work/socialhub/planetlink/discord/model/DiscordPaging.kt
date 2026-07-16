@@ -46,6 +46,7 @@ class DiscordPaging : Paging() {
         if (isHasPast
             && pageSize > 0
             && entities.size < pageSize
+            && after == null
         ) {
             isHasPast = false
         }

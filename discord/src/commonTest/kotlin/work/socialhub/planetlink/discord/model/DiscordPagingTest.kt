@@ -36,4 +36,16 @@ class DiscordPagingTest {
 
         assertTrue(paging.isHasPast)
     }
+
+    @Test
+    fun keepsPastForShortPageWithAfterSet() {
+        val paging = DiscordPaging().apply {
+            count = 200
+            after = "98765"
+        }
+
+        paging.setMarkPagingEnd(List(42) { Unit })
+
+        assertTrue(paging.isHasPast)
+    }
 }
