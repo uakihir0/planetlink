@@ -179,7 +179,7 @@ class AttributedString {
                     }
                     run {
                         val model = AttributedItem()
-                        model.displayText = regex.toString()
+                        model.displayText = found
                         model.expandedText = emoji.imageUrl
                         model.kind = AttributedKind.EMOJI
                         results.add(model)
