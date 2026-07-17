@@ -174,8 +174,6 @@ class DiscordAction(
                 SocialActionType.GetComment,
                 SocialActionType.PostComment,
                 SocialActionType.DeleteComment,
-                SocialActionType.LikeComment,
-                SocialActionType.UnlikeComment,
                 SocialActionType.ReactionComment,
                 SocialActionType.UnreactionComment,
                 SocialActionType.GetSpaces,
