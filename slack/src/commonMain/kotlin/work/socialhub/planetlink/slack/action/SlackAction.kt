@@ -41,8 +41,6 @@ class SlackAction(
                 SocialActionType.GetContext,
                 SocialActionType.PostComment,
                 SocialActionType.DeleteComment,
-                SocialActionType.LikeComment,
-                SocialActionType.UnlikeComment,
                 SocialActionType.ReactionComment,
                 SocialActionType.UnreactionComment,
                 SocialActionType.EditComment,

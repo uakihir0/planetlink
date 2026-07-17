@@ -59,7 +59,6 @@ class MatrixAction(
                 SocialActionType.GetContext,
                 SocialActionType.PostComment,
                 SocialActionType.DeleteComment,
-                SocialActionType.LikeComment,
                 SocialActionType.ReactionComment,
                 SocialActionType.GetSpaces,
                 SocialActionType.GetChannels,
