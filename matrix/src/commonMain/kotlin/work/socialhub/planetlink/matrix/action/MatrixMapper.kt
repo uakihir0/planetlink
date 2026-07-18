@@ -1,8 +1,12 @@
 package work.socialhub.planetlink.matrix.action
 
 import kotlin.time.Instant
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import work.socialhub.kmatrix.api.request.rooms.RoomsGetMessagesRequest
 import work.socialhub.kmatrix.api.response.notifications.NotificationsGetResponse
+import work.socialhub.kmatrix.api.response.relations.RelationsGetResponse
 import work.socialhub.kmatrix.api.response.rooms.RoomEvent
 import work.socialhub.kmatrix.api.response.rooms.RoomsGetJoinedMembersResponse
 import work.socialhub.kmatrix.api.response.profile.ProfileGetProfileResponse
@@ -15,6 +19,7 @@ import work.socialhub.planetlink.model.Media
 import work.socialhub.planetlink.model.Notification
 import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Paging
+import work.socialhub.planetlink.model.Reaction
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.Space
 import work.socialhub.planetlink.model.Thread
@@ -229,11 +234,97 @@ object MatrixMapper {
         members: Map<String, MatrixMemberInfo>? = null,
     ): Pageable<Comment> {
         val model = Pageable<Comment>()
-        model.entities = events.mapNotNull { event ->
+        val comments = events.mapNotNull { event ->
             comment(event, service, userMe, members)
-        }.sortedByDescending { it.createAt }
+        }
+        applyTimelineReactions(comments, events, (userMe as? MatrixUser)?.userId)
+        model.entities = comments.sortedByDescending { it.createAt }
         model.paging = MatrixPaging.fromPaging(paging)
         return model
+    }
+
+    fun reactions(
+        events: List<RelationsGetResponse.RelationEvent>,
+        selfUserId: String?,
+    ): List<Reaction> {
+        val aggregates = linkedMapOf<String, ReactionAggregate>()
+        events.forEach { event ->
+            if (event.type != "m.reaction") return@forEach
+            val relatesTo = event.content["m.relates_to"] as? JsonObject ?: return@forEach
+            if (relatesTo["rel_type"]?.jsonPrimitive?.contentOrNull != "m.annotation") {
+                return@forEach
+            }
+            val key = relatesTo["key"]?.jsonPrimitive?.contentOrNull ?: return@forEach
+            val aggregate = aggregates.getOrPut(key) { ReactionAggregate() }
+            aggregate.count++
+            if (event.sender == selfUserId) aggregate.reacting = true
+        }
+        return aggregates.toReactions()
+    }
+
+    private fun applyTimelineReactions(
+        comments: List<MatrixComment>,
+        events: List<RoomEvent>,
+        selfUserId: String?,
+    ) {
+        val commentsById = comments.mapNotNull { comment ->
+            comment.eventId?.let { it to comment }
+        }.toMap()
+        val aggregatesByEvent = mutableMapOf<String, LinkedHashMap<String, ReactionAggregate>>()
+
+        events.filter { it.type == "m.room.message" }.forEach { event ->
+            val aggregates = aggregatesByEvent.getOrPut(event.eventId) { linkedMapOf() }
+            bundledReactions(event).forEach { (key, count) ->
+                aggregates[key] = ReactionAggregate(count = count, bundled = true)
+            }
+        }
+
+        events.filter { it.type == "m.reaction" }.forEach { event ->
+            val relatesTo = event.content["m.relates_to"] as? Map<*, *> ?: return@forEach
+            if (relatesTo["rel_type"] != "m.annotation") return@forEach
+            val targetEventId = relatesTo["event_id"] as? String ?: return@forEach
+            val key = relatesTo["key"] as? String ?: return@forEach
+            if (targetEventId !in commentsById) return@forEach
+
+            val aggregate = aggregatesByEvent
+                .getOrPut(targetEventId) { linkedMapOf() }
+                .getOrPut(key) { ReactionAggregate() }
+            if (!aggregate.bundled) aggregate.count++
+            if (event.sender == selfUserId) aggregate.reacting = true
+        }
+
+        commentsById.forEach { (eventId, comment) ->
+            comment.reactions = aggregatesByEvent[eventId]?.toReactions() ?: emptyList()
+        }
+    }
+
+    private fun bundledReactions(event: RoomEvent): Map<String, Int> {
+        val relations = event.unsigned?.get("m.relations") as? Map<*, *> ?: return emptyMap()
+        val annotation = relations["m.annotation"] as? Map<*, *> ?: return emptyMap()
+        val chunk = annotation["chunk"] as? List<*> ?: return emptyMap()
+        return chunk.mapNotNull { value ->
+            val item = value as? Map<*, *> ?: return@mapNotNull null
+            val key = item["key"] as? String ?: return@mapNotNull null
+            val count = (item["count"] as? Number)?.toInt() ?: return@mapNotNull null
+            key to count
+        }.toMap()
+    }
+
+    private data class ReactionAggregate(
+        var count: Int = 0,
+        var reacting: Boolean = false,
+        val bundled: Boolean = false,
+    )
+
+    private fun Map<String, ReactionAggregate>.toReactions(): List<Reaction> {
+        return map { (key, aggregate) ->
+            Reaction().apply {
+                name = key
+                emoji = key
+                count = aggregate.count
+                reacting = aggregate.reacting
+            }
+        }
     }
 
     fun channel(
