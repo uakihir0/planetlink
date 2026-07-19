@@ -12,6 +12,7 @@ import work.socialhub.planetlink.matrix.expand.PlanetLinkEx.matrix
 import work.socialhub.planetlink.nostr.expand.PlanetLinkEx.nostr
 import work.socialhub.planetlink.slack.expand.PlanetLinkEx.slack
 import work.socialhub.planetlink.tumblr.expand.PlanetLinkEx.tumblr
+import work.socialhub.planetlink.x.expand.PlanetLinkEx.x
 import java.io.File
 import kotlin.test.BeforeTest
 
@@ -141,6 +142,14 @@ open class AbstractTest {
         return PlanetLink.matrix(host).accountWithPassword(
             checkNotNull(c["MATRIX_USER"]),
             checkNotNull(c["MATRIX_PASSWORD"]),
+        )
+    }
+
+    fun x(): Account {
+        val c = checkNotNull(config)
+        return PlanetLink.x().accountWithCookies(
+            checkNotNull(c["X_AUTH_TOKEN"]),
+            checkNotNull(c["X_CSRF_TOKEN"]),
         )
     }
 

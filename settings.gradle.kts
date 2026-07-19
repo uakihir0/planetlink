@@ -22,6 +22,7 @@ include("slack")
 include("nostr")
 include("matrix")
 include("discord")
+include("x")
 
 // exclude "all" on Windows OS
 val osName = System.getProperty("os.name").lowercase(Locale.getDefault())
