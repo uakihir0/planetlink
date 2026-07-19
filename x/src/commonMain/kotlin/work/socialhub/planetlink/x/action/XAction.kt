@@ -372,7 +372,7 @@ class XAction(
         val url = try {
             Url(value)
         } catch (e: Exception) {
-            throw NotSupportedException("Invalid X URL: ${e.message}")
+            throw NotSupportedException("Invalid X URL: ${e.message}", e)
         }
         if (url.host.lowercase() !in X_HOSTS) {
             throw NotSupportedException("The URL does not belong to X.")
