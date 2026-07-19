@@ -2,6 +2,7 @@ package work.socialhub.planetlink.x.action
 
 import io.ktor.http.Url
 import kotlin.js.JsExport
+import work.socialhub.kxweb.XWeb
 import work.socialhub.kxweb.XWebException
 import work.socialhub.kxweb.entity.bookmark.GetBookmarksRequest
 import work.socialhub.kxweb.entity.home.HomeTimelineRequest
@@ -42,10 +43,12 @@ import work.socialhub.planetlink.x.model.XUser
 class XAction(
     account: Account,
     val auth: XAuth,
+    private val client: XWeb,
+    private val guest: Boolean,
 ) : AccountActionImpl(account) {
 
     override fun capabilities(): Capabilities {
-        return if (auth.guest) GUEST_CAPABILITIES else AUTHENTICATED_CAPABILITIES
+        return if (guest) GUEST_CAPABILITIES else AUTHENTICATED_CAPABILITIES
     }
 
     override suspend fun userMe(): User {
@@ -54,7 +57,7 @@ class XAction(
 
     private suspend fun fetchUserMe(): User {
         return proceed {
-            val current = auth.accessor.account().getCurrentUser().data
+            val current = client.account().getCurrentUser().data
             val screenName = checkNotNull(current.screenName) {
                 "The authenticated X account has no screen name."
             }
@@ -84,7 +87,7 @@ class XAction(
         screenName: String,
     ): XUser {
         return proceed {
-            val source = auth.accessor.user().getUserByScreenName(
+            val source = client.user().getUserByScreenName(
                 UserByScreenNameRequest().also {
                     it.screenName = screenName.removePrefix("@")
                 }
@@ -126,9 +129,9 @@ class XAction(
                 it.cursor = cursor(paging)
             }
             val response = if (followers) {
-                auth.accessor.user().getFollowers(request).data
+                client.user().getFollowers(request).data
             } else {
-                auth.accessor.user().getFollowing(request).data
+                client.user().getFollowing(request).data
             }
             XMapper.users(response.users, service(), paging, response.cursor)
         }
@@ -139,7 +142,7 @@ class XAction(
         paging: Paging,
     ): Pageable<User> {
         return proceed {
-            val response = auth.accessor.search().searchUsers(
+            val response = client.search().searchUsers(
                 SearchUsersRequest().also {
                     it.query = query
                     it.count = limit(paging)
@@ -172,9 +175,9 @@ class XAction(
                 it.cursor = cursor(paging)
             }
             val response = if (recommended) {
-                auth.accessor.home().getHomeTimeline(request).data
+                client.home().getHomeTimeline(request).data
             } else {
-                auth.accessor.home().getHomeLatestTimeline(request).data
+                client.home().getHomeLatestTimeline(request).data
             }
             XMapper.timeline(response.tweets, service(), paging, response.cursor)
         }
@@ -199,7 +202,7 @@ class XAction(
         paging: Paging,
     ): Pageable<Comment> {
         return proceed {
-            val response = auth.accessor.user().getUserTweets(
+            val response = client.user().getUserTweets(
                 UserTweetsRequest().also {
                     it.userId = resolveUserId(id)
                     it.count = limit(paging)
@@ -215,7 +218,7 @@ class XAction(
         paging: Paging,
     ): Pageable<Comment> {
         return proceed {
-            val response = auth.accessor.timeline().getLikes(
+            val response = client.timeline().getLikes(
                 GetLikesRequest().also {
                     it.userId = resolveUserId(id)
                     it.count = limit(paging)
@@ -246,7 +249,7 @@ class XAction(
         paging: Paging,
     ): Pageable<Comment> {
         return proceed {
-            val response = auth.accessor.search().searchTweets(
+            val response = client.search().searchTweets(
                 SearchSearchRequest().also {
                     it.query = query
                     it.count = limit(paging)
@@ -262,7 +265,7 @@ class XAction(
         paging: Paging,
     ): Pageable<Comment> {
         return proceed {
-            val response = auth.accessor.bookmark().getBookmarks(
+            val response = client.bookmark().getBookmarks(
                 GetBookmarksRequest().also {
                     it.count = limit(paging)
                     it.cursor = cursor(paging)
@@ -288,7 +291,7 @@ class XAction(
 
     private suspend fun fetchComment(id: String): XComment {
         return proceed {
-            val source = auth.accessor.tweet().getTweet(id, withArticle = true).data
+            val source = client.tweet().getTweet(id, withArticle = true).data
             XMapper.comment(source, service())
         }
     }
@@ -303,7 +306,7 @@ class XAction(
         id: String,
     ): Context {
         return proceed {
-            val response = auth.accessor.tweet().getTweetDetail(
+            val response = client.tweet().getTweetDetail(
                 TweetDetailRequest().also { it.tweetId = id }
             ).data
             val comments = response.tweets.map { XMapper.comment(it, service()) }
@@ -328,7 +331,7 @@ class XAction(
         woeid: Long = 1,
     ): List<Trend> {
         return proceed {
-            auth.accessor.trend().getTrends(
+            client.trend().getTrends(
                 GetTrendsRequest().also { it.woeid = woeid }
             ).data.trends.map(XMapper::trend)
         }
@@ -336,7 +339,7 @@ class XAction(
 
     suspend fun trendLocations(): List<XTrendLocation> {
         return proceed {
-            auth.accessor.trend().getTrendLocations()
+            client.trend().getTrendLocations()
                 .data.locations.map(XMapper::trendLocation)
         }
     }
