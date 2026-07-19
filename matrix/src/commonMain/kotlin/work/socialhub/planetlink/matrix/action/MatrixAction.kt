@@ -2,9 +2,11 @@ package work.socialhub.planetlink.matrix.action
 
 import kotlin.time.Instant
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import work.socialhub.kmatrix.api.request.events.EventsGetContextRequest
+import work.socialhub.kmatrix.api.request.relations.RelationsGetRequest
 import work.socialhub.kmatrix.api.request.media.MediaDownloadRequest
 import work.socialhub.kmatrix.api.request.media.MediaThumbnailRequest
 import work.socialhub.kmatrix.api.request.notifications.NotificationsGetRequest
@@ -62,6 +64,7 @@ class MatrixAction(
                 SocialActionType.PostComment,
                 SocialActionType.DeleteComment,
                 SocialActionType.ReactionComment,
+                SocialActionType.UnreactionComment,
                 SocialActionType.GetSpaces,
                 SocialActionType.GetChannels,
                 SocialActionType.GetNotification,
@@ -425,11 +428,48 @@ class MatrixAction(
     }
 
     private suspend fun doUnreactionComment(id: Identify, reaction: String) {
+        val selfUserId = ((me ?: fetchUserMe()) as? MatrixUser)?.userId
+            ?: throw SocialHubException("Could not resolve current Matrix user")
+
         proceedUnit {
             val comment = id as? MatrixComment
                 ?: throw SocialHubException("Not a Matrix comment")
 
-            throw NotSupportedException("Need reaction event lookup before unreaction redact")
+            var from: String? = null
+            val reactionEventIds = mutableListOf<String>()
+
+            do {
+                val response = accessor.relations().getRelations(
+                    RelationsGetRequest().apply {
+                        roomId = comment.roomId
+                        eventId = comment.eventId
+                        relType = "m.annotation"
+                        eventType = "m.reaction"
+                        this.from = from
+                        limit = 100
+                        dir = "b"
+                    }
+                ).data
+
+                reactionEventIds.addAll(
+                    response.chunk
+                        .filter { event ->
+                            event.sender == selfUserId &&
+                                matrixReactionKey(event.content) == reaction
+                        }
+                        .mapNotNull { it.eventId }
+                )
+                from = response.nextBatch
+            } while (from != null)
+
+            reactionEventIds.forEach { eid ->
+                accessor.rooms().redactEvent(
+                    RoomsRedactEventRequest().apply {
+                        roomId = comment.roomId
+                        eventId = eid
+                    }
+                )
+            }
         }
     }
 
@@ -797,6 +837,11 @@ private fun EventsGetContextResponse.ContextEvent.toMatrixComment(
 
 private fun getString(content: Map<String, JsonElement>, key: String): String? {
     return content[key]?.jsonPrimitive?.contentOrNull
+}
+
+internal fun matrixReactionKey(content: Map<String, JsonElement>): String? {
+    val relatesTo = content["m.relates_to"] as? JsonObject ?: return null
+    return getString(relatesTo, "key")
 }
 
 private fun extractJsonValue(element: JsonElement): Any? {
