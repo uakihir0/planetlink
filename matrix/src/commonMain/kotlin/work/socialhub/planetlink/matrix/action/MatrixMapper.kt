@@ -274,8 +274,8 @@ object MatrixMapper {
 
         events.filter { it.type == "m.room.message" }.forEach { event ->
             val aggregates = aggregatesByEvent.getOrPut(event.eventId) { linkedMapOf() }
-            bundledReactions(event).forEach { (key, count) ->
-                aggregates[key] = ReactionAggregate(count = count, bundled = true)
+            bundledReactions(event).forEach { (key, count, self) ->
+                aggregates[key] = ReactionAggregate(count = count, bundled = true, reacting = self)
             }
         }
 
@@ -298,16 +298,17 @@ object MatrixMapper {
         }
     }
 
-    private fun bundledReactions(event: RoomEvent): Map<String, Int> {
-        val relations = event.unsigned?.get("m.relations") as? Map<*, *> ?: return emptyMap()
-        val annotation = relations["m.annotation"] as? Map<*, *> ?: return emptyMap()
-        val chunk = annotation["chunk"] as? List<*> ?: return emptyMap()
+    private fun bundledReactions(event: RoomEvent): List<Triple<String, Int, Boolean>> {
+        val relations = event.unsigned?.get("m.relations") as? Map<*, *> ?: return emptyList()
+        val annotation = relations["m.annotation"] as? Map<*, *> ?: return emptyList()
+        val chunk = annotation["chunk"] as? List<*> ?: return emptyList()
         return chunk.mapNotNull { value ->
             val item = value as? Map<*, *> ?: return@mapNotNull null
             val key = item["key"] as? String ?: return@mapNotNull null
             val count = (item["count"] as? Number)?.toInt() ?: return@mapNotNull null
-            key to count
-        }.toMap()
+            val self = (item["self"] as? Boolean) ?: false
+            Triple(key, count, self)
+        }
     }
 
     private data class ReactionAggregate(

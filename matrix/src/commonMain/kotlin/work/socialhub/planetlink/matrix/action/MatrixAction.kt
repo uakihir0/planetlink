@@ -393,29 +393,31 @@ class MatrixAction(
     ): List<Reaction> {
         val roomId = comment.roomId ?: return emptyList()
         val eventId = comment.eventId ?: return emptyList()
-        val events = mutableListOf<RelationsGetResponse.RelationEvent>()
-        var from: String? = null
+        return proceed {
+            val events = mutableListOf<RelationsGetResponse.RelationEvent>()
+            var from: String? = null
 
-        while (true) {
-            val response = accessor.relations().getRelations(
-                RelationsGetRequest().apply {
-                    this.roomId = roomId
-                    this.eventId = eventId
-                    relType = "m.annotation"
-                    eventType = "m.reaction"
-                    this.from = from
-                    limit = 100
-                    dir = "b"
-                }
-            ).data
-            events.addAll(response.chunk)
+            while (true) {
+                val response = accessor.relations().getRelations(
+                    RelationsGetRequest().apply {
+                        this.roomId = roomId
+                        this.eventId = eventId
+                        relType = "m.annotation"
+                        eventType = "m.reaction"
+                        this.from = from
+                        limit = 100
+                        dir = "b"
+                    }
+                ).data
+                events.addAll(response.chunk)
 
-            val next = response.nextBatch
-            if (next.isNullOrEmpty() || next == from) break
-            from = next
+                val next = response.nextBatch
+                if (next.isNullOrEmpty() || next == from) break
+                from = next
+            }
+
+            MatrixMapper.reactions(events, (userMe as? MatrixUser)?.userId)
         }
-
-        return MatrixMapper.reactions(events, (userMe as? MatrixUser)?.userId)
     }
 
     override suspend fun unreactionComment(id: Identify, reaction: String) {
