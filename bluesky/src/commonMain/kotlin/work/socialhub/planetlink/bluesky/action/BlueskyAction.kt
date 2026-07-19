@@ -57,6 +57,7 @@ import work.socialhub.kbsky.stream.entity.app.bsky.callback.JetStreamEventCallba
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Event
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeedsPref
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedGallery
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedGalleryImage
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImages
@@ -116,6 +117,7 @@ import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.utils.ExceptionHandler
 import work.socialhub.planetlink.model.request.CommentForm
+import work.socialhub.planetlink.model.request.MediaForm
 import work.socialhub.planetlink.model.request.ProfileForm
 import work.socialhub.planetlink.bluesky.model.BlueskyChannel
 import work.socialhub.planetlink.utils.CollectionUtil.takeUntil
@@ -750,6 +752,7 @@ class BlueskyAction(
                                 EmbedImagesImage().also {
                                     it.image = blob
                                     it.alt = req.images[index].description ?: ""
+                                    it.aspectRatio = aspectRatio(req.images[index])
                                 }
                             }
                             embedMedia = embedImages
@@ -759,6 +762,7 @@ class BlueskyAction(
                                 EmbedGalleryImage(
                                     image = blob,
                                     alt = req.images[index].description ?: "",
+                                    aspectRatio = aspectRatio(req.images[index]),
                                 )
                             }
                             embedMedia = embedGallery
@@ -1103,6 +1107,19 @@ class BlueskyAction(
                 posts.data.posts[0], service()
             )
         }
+    }
+
+    /**
+     * 画像の幅・高さが指定されていれば aspectRatio に変換
+     * (両方が正の値の場合のみ。指定が無ければ null で送らない)
+     */
+    private fun aspectRatio(media: MediaForm): EmbedDefsAspectRatio? {
+        val width = media.width
+        val height = media.height
+        if (width != null && height != null && width > 0 && height > 0) {
+            return EmbedDefsAspectRatio(width, height)
+        }
+        return null
     }
 
     /**
