@@ -398,7 +398,7 @@ class MatrixAction(
                 ?: throw SocialHubException("Not a Matrix comment")
 
             var from: String? = null
-            var reactionEventId: String? = null
+            val reactionEventIds = mutableListOf<String>()
 
             do {
                 val response = accessor.relations().getRelations(
@@ -413,21 +413,25 @@ class MatrixAction(
                     }
                 ).data
 
-                reactionEventId = response.chunk.firstOrNull { event ->
-                    event.sender == selfUserId &&
-                        matrixReactionKey(event.content) == reaction
-                }?.eventId
+                reactionEventIds.addAll(
+                    response.chunk
+                        .filter { event ->
+                            event.sender == selfUserId &&
+                                matrixReactionKey(event.content) == reaction
+                        }
+                        .mapNotNull { it.eventId }
+                )
                 from = response.nextBatch
-            } while (reactionEventId == null && from != null)
+            } while (from != null)
 
-            if (reactionEventId == null) return@proceedUnit
-
-            accessor.rooms().redactEvent(
-                RoomsRedactEventRequest().apply {
-                    roomId = comment.roomId
-                    eventId = reactionEventId
-                }
-            )
+            reactionEventIds.forEach { eid ->
+                accessor.rooms().redactEvent(
+                    RoomsRedactEventRequest().apply {
+                        roomId = comment.roomId
+                        eventId = eid
+                    }
+                )
+            }
         }
     }
 
