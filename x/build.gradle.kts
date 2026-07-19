@@ -52,6 +52,7 @@ kotlin {
         commonMain.dependencies {
             implementation(project(":core"))
             implementation(libs.kxweb.core)
+            implementation(libs.ktor.core)
             implementation(libs.datetime)
         }
 
