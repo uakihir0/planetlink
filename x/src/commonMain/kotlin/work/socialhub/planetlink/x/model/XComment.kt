@@ -20,7 +20,7 @@ class XComment(
 
     override var webUrl: String = ""
         get() = field.ifEmpty {
-            val screenName = (user as? XUser)?.screenName.orEmpty()
+            val screenName = (user as? XUser)?.screenName?.takeIf { it.isNotBlank() } ?: "i/web"
             "https://x.com/$screenName/status/${id<String>()}".also { field = it }
         }
 
