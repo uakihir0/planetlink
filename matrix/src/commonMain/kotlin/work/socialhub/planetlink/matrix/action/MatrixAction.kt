@@ -5,14 +5,20 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import work.socialhub.kmatrix.api.request.events.EventsGetContextRequest
+import work.socialhub.kmatrix.api.request.media.MediaDownloadRequest
+import work.socialhub.kmatrix.api.request.media.MediaThumbnailRequest
 import work.socialhub.kmatrix.api.request.notifications.NotificationsGetRequest
+import work.socialhub.kmatrix.api.request.relations.RelationsGetRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsGetMessagesRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsRedactEventRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsSendMessageRequest
+import work.socialhub.kmatrix.api.request.rooms.RoomsSetReadMarkersRequest
+import work.socialhub.kmatrix.api.request.sync.SyncRequest
 import work.socialhub.kmatrix.api.request.userdirectory.UserDirectorySearchRequest
 import work.socialhub.kmatrix.api.response.events.EventsGetContextResponse
 import work.socialhub.kmatrix.api.response.events.EventsGetEventResponse
 import work.socialhub.kmatrix.api.response.notifications.NotificationsGetResponse
+import work.socialhub.kmatrix.api.response.relations.RelationsGetResponse
 import work.socialhub.kmatrix.api.response.rooms.RoomEvent
 import work.socialhub.kmatrix.stream.MatrixStreamFactory
 import work.socialhub.planetlink.action.AccountActionImpl
@@ -34,8 +40,11 @@ import work.socialhub.planetlink.utils.ExceptionHandler
 import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.matrix.model.MatrixComment
 import work.socialhub.planetlink.matrix.model.MatrixPaging
+import work.socialhub.planetlink.matrix.model.MatrixSpace
 import work.socialhub.planetlink.matrix.model.MatrixUser
 import kotlin.js.JsExport
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 
 @JsExport
 class MatrixAction(
@@ -52,8 +61,8 @@ class MatrixAction(
                 SocialActionType.GetContext,
                 SocialActionType.PostComment,
                 SocialActionType.DeleteComment,
-                SocialActionType.LikeComment,
                 SocialActionType.ReactionComment,
+                SocialActionType.GetSpaces,
                 SocialActionType.GetChannels,
                 SocialActionType.GetNotification,
 
@@ -71,11 +80,69 @@ class MatrixAction(
                 StreamActionType.NotificationStream,
             )
         )
+
+        /**
+         * Time-to-live for the cached room snapshot. A `spaces()` call followed
+         * by `channels(space)` within this window reuses one `/sync`.
+         */
+        private val SNAPSHOT_TTL = 15.seconds
+
+        /**
+         * Inline `/sync` filter: only the room state we need to build the
+         * space / channel / DM lists (creation type, name, topic, avatar,
+         * canonical alias, space children/parent, membership) plus the
+         * top-level `m.direct` account data. `timeout=0` returns immediately.
+         *
+         * `lazy_load_members=true` limits `m.room.member` events to the room's
+         * heroes / timeline senders; room names then come from the server
+         * `summary` (heroes + member counts), so large public rooms no longer
+         * dump their full member list. See [MatrixSnapshotParser].
+         */
+        private const val SNAPSHOT_FILTER_JSON =
+            "{\"room\":{\"timeline\":{\"limit\":1}," +
+                "\"state\":{\"lazy_load_members\":true,\"types\":[" +
+                "\"m.room.create\",\"m.room.name\",\"m.room.topic\",\"m.room.avatar\"," +
+                "\"m.room.canonical_alias\",\"m.space.child\",\"m.space.parent\"," +
+                "\"m.room.member\"]}," +
+                "\"ephemeral\":{\"types\":[]},\"account_data\":{\"types\":[]}}," +
+                "\"presence\":{\"types\":[]}," +
+                "\"account_data\":{\"types\":[\"m.direct\"]}}"
     }
 
     override fun capabilities(): Capabilities = CAPABILITIES
 
     private val accessor get() = auth.accessor
+
+    /** Last parsed sync snapshot and when it was taken (for the TTL cache). */
+    private var snapshotCache: MatrixSnapshot? = null
+    private var snapshotMark: TimeSource.Monotonic.ValueTimeMark? = null
+
+    /**
+     * Fetch (or reuse within [SNAPSHOT_TTL]) a single `/sync` snapshot of all
+     * joined rooms, their state and the DM map. This is the one network call
+     * that backs [spaces], [channels] and [messageThread] — no per-room lookups.
+     * Private + free-standing so same-class callers avoid the Kotlin/JS yield*
+     * bridge crash. See AGENTS.md "Kotlin/JS yield* Bug".
+     */
+    private suspend fun loadRoomSnapshot(force: Boolean = false): MatrixSnapshot {
+        val cached = snapshotCache
+        val fresh = snapshotMark?.let { it.elapsedNow() < SNAPSHOT_TTL } == true
+        if (!force && cached != null && fresh) return cached
+
+        return proceed {
+            val selfUserId = (userMeWithCache() as? MatrixUser)?.userId ?: ""
+            val sync = accessor.sync().sync(
+                SyncRequest().apply {
+                    filter = SNAPSHOT_FILTER_JSON
+                    timeout = 0
+                }
+            ).data
+            MatrixSnapshotParser.parse(sync, selfUserId).also {
+                snapshotCache = it
+                snapshotMark = TimeSource.Monotonic.markNow()
+            }
+        }
+    }
 
     override suspend fun userMe(): User {
         return fetchUserMe()
@@ -255,27 +322,26 @@ class MatrixAction(
         val matrixComment = id as? MatrixComment
             ?: throw SocialHubException("Matrix comment requires roomId and eventId")
 
-        return proceed {
-            val response = accessor.events().getEvent(
-                matrixComment.roomId ?: throw SocialHubException("Room ID is required"),
-                matrixComment.eventId ?: throw SocialHubException("Event ID is required"),
-            ).data
-
-            val userMe = userMeWithCache()
-            val roomEvent = response.toRoomEvent()
-            MatrixMapper.comment(roomEvent, service(), userMe)
-                ?: throw SocialHubException("Could not parse comment")
-        }
+        return fetchComment(
+            matrixComment.roomId ?: throw SocialHubException("Room ID is required"),
+            matrixComment.eventId ?: throw SocialHubException("Event ID is required"),
+        )
     }
 
     override suspend fun comment(url: String): Comment {
+        val parsed = parseMatrixPermalink(url)
+        return fetchComment(parsed.roomId, parsed.eventId)
+    }
+
+    private suspend fun fetchComment(roomId: String, eventId: String): MatrixComment {
         return proceed {
-            val parsed = parseMatrixPermalink(url)
-            val response = accessor.events().getEvent(parsed.roomId, parsed.eventId).data
-            val userMe = userMeWithCache()
+            val response = accessor.events().getEvent(roomId, eventId).data
+            val userMe = me ?: fetchUserMe()
             val roomEvent = response.toRoomEvent()
-            MatrixMapper.comment(roomEvent, service(), userMe)
+            val comment = MatrixMapper.comment(roomEvent, service(), userMe)
                 ?: throw SocialHubException("Could not parse comment")
+            comment.reactions = fetchReactions(comment, userMe)
+            comment
         }
     }
 
@@ -303,17 +369,54 @@ class MatrixAction(
         proceedUnit {
             val comment = id as? MatrixComment
                 ?: throw SocialHubException("Not a Matrix comment")
+            val roomId = comment.roomId
+                ?: throw SocialHubException("Room ID is required for Matrix reactions")
+            val eventId = comment.eventId
+                ?: throw SocialHubException("Event ID is required for Matrix reactions")
 
             accessor.rooms().sendMessage(
                 RoomsSendMessageRequest().apply {
-                    roomId = comment.roomId
+                    this.roomId = roomId
                     body = reaction
                     msgtype = "m.reaction"
                     relatesToType = "m.annotation"
-                    relatesToEventId = comment.eventId
+                    relatesToEventId = eventId
                     relatesToKey = reaction
                 }
             )
+        }
+    }
+
+    private suspend fun fetchReactions(
+        comment: MatrixComment,
+        userMe: User?,
+    ): List<Reaction> {
+        val roomId = comment.roomId ?: return emptyList()
+        val eventId = comment.eventId ?: return emptyList()
+        return proceed {
+            val events = mutableListOf<RelationsGetResponse.RelationEvent>()
+            var from: String? = null
+
+            while (true) {
+                val response = accessor.relations().getRelations(
+                    RelationsGetRequest().apply {
+                        this.roomId = roomId
+                        this.eventId = eventId
+                        relType = "m.annotation"
+                        eventType = "m.reaction"
+                        this.from = from
+                        limit = 100
+                        dir = "b"
+                    }
+                ).data
+                events.addAll(response.chunk)
+
+                val next = response.nextBatch
+                if (next.isNullOrEmpty() || next == from) break
+                from = next
+            }
+
+            MatrixMapper.reactions(events, (userMe as? MatrixUser)?.userId)
         }
     }
 
@@ -344,6 +447,103 @@ class MatrixAction(
         }
     }
 
+    /**
+     * Matrix-specific extra: mark a room as read up to [eventId].
+     * fully-read マーカーと公開/非公開の既読レシートを [eventId] に設定する。
+     * 統一 AccountAction 外のため capability には登録しない。
+     */
+    suspend fun markRoomRead(room: Identify, eventId: String) {
+        proceedUnit {
+            val roomId = room.id!!.value<String>()
+            accessor.rooms().setReadMarkers(
+                RoomsSetReadMarkersRequest().apply {
+                    this.roomId = roomId
+                    fullyRead = eventId
+                    read = eventId
+                    readPrivate = eventId
+                }
+            )
+        }
+    }
+
+    /**
+     * Matrix-specific extra: turn an `mxc://{server}/{mediaId}` content URI into
+     * an HTTP(S) URL an `<img>` can load directly, using this account's
+     * homeserver as the base. Targets the legacy **unauthenticated** media
+     * endpoints (`/_matrix/media/v3/download` and `/thumbnail`), which need no
+     * `Authorization` header — so unlike [resolveMedia] the caller renders it
+     * with a plain `src` and no byte fetch / blob wrapping.
+     *
+     * Prefer this for avatars and inline images on homeservers that still serve
+     * v3 (e.g. matrix.org). On servers that have frozen v3 the URL will error;
+     * fall back to [resolveMedia] (authenticated bytes) there. Returns null for a
+     * non-mxc / empty input.
+     *
+     * A [width]/[height] (both required) yields a scaled thumbnail URL; omitting
+     * them yields the full download URL.
+     *
+     * 統一 AccountAction 外のため capability には登録しない。
+     */
+    fun mxcToHttpUrl(
+        mxcUrl: String?,
+        width: Int? = null,
+        height: Int? = null,
+    ): String? {
+        return MatrixMapper.mxcToHttpUrl(mxcUrl, auth.host, width, height)
+    }
+
+    /**
+     * Matrix-specific extra: resolve an `mxc://{server}/{mediaId}` content URI
+     * to raw bytes via the (authenticated) media API, so callers can render it
+     * (e.g. as a blob/data URL). Use this on homeservers that require
+     * authenticated media (Matrix 1.11 / MSC3916) and have frozen the legacy
+     * unauthenticated endpoints; otherwise [mxcToHttpUrl] is simpler.
+     *
+     * When [width] and [height] are both provided a scaled thumbnail is fetched;
+     * otherwise the full-resolution file is downloaded. The unified url fields
+     * (`User.iconImageUrl`, `Space.iconUrl`, `Media.sourceUrl` / `previewUrl`)
+     * are normalised to HTTP by the mappers; pass instead the retained raw mxc —
+     * `MatrixUser.avatarUrl` or `MatrixMedia.sourceMxcUrl` / `previewMxcUrl` —
+     * when the unauthenticated HTTP URL is rejected and you need authenticated
+     * bytes.
+     *
+     * 統一 AccountAction 外のため capability には登録しない。
+     */
+    suspend fun resolveMedia(
+        mxcUrl: String,
+        width: Int? = null,
+        height: Int? = null,
+    ): ByteArray {
+        return proceed {
+            val parts = mxcUrl.removePrefix("mxc://").split("/", limit = 2)
+            val serverName = parts.getOrNull(0)
+                ?.takeIf { it.isNotEmpty() }
+                ?: throw SocialHubException("Invalid mxc URI: $mxcUrl")
+            val mediaId = parts.getOrNull(1)
+                ?.takeIf { it.isNotEmpty() }
+                ?: throw SocialHubException("Invalid mxc URI: $mxcUrl")
+
+            if (width != null && height != null) {
+                accessor.media().thumbnail(
+                    MediaThumbnailRequest().apply {
+                        this.serverName = serverName
+                        this.mediaId = mediaId
+                        this.width = width
+                        this.height = height
+                        this.method = "scale"
+                    }
+                )
+            } else {
+                accessor.media().download(
+                    MediaDownloadRequest().apply {
+                        this.serverName = serverName
+                        this.mediaId = mediaId
+                    }
+                )
+            }
+        }
+    }
+
     override suspend fun commentContexts(id: Identify): Context {
         return proceed {
             val comment = id as? MatrixComment
@@ -370,20 +570,54 @@ class MatrixAction(
         }
     }
 
+    override suspend fun spaces(paging: Paging): Pageable<Space> {
+        return doSpaces(paging)
+    }
+
+    private suspend fun doSpaces(paging: Paging): Pageable<Space> {
+        val snapshot = loadRoomSnapshot()
+        val spaces = snapshot.rooms.values.filter { it.isSpace }
+        return MatrixMapper.spaces(spaces, service(), paging)
+    }
+
     override suspend fun channels(id: Identify, paging: Paging): Pageable<Channel> {
-        return proceed {
-            val rooms = accessor.rooms().getJoinedRooms().data.joinedRooms
-            val channels = rooms.map { roomId ->
-                val name = try {
-                    accessor.rooms().getRoomName(roomId).data.name
-                } catch (_: Exception) { null }
-                MatrixMapper.channel(roomId, name, service())
-            }
-            Pageable<Channel>().also {
-                it.entities = channels
-                it.paging = paging
-            }
+        return doChannels(id, paging)
+    }
+
+    private suspend fun doChannels(id: Identify, paging: Paging): Pageable<Channel> {
+        val snapshot = loadRoomSnapshot()
+
+        // Dispatch: a MatrixSpace (or a room id that the snapshot marks as a
+        // space) returns that space's direct child channels; anything else
+        // (a user/account identify, or a non-space room id) returns the flat
+        // list of joined, non-space rooms.
+        val spaceRoomId = when {
+            id is MatrixSpace -> id.roomId ?: id.id?.value<String>()
+            else -> id.id?.value<String>()?.takeIf { snapshot.rooms[it]?.isSpace == true }
         }
+
+        val summaries = if (spaceRoomId != null) {
+            val children = snapshot.rooms[spaceRoomId]?.childRoomIds ?: emptyList()
+            children.map { childId ->
+                // Unjoined children aren't in the snapshot; fall back to the id
+                // as the name rather than issuing a per-room lookup.
+                snapshot.rooms[childId] ?: MatrixRoomSummary(
+                    roomId = childId,
+                    displayName = childId,
+                    topic = null,
+                    avatarUrl = null,
+                    createAtMs = null,
+                    isSpace = false,
+                    isDirect = false,
+                    childRoomIds = emptyList(),
+                    memberCount = 0,
+                )
+            }
+        } else {
+            snapshot.rooms.values.filter { !it.isSpace }
+        }
+
+        return MatrixMapper.channels(summaries, service(), paging)
     }
 
     override suspend fun channelTimeLine(id: Identify, paging: Paging): Pageable<Comment> {
@@ -398,12 +632,18 @@ class MatrixAction(
                 MatrixMapper.createGetMessagesRequest(roomId, mp, paging.count ?: 50)
             ).data
 
+            // The lazy_load_members filter makes the server return this chunk's
+            // senders' m.room.member state, so each message's display name /
+            // avatar resolves without a per-sender profile lookup.
+            val members = MatrixMapper.memberInfoMap(response.state?.toList() ?: emptyList())
+
             val userMe = userMeWithCache()
             val pageable = MatrixMapper.timeLine(
                 response.chunk.toList(),
                 service(),
                 paging,
                 userMe,
+                members,
             )
             pageable.paging = (pageable.paging as? MatrixPaging)?.apply {
                 from = response.start
@@ -422,32 +662,13 @@ class MatrixAction(
     }
 
     override suspend fun messageThread(paging: Paging): Pageable<Thread> {
-        return proceed {
-            val rooms = accessor.rooms().getJoinedRooms().data.joinedRooms
-            val userMeId = (userMeWithCache() as? MatrixUser)?.userId ?: ""
+        return doMessageThread(paging)
+    }
 
-            val dmRooms = rooms.filter { roomId ->
-                try {
-                    val members = accessor.rooms().getJoinedMembers(roomId).data.joined
-                    members.size == 2 && members.keys.any { it != userMeId }
-                } catch (_: Exception) { false }
-            }
-
-            val threads = dmRooms.map { roomId ->
-                val roomName = try {
-                    accessor.rooms().getRoomName(roomId).data.name
-                } catch (_: Exception) { null }
-                Thread(service()).apply {
-                    id = ID(roomId)
-                    description = roomName
-                }
-            }
-
-            Pageable<Thread>().also {
-                it.entities = threads
-                it.paging = paging
-            }
-        }
+    private suspend fun doMessageThread(paging: Paging): Pageable<Thread> {
+        val snapshot = loadRoomSnapshot()
+        val dmRooms = snapshot.rooms.values.filter { it.isDirect }
+        return MatrixMapper.threads(dmRooms, service(), paging)
     }
 
     override suspend fun messageTimeLine(id: Identify, paging: Paging): Pageable<Comment> {

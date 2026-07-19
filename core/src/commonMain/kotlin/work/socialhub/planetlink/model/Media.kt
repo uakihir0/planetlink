@@ -8,7 +8,7 @@ import kotlin.js.JsExport
  * メディアモデル
  */
 @JsExport
-class Media {
+open class Media {
 
     /** Type of this media */
     var type: MediaType? = null
@@ -24,6 +24,12 @@ class Media {
 
     /** Height of this media (pixels) if known */
     var height: Int? = null
+
+    /** Alt text / media description (where the platform provides it) */
+    var description: String? = null
+
+    /** BlurHash for a placeholder preview (where the platform provides it) */
+    var blurhash: String? = null
 
     /** Request header for media. */
     val requestHeader = mutableMapOf<String, String>()

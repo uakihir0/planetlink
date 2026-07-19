@@ -15,6 +15,7 @@
 | Slack | OAuth / アクセストークン |
 | Nostr | 秘密鍵 (nsec) |
 | Matrix | パスワード / アクセストークン |
+| X / Twitter | Cookie / Guest (読み取り専用) |
 
 ## 使用方法
 
@@ -166,6 +167,25 @@ const user = await account.action.userMe();
 console.log(user.name);
 ```
 
+#### X / Twitter での認証
+
+```typescript
+import { XAuth, XPaging } from "planetlink-js/kotlin/planetlink-x.mjs";
+
+const auth = new XAuth();
+const account = auth.accountWithCookies("X_AUTH_TOKEN_COOKIE", "X_CT0_COOKIE");
+
+// 共通ホームタイムラインは X の Following タイムラインに対応します。
+const paging = new XPaging(20);
+const following = await account.action.homeTimeLine(paging);
+
+// Guest アカウントでは一部の公開情報だけを取得できます。
+const guest = new XAuth().guestAccount();
+```
+
+X アダプターは意図的に読み取り専用です。投稿、返信、削除、いいね、
+リポスト、ブックマーク変更、フォローは実装していません。
+
 ### 統一 API
 
 どのプラットフォームで認証しても、同じ `AccountAction` インターフェースで操作できます:
@@ -174,6 +194,7 @@ console.log(user.name);
 // プラットフォームに関係なく同じ API
 const user = await account.action.userMe();
 const timeline = await account.action.homeTimeLine(paging);
+// プラットフォーム固有の変更操作は capabilities() で確認してください。
 await account.action.postComment(commentForm);
 await account.action.likeComment(identify);
 await account.action.followUser(identify);

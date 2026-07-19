@@ -34,6 +34,9 @@ class GetUserTest {
 
         @Test
         fun testMatrix() = runTest { matrix().act() }
+
+        @Test
+        fun testX() = runTest { x().act() }
     }
 
     @Nested
@@ -78,6 +81,14 @@ class GetUserTest {
                 matrix().act(userId)
             }
         }
+
+        @Test
+        fun testX() = runTest {
+            val screenName = checkNotNull(config)["X_SCREEN_NAME"].orEmpty()
+            if (screenName.isNotBlank()) {
+                x().act("https://x.com/$screenName")
+            }
+        }
     }
 
     @Nested
@@ -115,6 +126,14 @@ class GetUserTest {
             val userId = c["MATRIX_USER"] ?: ""
             if (userId.isNotBlank()) {
                 matrix().act(userId)
+            }
+        }
+
+        @Test
+        fun testX() = runTest {
+            val screenName = checkNotNull(config)["X_SCREEN_NAME"].orEmpty()
+            if (screenName.isNotBlank()) {
+                x().act(screenName)
             }
         }
     }

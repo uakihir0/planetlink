@@ -8,4 +8,6 @@ class NotSupportedException : SocialHubException {
     constructor() : super()
     @JsExport.Ignore
     constructor(message: String) : super(message)
+    @JsExport.Ignore
+    constructor(message: String, cause: Throwable) : super(message, cause)
 }

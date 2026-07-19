@@ -32,6 +32,9 @@ class HomeTimelineTest : AbstractTest() {
     fun testSlack() = runTest { slack().act() }
 
     @Test
+    fun testX() = runTest { x().act() }
+
+    @Test
     fun testMatrix() = runTest {
         try {
             matrix().act()

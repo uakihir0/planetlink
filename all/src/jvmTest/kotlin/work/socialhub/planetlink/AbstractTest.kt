@@ -4,6 +4,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import work.socialhub.planetlink.bluesky.expand.PlanetLinkEx.bluesky
+import work.socialhub.planetlink.discord.expand.PlanetLinkEx.discord
 import work.socialhub.planetlink.mastodon.expand.PlanetLinkEx.mastodon
 import work.socialhub.planetlink.misskey.expand.PlanetLinkEx.misskey
 import work.socialhub.planetlink.model.Account
@@ -11,6 +12,7 @@ import work.socialhub.planetlink.matrix.expand.PlanetLinkEx.matrix
 import work.socialhub.planetlink.nostr.expand.PlanetLinkEx.nostr
 import work.socialhub.planetlink.slack.expand.PlanetLinkEx.slack
 import work.socialhub.planetlink.tumblr.expand.PlanetLinkEx.tumblr
+import work.socialhub.planetlink.x.expand.PlanetLinkEx.x
 import java.io.File
 import kotlin.test.BeforeTest
 
@@ -115,6 +117,15 @@ open class AbstractTest {
         )
     }
 
+    fun discord(): Account {
+        val c = checkNotNull(config)
+        return PlanetLink.discord(
+            c["DISCORD_API_HOST"]?.takeIf { it.isNotEmpty() },
+        ).getAccountWithToken(
+            checkNotNull(c["DISCORD_USER_TOKEN"]),
+        )
+    }
+
     fun nostr(): Account {
         val c = checkNotNull(config)
         val relays = (c["NOSTR_RELAYS"] ?: "").split(",").filter { it.isNotBlank() }
@@ -131,6 +142,14 @@ open class AbstractTest {
         return PlanetLink.matrix(host).accountWithPassword(
             checkNotNull(c["MATRIX_USER"]),
             checkNotNull(c["MATRIX_PASSWORD"]),
+        )
+    }
+
+    fun x(): Account {
+        val c = checkNotNull(config)
+        return PlanetLink.x().accountWithCookies(
+            checkNotNull(c["X_AUTH_TOKEN"]),
+            checkNotNull(c["X_CSRF_TOKEN"]),
         )
     }
 

@@ -254,9 +254,11 @@ object SlackMapper {
         service: Service
     ): Pageable<Channel> {
         val model = Pageable<Channel>()
-        val entities = response.channels?.map { c ->
-            channel(c, service)
-        } ?: emptyList()
+        val entities = response.channels
+            // DM (IM) / グループ DM (MPIM) はチャンネル一覧に含めない (DM は別途取得)
+            ?.filter { !it.isIm && !it.isMpim }
+            ?.map { c -> channel(c, service) }
+            ?: emptyList()
 
         val pg = SlackPaging()
         pg.count = entities.size
@@ -299,10 +301,11 @@ object SlackMapper {
         memberMap: Map<String, List<String>>,
         historyMap: Map<String, Instant>,
         accountMap: Map<String, User>,
+        userMeId: String,
         service: Service
     ): List<Thread> {
         return response.channels?.mapNotNull { c ->
-            if (c.isArchived == true) return@mapNotNull null
+            if (!isVisibleThread(c, userMeId)) return@mapNotNull null
 
             Thread(service).apply {
                 id = ID(c.id ?: "")
@@ -314,6 +317,43 @@ object SlackMapper {
                     ?: c.created?.let { Instant.fromEpochSeconds(it.toLong(), 0) }
             }
         } ?: emptyList()
+    }
+
+    internal fun isVisibleThread(
+        conversation: Conversation,
+        userMeId: String,
+    ): Boolean {
+        if (conversation.isArchived) return false
+        return conversation.isOpen ||
+            (conversation.isIm && conversation.user == userMeId)
+    }
+
+    internal fun isGroupThread(conversation: Conversation): Boolean {
+        return conversation.isMpim ||
+            (conversation.id?.startsWith("G") == true && !conversation.isIm)
+    }
+
+    internal fun threadMemberIds(
+        conversation: Conversation,
+        userMeId: String,
+    ): List<String> {
+        if (conversation.isIm) {
+            return listOfNotNull(conversation.user).distinct()
+        }
+
+        return conversation.members
+            ?.filter { it != userMeId }
+            ?.distinct()
+            ?: emptyList()
+    }
+
+    internal fun threadPaging(
+        paging: Paging,
+    ): Paging {
+        return Paging(paging.count).apply {
+            isHasNew = false
+            isHasPast = false
+        }
     }
 
     /** チームマッピング */

@@ -66,6 +66,7 @@ class TumblrAction(
                 SocialActionType.GetContext,
                 SocialActionType.PostComment,
                 SocialActionType.DeleteComment,
+                SocialActionType.EditComment,
                 SocialActionType.LikeComment,
                 SocialActionType.UnlikeComment,
                 SocialActionType.ShareComment,
@@ -508,6 +509,55 @@ class TumblrAction(
         validateToken {
             auth.accessor.blog()
                 .postCreate(post)
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * Tumblr は自分の投稿のみ編集可能。blogName は認証ユーザーのブログ。
+     */
+    override suspend fun editComment(
+        id: Identify,
+        req: CommentForm,
+    ) {
+        if (id is TumblrComment) {
+            val me = userMeWithCache()
+            val post: BlogPostRequest
+
+            if (req.images.isNotEmpty()) {
+
+                // PhotoPost
+                post = BlogPhotoPostRequest().also { r ->
+                    r.data = req.images.map { img ->
+                        FileRequest(
+                            data = img.data,
+                            name = img.name,
+                        )
+                    }.toTypedArray()
+                    r.caption = req.text
+                    r.type = "photo"
+                }
+
+            } else {
+
+                // TextPost
+                post = BlogTextPostRequest().also { r ->
+                    r.body = req.text
+                    r.type = "text"
+                }
+            }
+
+            post.id = id.id<String>()
+            post.blogName = me.id<String>()
+
+            validateToken {
+                auth.accessor.blog()
+                    .postEdit(post)
+            }
+        } else {
+            throw NotSupportedException(
+                "TumblrComment (id only) required."
+            )
         }
     }
 

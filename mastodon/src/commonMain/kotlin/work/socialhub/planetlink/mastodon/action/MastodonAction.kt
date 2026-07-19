@@ -1,6 +1,8 @@
 package work.socialhub.planetlink.mastodon.action
 
 
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 import net.socialhub.planetlink.model.event.CommentEvent
 import work.socialhub.kmastodon.MastodonException
@@ -17,6 +19,7 @@ import work.socialhub.kmastodon.api.request.accounts.AccountsStatusesRequest
 import work.socialhub.kmastodon.api.request.accounts.AccountsUnblockRequest
 import work.socialhub.kmastodon.api.request.accounts.AccountsUnfollowRequest
 import work.socialhub.kmastodon.api.request.accounts.AccountsUnmuteRequest
+import work.socialhub.kmastodon.api.request.accounts.AccountsUpdateCredentialsRequest
 import work.socialhub.kmastodon.api.request.bookmarks.BookmarksBookmarkRequest
 import work.socialhub.kmastodon.api.request.bookmarks.BookmarksGetBookmarksRequest
 import work.socialhub.kmastodon.api.request.bookmarks.BookmarksUnbookmarkRequest
@@ -24,9 +27,15 @@ import work.socialhub.kmastodon.api.request.domainblocks.DomainBlocksBlockDomain
 import work.socialhub.kmastodon.api.request.domainblocks.DomainBlocksGetDomainBlocksRequest
 import work.socialhub.kmastodon.api.request.domainblocks.DomainBlocksUnblockDomainRequest
 import work.socialhub.kmastodon.api.request.favourites.FavouritesFavouritesRequest
+import work.socialhub.kmastodon.api.request.followrequests.FollowRequestsAuthorizeFollowRequestRequest
+import work.socialhub.kmastodon.api.request.followrequests.FollowRequestsRejectFollowRequestRequest
+import work.socialhub.kmastodon.api.request.lists.ListsAddAccountsToListRequest
+import work.socialhub.kmastodon.api.request.lists.ListsCreateListRequest
+import work.socialhub.kmastodon.api.request.lists.ListsDeleteAccountsToListRequest
 import work.socialhub.kmastodon.api.request.lists.ListsListAccountsRequest
 import work.socialhub.kmastodon.api.request.lists.ListsListsRequest
 import work.socialhub.kmastodon.api.request.medias.MediasPostMediaRequest
+import work.socialhub.kmastodon.api.request.reports.ReportsPostReportRequest
 import work.socialhub.kmastodon.api.request.notifications.NotificationsNotificationRequest
 import work.socialhub.kmastodon.api.request.notifications.NotificationsNotificationsRequest
 import work.socialhub.kmastodon.api.request.notifications.NotificationsPostSubscriptionRequest
@@ -37,6 +46,7 @@ import work.socialhub.kmastodon.api.request.scheduledstatuses.ScheduledStatusesS
 import work.socialhub.kmastodon.api.request.search.SearchSearchRequest
 import work.socialhub.kmastodon.api.request.statuses.StatusesContextRequest
 import work.socialhub.kmastodon.api.request.statuses.StatusesDeleteStatusRequest
+import work.socialhub.kmastodon.api.request.statuses.StatusesEditStatusRequest
 import work.socialhub.kmastodon.api.request.statuses.StatusesFavouriteRequest
 import work.socialhub.kmastodon.api.request.statuses.StatusesPinRequest
 import work.socialhub.kmastodon.api.request.statuses.StatusesPostStatusRequest
@@ -98,6 +108,7 @@ import work.socialhub.planetlink.model.event.UserEvent
 import work.socialhub.planetlink.model.paging.BorderPaging
 import work.socialhub.planetlink.model.paging.OffsetPaging
 import work.socialhub.planetlink.model.request.CommentForm
+import work.socialhub.planetlink.model.request.ProfileForm
 import kotlin.js.JsExport
 import kotlin.js.JsName
 import work.socialhub.kmastodon.entity.Notification as MNotification
@@ -657,6 +668,14 @@ class MastodonAction(
         proceedUnit {
             val post = StatusesPostStatusRequest()
 
+            // Validate the scheduled time up front, before any network work
+            // (media uploads) so an invalid value fails fast without wasted requests.
+            // (Mastodon only accepts an ISO-8601 date-time at least 5 minutes ahead)
+            req.scheduledAt?.let {
+                validateScheduledAt(it)
+                post.scheduledAt = it
+            }
+
             // コンテンツ
             post.status = req.text
 
@@ -717,6 +736,23 @@ class MastodonAction(
         }
     }
 
+    // Validate the scheduled post time.
+    // Throws if it cannot be parsed as ISO-8601, or is less than 5 minutes from now.
+    private fun validateScheduledAt(scheduledAt: String) {
+        val scheduled = try {
+            Instant.parse(scheduledAt)
+        } catch (e: IllegalArgumentException) {
+            throw SocialHubException(
+                "scheduledAt must be a valid ISO-8601 date-time: $scheduledAt", e
+            )
+        }
+        if (scheduled < Clock.System.now() + 5.minutes) {
+            throw SocialHubException(
+                "scheduledAt must be at least 5 minutes in the future: $scheduledAt"
+            )
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -742,6 +778,249 @@ class MastodonAction(
             MastodonMapper.comment(
                 status.data,
                 service(),
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun editComment(
+        id: Identify,
+        req: CommentForm,
+    ) {
+        proceedUnit {
+            val edit = StatusesEditStatusRequest()
+            edit.id = id.id<String>()
+
+            // コンテンツ
+            edit.status = req.text
+
+            // コンテンツ注意文言
+            req.warning?.let {
+                edit.spoilerText = it
+            }
+
+            // センシティブな内容
+            if (req.isSensitive) {
+                edit.sensitive = true
+            }
+
+            // 画像の処理 (順序保持のため逐次アップロード, doPostComment と同様)
+            if (req.images.isNotEmpty()) {
+                edit.mediaIds = req.images.map { image ->
+                    val attachment = auth.accessor.medias().postMedia(
+                        MediasPostMediaRequest().also {
+                            it.bytes = image.data
+                            it.name = image.name
+                            it.description = image.description
+                        }
+                    )
+                    attachment.data.id!!
+                }.toTypedArray()
+            }
+
+            // 投票
+            req.poll?.let { poll ->
+                edit.pollOptions = poll.options.toTypedArray()
+                edit.pollMultiple = poll.multiple
+                edit.pollExpiresIn = poll.expiresIn * 60
+            }
+
+            val status = auth.accessor.statuses().editStatus(edit)
+            service().rateLimit.addInfo(
+                SocialActionType.EditComment,
+                MastodonMapper.rateLimit(status)
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun reportUser(
+        id: Identify,
+        comment: String?,
+    ) {
+        proceedUnit {
+            val response = auth.accessor.reports().postReport(
+                ReportsPostReportRequest().also {
+                    it.accountId = id.id<String>()
+                    it.comment = comment
+                }
+            )
+            service().rateLimit.addInfo(
+                SocialActionType.ReportUser,
+                MastodonMapper.rateLimit(response)
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * Mastodon の通報は対象アカウント必須なので投稿主を解決する。
+     * 公開 comment(id) は JS の suspendBridge 未配線で落ちるため private fetchComment を使う。
+     */
+    override suspend fun reportComment(
+        id: Identify,
+        comment: String?,
+    ) {
+        val target = fetchComment(id)
+        proceedUnit {
+            val response = auth.accessor.reports().postReport(
+                ReportsPostReportRequest().also {
+                    it.accountId = target.user!!.id<String>()
+                    it.statusIds = arrayOf(id.id<String>())
+                    it.comment = comment
+                }
+            )
+            service().rateLimit.addInfo(
+                SocialActionType.ReportComment,
+                MastodonMapper.rateLimit(response)
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun updateProfile(
+        form: ProfileForm
+    ) {
+        proceedUnit {
+            val response = auth.accessor.accounts().updateCredentials(
+                AccountsUpdateCredentialsRequest().also {
+                    it.displayName = form.displayName
+                    it.note = form.description
+                    it.avatar = form.avatar
+                    it.avatarName = form.avatarName
+                    it.header = form.banner
+                    it.headerName = form.bannerName
+                }
+            )
+            service().rateLimit.addInfo(
+                SocialActionType.UpdateProfile,
+                MastodonMapper.rateLimit(response)
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * Mastodon のリスト作成は説明文 (description) 非対応のため無視する。
+     */
+    override suspend fun createList(
+        name: String,
+        description: String?,
+    ): Channel {
+        return proceed {
+            val response = auth.accessor.lists().createList(
+                ListsCreateListRequest().also {
+                    it.title = name
+                }
+            )
+            service().rateLimit.addInfo(
+                SocialActionType.CreateList,
+                MastodonMapper.rateLimit(response)
+            )
+            MastodonMapper.channel(response.data, service())
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun addUserToList(
+        channel: Identify,
+        user: Identify,
+    ) {
+        proceedUnit {
+            val response = auth.accessor.lists().addAccountsToList(
+                ListsAddAccountsToListRequest().also {
+                    it.id = channel.id<String>()
+                    it.addAccountId(user.id<String>())
+                }
+            )
+            service().rateLimit.addInfo(
+                SocialActionType.AddUserToList,
+                MastodonMapper.rateLimit(response)
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun removeUserFromList(
+        channel: Identify,
+        user: Identify,
+    ) {
+        proceedUnit {
+            val response = auth.accessor.lists().deleteAccountsToList(
+                ListsDeleteAccountsToListRequest().also {
+                    it.id = channel.id<String>()
+                    it.addAccountId(user.id<String>())
+                }
+            )
+            service().rateLimit.addInfo(
+                SocialActionType.RemoveUserFromList,
+                MastodonMapper.rateLimit(response)
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun acceptFollowRequest(
+        id: Identify
+    ) {
+        proceedUnit {
+            val response = auth.accessor.followRequests().authorizeFollowRequest(
+                FollowRequestsAuthorizeFollowRequestRequest().also {
+                    it.id = id.id<String>()
+                }
+            )
+            service().rateLimit.addInfo(
+                SocialActionType.AcceptFollowRequest,
+                MastodonMapper.rateLimit(response)
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun rejectFollowRequest(
+        id: Identify
+    ) {
+        proceedUnit {
+            val response = auth.accessor.followRequests().rejectFollowRequest(
+                FollowRequestsRejectFollowRequestRequest().also {
+                    it.id = id.id<String>()
+                }
+            )
+            service().rateLimit.addInfo(
+                SocialActionType.RejectFollowRequest,
+                MastodonMapper.rateLimit(response)
+            )
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * 注意: Mastodon には通知を「既読」にする API がないため、
+     * clearNotifications() で全通知を削除する破壊的な挙動になる。
+     * upToId は非対応のため無視する。
+     */
+    override suspend fun markNotificationsRead(
+        upToId: Identify?
+    ) {
+        proceedUnit {
+            val response = auth.accessor.notifications().clearNotifications()
+            service().rateLimit.addInfo(
+                SocialActionType.MarkNotificationsRead,
+                MastodonMapper.rateLimit(response)
             )
         }
     }
@@ -1315,12 +1594,12 @@ class MastodonAction(
                     it.types = arrayOf(
                         FOLLOW.code,
                         REBLOG.code,
-                        FAVOURITE.code
+                        FAVOURITE.code,
+                        MastodonNotificationType.POLL.code
                     )
                     // 互換性のために記述
                     it.excludeTypes = arrayOf(
-                        MENTION.code,
-                        MastodonNotificationType.POLL.code
+                        MENTION.code
                     )
                 }
             )
@@ -2013,6 +2292,16 @@ class MastodonAction(
                 SocialActionType.BookmarkComment,
                 SocialActionType.UnbookmarkComment,
                 SocialActionType.VotePoll,
+                SocialActionType.EditComment,
+                SocialActionType.ReportUser,
+                SocialActionType.ReportComment,
+                SocialActionType.UpdateProfile,
+                SocialActionType.CreateList,
+                SocialActionType.AddUserToList,
+                SocialActionType.RemoveUserFromList,
+                SocialActionType.AcceptFollowRequest,
+                SocialActionType.RejectFollowRequest,
+                SocialActionType.MarkNotificationsRead,
 
                 TimeLineActionType.HomeTimeLine,
                 TimeLineActionType.MentionTimeLine,
@@ -2039,6 +2328,7 @@ class MastodonAction(
                 MastodonActionType.FederationTimeLine,
                 MastodonActionType.PinComment,
                 MastodonActionType.UnpinComment,
+                MastodonActionType.ClearNotifications,
             )
         )
 

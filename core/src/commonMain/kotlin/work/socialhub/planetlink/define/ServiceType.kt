@@ -15,4 +15,5 @@ enum class ServiceType {
     Bluesky,
     Nostr,
     Matrix,
+    Discord,
 }

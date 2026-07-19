@@ -7,10 +7,13 @@ import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
+import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.model.request.MediaForm
 import work.socialhub.planetlink.matrix.model.MatrixComment
+import java.time.Instant
 import kotlin.test.Test
+import kotlin.test.assertFailsWith
 
 class PostCommentTest {
 
@@ -70,6 +73,31 @@ class PostCommentTest {
                     it.addParam(MatrixComment.ROOM_KEY, rid)
                 }
             )
+        }
+    }
+
+    @Nested
+    inner class ScheduledPost : AbstractTest() {
+        @Test
+        fun testMastodonScheduledPostInvalidFormat() = runTest {
+            assertFailsWith<SocialHubException> {
+                mastodon().action.postComment(
+                    CommentForm().also {
+                        it.text = "Scheduled post test"
+                        it.scheduledAt = "not-a-valid-date"
+                    })
+            }
+        }
+
+        @Test
+        fun testMastodonScheduledPostTooSoon() = runTest {
+            assertFailsWith<SocialHubException> {
+                mastodon().action.postComment(
+                    CommentForm().also {
+                        it.text = "Scheduled post test"
+                        it.scheduledAt = Instant.now().plusSeconds(60).toString()
+                    })
+            }
         }
     }
 

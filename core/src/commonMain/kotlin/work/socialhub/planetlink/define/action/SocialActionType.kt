@@ -48,4 +48,26 @@ enum class SocialActionType : ActionType {
 
     // Poll
     VotePoll,
+
+    // Report
+    ReportUser,
+    ReportComment,
+
+    // Profile
+    UpdateProfile,
+
+    // Lists
+    CreateList,
+    AddUserToList,
+    RemoveUserFromList,
+
+    // Follow Request
+    AcceptFollowRequest,
+    RejectFollowRequest,
+
+    // Notification
+    MarkNotificationsRead,
+
+    // Spaces
+    GetSpaces,
 }
