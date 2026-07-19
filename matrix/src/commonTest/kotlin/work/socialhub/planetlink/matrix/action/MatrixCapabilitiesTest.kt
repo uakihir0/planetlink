@@ -14,6 +14,6 @@ class MatrixCapabilitiesTest {
         assertFalse(capabilities.isSupported(SocialActionType.LikeComment))
         assertFalse(capabilities.isSupported(SocialActionType.UnlikeComment))
         assertTrue(capabilities.isSupported(SocialActionType.ReactionComment))
-        assertFalse(capabilities.isSupported(SocialActionType.UnreactionComment))
+        assertTrue(capabilities.isSupported(SocialActionType.UnreactionComment))
     }
 }
