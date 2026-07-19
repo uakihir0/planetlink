@@ -31,7 +31,7 @@ class XUser(
     override val additionalFields: MutableList<AttributedFiled>
         get() = mutableListOf<AttributedFiled>().also { fields ->
             location?.takeIf { it.isNotBlank() }?.let {
-                fields.add(AttributedFiled("Location", it))
+                fields.add(AttributedFiled("Location", AttributedString.plain(it)))
             }
             url?.takeIf { it.isNotBlank() }?.let {
                 fields.add(AttributedFiled("URL", AttributedString.plain(it)))
