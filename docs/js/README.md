@@ -17,6 +17,7 @@ Therefore, it can be used in web applications and Node.js environments.
 | Slack | OAuth / Access Token |
 | Nostr | Private Key (nsec) |
 | Matrix | Password / Access Token |
+| X / Twitter | Cookies / Guest (read-only) |
 
 ## Usage
 
@@ -167,6 +168,25 @@ const user = await account.action.userMe();
 console.log(user.name);
 ```
 
+#### X / Twitter Authentication
+
+```typescript
+import { XAuth, XPaging } from "planetlink-js/kotlin/planetlink-x.mjs";
+
+const auth = new XAuth();
+const account = auth.accountWithCookies("X_AUTH_TOKEN_COOKIE", "X_CT0_COOKIE");
+
+// The common home timeline maps to X's Following timeline.
+const paging = new XPaging(20);
+const following = await account.action.homeTimeLine(paging);
+
+// Guest accounts only support a limited set of public reads.
+const guest = new XAuth().guestAccount();
+```
+
+The X adapter is intentionally read-only. It does not support posting, replying,
+deleting, liking, reposting, changing bookmarks, or following.
+
 ### Unified API
 
 Once authenticated with any platform, you can use the same `AccountAction` interface:
@@ -175,6 +195,7 @@ Once authenticated with any platform, you can use the same `AccountAction` inter
 // These work the same regardless of platform
 const user = await account.action.userMe();
 const timeline = await account.action.homeTimeLine(paging);
+// Check account.action.capabilities() before using platform-dependent mutations.
 await account.action.postComment(commentForm);
 await account.action.likeComment(identify);
 await account.action.followUser(identify);

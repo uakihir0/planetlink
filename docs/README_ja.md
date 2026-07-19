@@ -19,6 +19,7 @@
 - Slack (library: [kslack](https://github.com/uakihir0/kslack))
 - Matrix (library: [kmatrix](https://github.com/uakihir0/kmatrix))
 - Tumblr (library: [ktumblr](https://github.com/uakihir0/ktumblr))
+- X / Twitter (読み取り専用、library: [kxweb](https://github.com/uakihir0/kxweb))
 
 ## 使い方
 
@@ -35,6 +36,30 @@ repositories {
 dependencies {
 +   implementation("work.socialhub.planetlink:all:0.0.1-SNAPSHOT")
 }
+```
+
+### X / Twitter
+
+X アダプターは意図的に読み取り専用です。投稿、返信、削除、いいね、
+リポスト、ブックマーク変更、フォローは実装していません。QuaX と同様に
+X 上のユーザー操作を行わず、公開コンテンツ、タイムライン、検索、
+ブックマーク一覧、記事、トレンドの閲覧だけを提供します。
+
+```kotlin
+import work.socialhub.planetlink.PlanetLink
+import work.socialhub.planetlink.x.expand.PlanetLinkEx.x
+import work.socialhub.planetlink.x.model.XPaging
+
+val account = PlanetLink.x().accountWithCookies(
+    authToken = "X_AUTH_TOKEN_COOKIE",
+    csrfToken = "X_CT0_COOKIE",
+)
+
+// 共通ホームタイムラインは X の Following タイムラインに対応します。
+val following = account.action.homeTimeLine(XPaging(20))
+
+// Guest モードでは一部の公開情報だけを取得できます。
+val guest = PlanetLink.x().guestAccount()
 ```
 
 ## ライセンス

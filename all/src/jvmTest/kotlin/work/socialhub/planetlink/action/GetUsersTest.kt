@@ -30,5 +30,8 @@ class GetUsersTest {
 
         @Test
         fun testNostr() = runTest { nostr().act() }
+
+        @Test
+        fun testX() = runTest { x().act() }
     }
 }

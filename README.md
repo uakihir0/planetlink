@@ -23,6 +23,7 @@ This is a Kotlin Multiplatform port of [SocialHub](https://github.com/uakihir0/S
 - Slack (library: [kslack](https://github.com/uakihir0/kslack))
 - Matrix (library: [kmatrix](https://github.com/uakihir0/kmatrix))
 - Tumblr (library: [ktumblr](https://github.com/uakihir0/ktumblr))
+- X / Twitter (read-only, library: [kxweb](https://github.com/uakihir0/kxweb))
 
 ## Usage
 
@@ -37,6 +38,30 @@ repositories {
 dependencies {
 +   implementation("work.socialhub.planetlink:all:0.0.1-SNAPSHOT")
 }
+```
+
+### X / Twitter
+
+The X adapter intentionally exposes read-only operations only. Posting, replying,
+deleting, liking, reposting, bookmarking, and following are not supported. This
+follows QuaX's approach of keeping user actions outside X while allowing public
+content, timelines, search, bookmarks, articles, and trends to be read.
+
+```kotlin
+import work.socialhub.planetlink.PlanetLink
+import work.socialhub.planetlink.x.expand.PlanetLinkEx.x
+import work.socialhub.planetlink.x.model.XPaging
+
+val account = PlanetLink.x().accountWithCookies(
+    authToken = "X_AUTH_TOKEN_COOKIE",
+    csrfToken = "X_CT0_COOKIE",
+)
+
+// The common home timeline maps to X's Following timeline.
+val following = account.action.homeTimeLine(XPaging(20))
+
+// Guest mode supports a limited set of public reads.
+val guest = PlanetLink.x().guestAccount()
 ```
 
 ## License
