@@ -1,6 +1,7 @@
 package work.socialhub.planetlink.matrix.action
 
 import work.socialhub.kmatrix.api.response.rooms.RoomEvent
+import work.socialhub.kmatrix.api.response.relations.RelationsGetResponse
 import work.socialhub.planetlink.matrix.model.MatrixUser
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Paging
@@ -9,6 +10,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 /**
  * Offline tests for the sender-user resolution added to the channel timeline:
@@ -51,6 +54,26 @@ class MatrixTimeLineMapperTest {
             if (displayName != null) put("displayname", displayName)
             if (avatarUrl != null) put("avatar_url", avatarUrl)
         }
+    }
+
+    private fun reaction(
+        eventId: String,
+        sender: String,
+        targetEventId: String,
+        key: String,
+    ): RoomEvent = RoomEvent().apply {
+        type = "m.reaction"
+        this.eventId = eventId
+        this.sender = sender
+        roomId = "!r:example.org"
+        originServerTs = 2_000
+        content = mapOf(
+            "m.relates_to" to mapOf(
+                "rel_type" to "m.annotation",
+                "event_id" to targetEventId,
+                "key" to key,
+            )
+        )
     }
 
     @Test
@@ -123,5 +146,83 @@ class MatrixTimeLineMapperTest {
         val info = members["@alice:example.org"]!!
         assertEquals("Alice (new)", info.displayName)
         assertEquals("mxc://example.org/new", info.avatarUrl)
+    }
+
+    @Test
+    fun testTimelineCollectsReactionEvents() {
+        val me = MatrixUser(service()).apply { userId = self }
+        val pageable = MatrixMapper.timeLine(
+            listOf(
+                message("\$message", "@alice:example.org", "hi"),
+                reaction("\$reaction-1", self, "\$message", "\uD83D\uDC4D"),
+                reaction("\$reaction-2", "@bob:example.org", "\$message", "\uD83D\uDC4D"),
+            ),
+            service(),
+            Paging(),
+            userMe = me,
+        )
+
+        val reaction = pageable.entities.single().reactions.single()
+        assertEquals("\uD83D\uDC4D", reaction.name)
+        assertEquals("\uD83D\uDC4D", reaction.emoji)
+        assertEquals(2, reaction.count)
+        assertEquals(true, reaction.reacting)
+    }
+
+    @Test
+    fun testBundledReactionCountIsNotDoubleCounted() {
+        val event = message("\$message", "@alice:example.org", "hi").apply {
+            unsigned = mapOf(
+                "m.relations" to mapOf(
+                    "m.annotation" to mapOf(
+                        "chunk" to listOf(
+                            mapOf("type" to "m.reaction", "key" to "\uD83D\uDC4D", "count" to 5)
+                        )
+                    )
+                )
+            )
+        }
+        val me = MatrixUser(service()).apply { userId = self }
+        val pageable = MatrixMapper.timeLine(
+            listOf(event, reaction("\$mine", self, "\$message", "\uD83D\uDC4D")),
+            service(),
+            Paging(),
+            userMe = me,
+        )
+
+        val reaction = pageable.entities.single().reactions.single()
+        assertEquals(5, reaction.count)
+        assertEquals(true, reaction.reacting)
+    }
+
+    @Test
+    fun testRelationsResponseMapsReactionCounts() {
+        fun relation(sender: String, key: String) =
+            RelationsGetResponse.RelationEvent().apply {
+                type = "m.reaction"
+                this.sender = sender
+                content = mapOf(
+                    "m.relates_to" to buildJsonObject {
+                        put("rel_type", "m.annotation")
+                        put("event_id", "\$message")
+                        put("key", key)
+                    }
+                )
+            }
+
+        val reactions = MatrixMapper.reactions(
+            listOf(
+                relation(self, "\uD83C\uDF89"),
+                relation("@alice:example.org", "\uD83C\uDF89"),
+                relation("@bob:example.org", "\uD83D\uDC4D"),
+            ),
+            self,
+        )
+
+        assertEquals(2, reactions.size)
+        assertEquals(2, reactions.first { it.name == "\uD83C\uDF89" }.count)
+        assertEquals(true, reactions.first { it.name == "\uD83C\uDF89" }.reacting)
+        assertEquals(1, reactions.first { it.name == "\uD83D\uDC4D" }.count)
+        assertEquals(false, reactions.first { it.name == "\uD83D\uDC4D" }.reacting)
     }
 }

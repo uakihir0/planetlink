@@ -8,6 +8,7 @@ import work.socialhub.kmatrix.api.request.events.EventsGetContextRequest
 import work.socialhub.kmatrix.api.request.media.MediaDownloadRequest
 import work.socialhub.kmatrix.api.request.media.MediaThumbnailRequest
 import work.socialhub.kmatrix.api.request.notifications.NotificationsGetRequest
+import work.socialhub.kmatrix.api.request.relations.RelationsGetRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsGetMessagesRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsRedactEventRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsSendMessageRequest
@@ -17,6 +18,7 @@ import work.socialhub.kmatrix.api.request.userdirectory.UserDirectorySearchReque
 import work.socialhub.kmatrix.api.response.events.EventsGetContextResponse
 import work.socialhub.kmatrix.api.response.events.EventsGetEventResponse
 import work.socialhub.kmatrix.api.response.notifications.NotificationsGetResponse
+import work.socialhub.kmatrix.api.response.relations.RelationsGetResponse
 import work.socialhub.kmatrix.api.response.rooms.RoomEvent
 import work.socialhub.kmatrix.stream.MatrixStreamFactory
 import work.socialhub.planetlink.action.AccountActionImpl
@@ -320,27 +322,26 @@ class MatrixAction(
         val matrixComment = id as? MatrixComment
             ?: throw SocialHubException("Matrix comment requires roomId and eventId")
 
-        return proceed {
-            val response = accessor.events().getEvent(
-                matrixComment.roomId ?: throw SocialHubException("Room ID is required"),
-                matrixComment.eventId ?: throw SocialHubException("Event ID is required"),
-            ).data
-
-            val userMe = userMeWithCache()
-            val roomEvent = response.toRoomEvent()
-            MatrixMapper.comment(roomEvent, service(), userMe)
-                ?: throw SocialHubException("Could not parse comment")
-        }
+        return fetchComment(
+            matrixComment.roomId ?: throw SocialHubException("Room ID is required"),
+            matrixComment.eventId ?: throw SocialHubException("Event ID is required"),
+        )
     }
 
     override suspend fun comment(url: String): Comment {
+        val parsed = parseMatrixPermalink(url)
+        return fetchComment(parsed.roomId, parsed.eventId)
+    }
+
+    private suspend fun fetchComment(roomId: String, eventId: String): MatrixComment {
         return proceed {
-            val parsed = parseMatrixPermalink(url)
-            val response = accessor.events().getEvent(parsed.roomId, parsed.eventId).data
-            val userMe = userMeWithCache()
+            val response = accessor.events().getEvent(roomId, eventId).data
+            val userMe = me ?: fetchUserMe()
             val roomEvent = response.toRoomEvent()
-            MatrixMapper.comment(roomEvent, service(), userMe)
+            val comment = MatrixMapper.comment(roomEvent, service(), userMe)
                 ?: throw SocialHubException("Could not parse comment")
+            comment.reactions = fetchReactions(comment, userMe)
+            comment
         }
     }
 
@@ -368,17 +369,54 @@ class MatrixAction(
         proceedUnit {
             val comment = id as? MatrixComment
                 ?: throw SocialHubException("Not a Matrix comment")
+            val roomId = comment.roomId
+                ?: throw SocialHubException("Room ID is required for Matrix reactions")
+            val eventId = comment.eventId
+                ?: throw SocialHubException("Event ID is required for Matrix reactions")
 
             accessor.rooms().sendMessage(
                 RoomsSendMessageRequest().apply {
-                    roomId = comment.roomId
+                    this.roomId = roomId
                     body = reaction
                     msgtype = "m.reaction"
                     relatesToType = "m.annotation"
-                    relatesToEventId = comment.eventId
+                    relatesToEventId = eventId
                     relatesToKey = reaction
                 }
             )
+        }
+    }
+
+    private suspend fun fetchReactions(
+        comment: MatrixComment,
+        userMe: User?,
+    ): List<Reaction> {
+        val roomId = comment.roomId ?: return emptyList()
+        val eventId = comment.eventId ?: return emptyList()
+        return proceed {
+            val events = mutableListOf<RelationsGetResponse.RelationEvent>()
+            var from: String? = null
+
+            while (true) {
+                val response = accessor.relations().getRelations(
+                    RelationsGetRequest().apply {
+                        this.roomId = roomId
+                        this.eventId = eventId
+                        relType = "m.annotation"
+                        eventType = "m.reaction"
+                        this.from = from
+                        limit = 100
+                        dir = "b"
+                    }
+                ).data
+                events.addAll(response.chunk)
+
+                val next = response.nextBatch
+                if (next.isNullOrEmpty() || next == from) break
+                from = next
+            }
+
+            MatrixMapper.reactions(events, (userMe as? MatrixUser)?.userId)
         }
     }
 
