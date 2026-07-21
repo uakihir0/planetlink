@@ -52,12 +52,22 @@ object XMapper {
         source: KTweet,
         service: Service,
     ): XComment {
+        val retweetedTweet = source.retweetedTweet
         return XComment(service).also {
             it.id = ID(checkNotNull(source.id) { "X post ID is missing." })
-            it.text = AttributedString.plain(source.text)
+            it.text = if (retweetedTweet == null) {
+                AttributedString.plain(source.text)
+            } else {
+                null
+            }
             it.createAt = instant(source.createdAt)
             it.user = source.user?.let { user -> user(user, service) }
-            it.medias = source.media.map(::media)
+            it.medias = if (retweetedTweet == null) {
+                source.media.map(::media)
+            } else {
+                emptyList()
+            }
+            it.sharedComment = retweetedTweet?.let { tweet -> comment(tweet, service) }
             it.likeCount = source.favoriteCount
             it.shareCount = source.retweetCount
             it.replyCount = source.replyCount
