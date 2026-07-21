@@ -10,7 +10,6 @@ import work.socialhub.kmatrix.api.request.relations.RelationsGetRequest
 import work.socialhub.kmatrix.api.request.media.MediaDownloadRequest
 import work.socialhub.kmatrix.api.request.media.MediaThumbnailRequest
 import work.socialhub.kmatrix.api.request.notifications.NotificationsGetRequest
-import work.socialhub.kmatrix.api.request.relations.RelationsGetRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsGetMessagesRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsRedactEventRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsSendMessageRequest
