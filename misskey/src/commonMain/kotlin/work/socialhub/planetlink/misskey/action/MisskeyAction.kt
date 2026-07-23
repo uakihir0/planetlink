@@ -160,6 +160,7 @@ class MisskeyAction(
 
                 StreamActionType.HomeTimeLineStream,
                 StreamActionType.NotificationStream,
+                StreamActionType.CommentUpdateStream,
 
                 MisskeyActionType.LocalTimeLine,
                 MisskeyActionType.FederationTimeLine,
@@ -1458,6 +1459,22 @@ class MisskeyAction(
         callback: EventCallback
     ): Stream {
         return notificationStream(callback)
+    }
+
+    override suspend fun setCommentUpdateStream(
+        comments: List<Comment>,
+        callback: EventCallback,
+    ): CommentUpdateStream {
+        val user = me ?: fetchUserMe()
+        val stream = MisskeyCommentUpdateStream(
+            stream = MisskeyStream(auth.accessor, account.service.streamHost),
+            callback = callback,
+            service = service(),
+            host = instanceHost,
+            meId = user.id?.value<String>(),
+        )
+        stream.addComments(comments)
+        return stream
     }
 
     /**
