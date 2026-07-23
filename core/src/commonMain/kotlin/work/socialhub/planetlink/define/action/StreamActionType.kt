@@ -6,4 +6,5 @@ import kotlin.js.JsExport
 enum class StreamActionType : ActionType {
     HomeTimeLineStream,
     NotificationStream,
+    CommentUpdateStream,
 }

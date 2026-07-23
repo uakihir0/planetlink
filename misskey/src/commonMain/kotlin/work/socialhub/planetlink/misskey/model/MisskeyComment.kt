@@ -37,10 +37,12 @@ class MisskeyComment(
     /** Poll */
     var poll: Poll? = null
 
+    private var storedReactions: List<Reaction> = listOf()
+
     /** Reactions  */
-    override var reactions: List<Reaction> = listOf()
+    override var reactions: List<Reaction>
         get() {
-            return field.toMutableList()
+            return storedReactions.toMutableList()
                 .also { list ->
                     Reaction().also {
                         it.count = replyCount
@@ -55,6 +57,17 @@ class MisskeyComment(
                     }
                 }
         }
+        set(value) {
+            storedReactions = value
+        }
+
+    internal fun baseReactions(): List<Reaction> {
+        return storedReactions
+    }
+
+    internal fun replaceBaseReactions(reactions: List<Reaction>) {
+        storedReactions = reactions
+    }
 
     /** {@inheritDoc} */
     override var webUrl: String = ""
