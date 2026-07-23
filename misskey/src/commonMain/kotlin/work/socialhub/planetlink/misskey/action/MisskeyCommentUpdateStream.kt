@@ -124,7 +124,12 @@ internal class MisskeyCommentUpdateStream(
         if (started) return
         started = true
         callerClosing = false
-        stream.open()
+        try {
+            stream.open()
+        } catch (e: Exception) {
+            started = false
+            throw e
+        }
     }
 
     override fun close() {
