@@ -58,10 +58,15 @@ class XAction(
     private suspend fun fetchUserMe(): User {
         return proceed {
             val current = client.account().getCurrentUser().data
-            val screenName = checkNotNull(current.screenName) {
-                "The authenticated X account has no screen name."
+            val user = current.user?.let { source ->
+                XMapper.user(source, service())
+            } ?: run {
+                val screenName = checkNotNull(current.screenName) {
+                    "The authenticated X account has no screen name."
+                }
+                fetchUserByScreenName(screenName)
             }
-            fetchUserByScreenName(screenName).also { me = it }
+            user.also { me = it }
         }
     }
 
