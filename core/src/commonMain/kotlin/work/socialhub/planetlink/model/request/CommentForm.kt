@@ -33,6 +33,9 @@ class CommentForm {
     /** Images */
     var images = mutableListOf<MediaForm>()
 
+    /** External link card */
+    var link: LinkForm? = null
+
     /** Other params */
     var params = mutableMapOf<String, Any>()
 
@@ -49,6 +52,7 @@ class CommentForm {
             it.visibility(visibility)
             it.isSensitive(isSensitive)
             it.isMessage(isMessage)
+            it.link(link?.copy())
             it.scheduledAt = scheduledAt
 
             images.forEach { img ->
@@ -118,6 +122,15 @@ class CommentForm {
      */
     fun removeImage(index: Int): CommentForm {
         images.removeAt(index)
+        return this
+    }
+
+    /**
+     * Set External Link Card
+     */
+    @JsExport.Ignore
+    fun link(link: LinkForm?): CommentForm {
+        this.link = link
         return this
     }
 

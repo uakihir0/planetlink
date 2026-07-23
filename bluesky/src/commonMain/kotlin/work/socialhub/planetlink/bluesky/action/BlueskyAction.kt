@@ -58,6 +58,8 @@ import work.socialhub.kbsky.stream.entity.app.bsky.model.Event
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeedsPref
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedExternal
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedExternalExternal
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedGallery
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedGalleryImage
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImages
@@ -117,6 +119,7 @@ import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.utils.ExceptionHandler
 import work.socialhub.planetlink.model.request.CommentForm
+import work.socialhub.planetlink.model.request.LinkForm
 import work.socialhub.planetlink.model.request.MediaForm
 import work.socialhub.planetlink.model.request.ProfileForm
 import work.socialhub.planetlink.bluesky.model.BlueskyChannel
@@ -692,7 +695,8 @@ class BlueskyAction(
     ) {
         proceedUnit {
             coroutineScope {
-                val blobsAsync = mutableListOf<Deferred<work.socialhub.kbsky.model.share.Blob>>()
+                val blobsAsync = mutableListOf<Deferred<Blob>>()
+                val link = req.link
 
                 if (req.images.isNotEmpty()) {
                     req.images.map { img ->
@@ -709,6 +713,22 @@ class BlueskyAction(
                             response.data.blob
                         })
                     }
+                }
+                val linkThumbnailAsync = if (req.images.isEmpty()) {
+                    link?.thumbnail?.let { thumbnail ->
+                        async {
+                            val response = auth.accessor.repo().uploadBlob(
+                                RepoUploadBlobRequest(
+                                    auth = authProvider(),
+                                    bytes = thumbnail.data,
+                                    name = thumbnail.name,
+                                )
+                            )
+                            response.data.blob
+                        }
+                    }
+                } else {
+                    null
                 }
                 try {
                     // Facet を切り出して設定
@@ -767,6 +787,12 @@ class BlueskyAction(
                             }
                             embedMedia = embedGallery
                         }
+                        builder.embed = embedMedia
+                    } else if (link != null) {
+                        embedMedia = linkEmbed(
+                            link,
+                            linkThumbnailAsync?.await(),
+                        )
                         builder.embed = embedMedia
                     }
 
@@ -2060,4 +2086,18 @@ class BlueskyAction(
         var cursor: String? = null
         var first: String? = null
     }
+}
+
+internal fun linkEmbed(
+    link: LinkForm,
+    thumbnail: Blob?,
+): EmbedExternal {
+    return EmbedExternal(
+        external = EmbedExternalExternal(
+            uri = link.uri,
+            title = link.title,
+            description = link.description,
+            thumb = thumbnail,
+        )
+    )
 }
