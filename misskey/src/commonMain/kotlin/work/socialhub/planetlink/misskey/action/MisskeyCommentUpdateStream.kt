@@ -2,7 +2,9 @@ package work.socialhub.planetlink.misskey.action
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -43,7 +45,7 @@ internal class MisskeyCommentUpdateStream(
     private val knownSubscriptions = mutableSetOf<String>()
     private val activeSubscriptions = mutableSetOf<String>()
     private var started = false
-    private var callerClosing = false
+    private var generation = 0L
 
     override val isOpened: Boolean
         get() = started && stream.isOpen
@@ -70,14 +72,14 @@ internal class MisskeyCommentUpdateStream(
             }
         }
         stream.client.closedCallback = {
+            val gen = generation
             scope.launch {
                 subscriptionMutex.withLock {
                     activeSubscriptions.clear()
                 }
-                if (!callerClosing) {
+                if (gen == generation) {
                     (callback as? DisconnectCallback)?.onDisconnect()
                 }
-                callerClosing = false
             }
         }
         stream.client.errorCallback = { reportError(it) }
@@ -123,7 +125,6 @@ internal class MisskeyCommentUpdateStream(
     override suspend fun open() {
         if (started) return
         started = true
-        callerClosing = false
         try {
             stream.open()
         } catch (e: Exception) {
@@ -135,7 +136,8 @@ internal class MisskeyCommentUpdateStream(
     override fun close() {
         if (!started) return
         started = false
-        callerClosing = true
+        generation++
+        scope.coroutineContext[Job]?.cancel()
         stream.close()
         (callback as? DisconnectCallback)?.onDisconnect()
     }

@@ -1465,16 +1465,18 @@ class MisskeyAction(
         comments: List<Comment>,
         callback: EventCallback,
     ): CommentUpdateStream {
-        val user = me ?: fetchUserMe()
-        val stream = MisskeyCommentUpdateStream(
-            stream = MisskeyStream(auth.accessor, account.service.streamHost),
-            callback = callback,
-            service = service(),
-            host = instanceHost,
-            meId = user.id?.value<String>(),
-        )
-        stream.addComments(comments)
-        return stream
+        return proceed {
+            val user = me ?: fetchUserMe()
+            val stream = MisskeyCommentUpdateStream(
+                stream = MisskeyStream(auth.accessor, account.service.streamHost),
+                callback = callback,
+                service = service(),
+                host = instanceHost,
+                meId = user.id?.value<String>(),
+            )
+            stream.addComments(comments)
+            stream
+        }
     }
 
     /**
