@@ -13,6 +13,7 @@ class CommentsRequestImpl : CommentsRequest {
 
     var commentsFunction: (suspend (Paging) -> Pageable<Comment>)? = null
     var streamFunction: (suspend (EventCallback) -> Stream)? = null
+    var updateStreamFunction: (suspend (List<Comment>, EventCallback) -> CommentUpdateStream)? = null
     var commentForm: CommentForm? = null
     var streamRecommended = true
 
@@ -54,8 +55,26 @@ class CommentsRequestImpl : CommentsRequest {
     /**
      * {@inheritDoc}
      */
+    override suspend fun setCommentsUpdateStream(
+        comments: List<Comment>,
+        callback: EventCallback,
+    ): CommentUpdateStream {
+        return updateStreamFunction?.invoke(comments, callback)
+            ?: throw NotSupportedException()
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     override fun canUseCommentsStream(): Boolean {
         return streamRecommended && (streamFunction != null)
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override fun canUseCommentsUpdateStream(): Boolean {
+        return updateStreamFunction != null
     }
 
     /**

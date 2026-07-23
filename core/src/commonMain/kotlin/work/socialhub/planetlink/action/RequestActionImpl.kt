@@ -6,6 +6,7 @@ import work.socialhub.planetlink.action.request.CommentsRequestImpl
 import work.socialhub.planetlink.action.request.UsersRequest
 import work.socialhub.planetlink.action.request.UsersRequestImpl
 import work.socialhub.planetlink.define.action.ActionType
+import work.socialhub.planetlink.define.action.StreamActionType
 import work.socialhub.planetlink.define.action.TimeLineActionType
 import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.model.*
@@ -275,6 +276,13 @@ open class RequestActionImpl(
     ): CommentsRequestImpl {
         return CommentsRequestImpl().also {
             it.commentsFunction = commentsFunction
+            if (account.action.capabilities()
+                    .isSupported(StreamActionType.CommentUpdateStream)
+            ) {
+                it.updateStreamFunction = { comments, callback ->
+                    account.action.setCommentUpdateStream(comments, callback)
+                }
+            }
             it.actionType = type
             it.account = account
             it.raw = raw
