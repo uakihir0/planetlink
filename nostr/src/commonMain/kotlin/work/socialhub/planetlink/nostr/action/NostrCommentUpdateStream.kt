@@ -7,6 +7,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+
 import net.socialhub.planetlink.model.event.CommentEvent
 import work.socialhub.knostr.social.api.EnrichmentResource
 import work.socialhub.knostr.social.model.NostrNote
@@ -36,18 +37,17 @@ internal class NostrEnrichmentDispatcher(
     private var previousCallback: ((SocialDataBatch) -> Unit)? = null
 
     private val dispatchCallback: (SocialDataBatch) -> Unit = { batch ->
-        try {
-            previousCallback?.invoke(batch)
-        } catch (_: Exception) {
-            // A callback installed directly on knostr must not block PlanetLink.
-        }
         scope.launch {
+            val previous = mutex.withLock { previousCallback }
+            try {
+                previous?.invoke(batch)
+            } catch (_: Exception) {
+            }
             val snapshot = mutex.withLock { listeners.toList() }
             snapshot.forEach { listener ->
                 try {
                     listener(batch)
                 } catch (_: Exception) {
-                    // Each update stream reports its own mapping failures.
                 }
             }
         }

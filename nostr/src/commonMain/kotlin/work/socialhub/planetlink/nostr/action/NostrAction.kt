@@ -837,8 +837,10 @@ class NostrAction(
     // ============================================================== //
 
     private fun getAuthorPubkey(id: Identify): String {
-        if (id is NostrComment && id.user != null) {
-            return id.user!!.id?.value<String>() ?: pubkey
+        if (id is NostrComment) {
+            return id.user?.id?.value<String>()
+                ?: id.authorPubkey
+                ?: pubkey
         }
         return pubkey
     }
