@@ -91,6 +91,7 @@ class NostrAction(
 
                 StreamActionType.HomeTimeLineStream,
                 StreamActionType.NotificationStream,
+                StreamActionType.CommentUpdateStream,
             )
         )
     }
@@ -103,6 +104,9 @@ class NostrAction(
     private val pubkey get() = accessor.pubkey
     private var relayConnected = false
     private val relayMutex = kotlinx.coroutines.sync.Mutex()
+    private val enrichmentDispatcher by lazy {
+        NostrEnrichmentDispatcher(social.enrichment())
+    }
 
     private suspend fun ensureRelayConnected() {
         if (relayConnected) return
@@ -754,10 +758,14 @@ class NostrAction(
 
     override suspend fun setHomeTimeLineStream(callback: EventCallback): Stream {
         val userMe = userMeWithCache()
-        val cache = social.profileCache()
+        val cache = social.cache()
         val stream = NostrStream(
             accessor = accessor,
-            timelineStream = TimelineStream(nostr, cache).also { ts ->
+            timelineStream = TimelineStream(
+                nostr,
+                cache,
+                social.enrichment(),
+            ).also { ts ->
                 ts.onNoteCallback = { note ->
                     if (callback is UpdateCommentCallback) {
                         val comment = NostrMapper.comment(note, service(), userMe)
@@ -772,10 +780,14 @@ class NostrAction(
 
     override suspend fun setNotificationStream(callback: EventCallback): Stream {
         val userMe = userMeWithCache()
-        val cache = social.profileCache()
+        val cache = social.cache()
         val stream = NostrStream(
             accessor = accessor,
-            notificationStream = NotificationStream(nostr, cache).also { ns ->
+            notificationStream = NotificationStream(
+                nostr,
+                cache,
+                social.enrichment(),
+            ).also { ns ->
                 ns.onMentionCallback = { note ->
                     if (callback is MentionCommentCallback) {
                         val comment = NostrMapper.comment(note, service(), userMe)
@@ -798,6 +810,21 @@ class NostrAction(
             }
         )
         stream.open()
+        return stream
+    }
+
+    override suspend fun setCommentUpdateStream(
+        comments: List<Comment>,
+        callback: EventCallback,
+    ): CommentUpdateStream {
+        val stream = NostrCommentUpdateStream(
+            enrichment = social.enrichment(),
+            dispatcher = enrichmentDispatcher,
+            callback = callback,
+            service = service(),
+            userMe = me ?: fetchUserMe(),
+        )
+        stream.addComments(comments)
         return stream
     }
 

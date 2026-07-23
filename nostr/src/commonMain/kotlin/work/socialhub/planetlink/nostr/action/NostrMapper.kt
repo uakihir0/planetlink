@@ -58,6 +58,7 @@ object NostrMapper {
     ): NostrComment {
         return NostrComment(service).apply {
             eventId = note.noteId
+            quotedEventId = note.quotedEventId
             id = ID(note.event.id)
 
             createAt = Instant.fromEpochSeconds(note.createdAt, 0)
