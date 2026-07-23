@@ -611,6 +611,16 @@ interface AccountAction {
         throw NotImplementedException()
     }
 
+    /**
+     * Set a stream for updates to comments that have already been fetched.
+     */
+    suspend fun setCommentUpdateStream(
+        comments: List<Comment>,
+        callback: EventCallback,
+    ): CommentUpdateStream {
+        throw NotImplementedException()
+    }
+
     // ============================================================== //
     // Capabilities
     // ============================================================== //

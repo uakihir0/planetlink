@@ -21,10 +21,23 @@ interface CommentsRequest : Request {
     suspend fun setCommentsStream(callback: EventCallback): Stream
 
     /**
+     * Set a stream for updates to comments returned by this request.
+     */
+    suspend fun setCommentsUpdateStream(
+        comments: List<Comment>,
+        callback: EventCallback,
+    ): CommentUpdateStream
+
+    /**
      * Get Flags of Comment Stream Support
      * コメントストリームが使用可能かを？
      */
     fun canUseCommentsStream(): Boolean
+
+    /**
+     * Get whether updates to fetched comments can be streamed.
+     */
+    fun canUseCommentsUpdateStream(): Boolean
 
     /**
      * Make Comment Request
