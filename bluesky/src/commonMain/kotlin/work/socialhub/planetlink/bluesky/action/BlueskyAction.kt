@@ -2088,6 +2088,11 @@ class BlueskyAction(
     }
 }
 
+/**
+ * Create an external link embed for a Bluesky post.
+ * Maps the link metadata and optional uploaded thumbnail
+ * into an EmbedExternal that Bluesky renders as a link card.
+ */
 internal fun linkEmbed(
     link: LinkForm,
     thumbnail: Blob?,
