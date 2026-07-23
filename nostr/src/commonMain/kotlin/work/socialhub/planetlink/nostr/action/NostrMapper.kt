@@ -64,6 +64,7 @@ object NostrMapper {
             createAt = Instant.fromEpochSeconds(note.createdAt, 0)
             contentWarning = note.contentWarning
 
+            this.authorPubkey = note.event.pubkey
             note.author?.let { author ->
                 this.user = user(author, service)
             }

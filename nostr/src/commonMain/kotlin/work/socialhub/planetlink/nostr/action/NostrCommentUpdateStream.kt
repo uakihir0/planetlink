@@ -148,7 +148,12 @@ internal class NostrCommentUpdateStream(
         val allComments = comments.flatMap { it.flatten() }
         enrichment.request(
             SocialDataRequest(
-                userPubkeys = allComments.mapNotNull { it.user?.id?.value<String>() }.distinct(),
+                userPubkeys = allComments.flatMap { comment ->
+                    listOfNotNull(
+                        comment.user?.id?.value<String>(),
+                        comment.authorPubkey,
+                    )
+                }.distinct(),
                 noteIds = allComments.mapNotNull { comment ->
                     comment.quotedEventId?.takeIf { comment.sharedComment == null }
                 }.distinct(),
@@ -267,6 +272,7 @@ private fun NostrComment.copyFrom(source: NostrComment) {
     repostCount = source.repostCount
     contentWarning = source.contentWarning
     channelId = source.channelId
+    authorPubkey = source.authorPubkey
     text = source.text
     createAt = source.createAt
     user = source.user

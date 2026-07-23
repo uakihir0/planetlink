@@ -20,6 +20,7 @@ class NostrComment(
     var repostCount: Int = 0
     var contentWarning: String? = null
     var channelId: String? = null
+    var authorPubkey: String? = null
 
     private var _reactions: MutableList<Reaction>? = null
 
