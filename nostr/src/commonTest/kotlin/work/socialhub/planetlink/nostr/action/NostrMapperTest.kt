@@ -53,6 +53,50 @@ class NostrMapperTest {
     }
 
     @Test
+    fun removesResolvedNote1QuoteReferenceFromDisplayText() {
+        val quotedEventId = "22".repeat(32)
+        val quotedNote = note(
+            eventId = quotedEventId,
+            content = "Quoted content",
+        )
+        val reference = note1(quotedEventId)
+        val source = note(
+            eventId = "11".repeat(32),
+            content = "Additional comment\n\nnostr:$reference",
+        ).apply {
+            this.quotedEventId = quotedEventId
+            this.quotedNote = quotedNote
+        }
+
+        val comment = NostrMapper.comment(source, service())
+
+        assertEquals("Additional comment", comment.text?.displayText)
+        assertNotNull(comment.sharedComment)
+    }
+
+    @Test
+    fun removesResolvedUppercaseQuoteReferenceFromDisplayText() {
+        val quotedEventId = "22".repeat(32)
+        val quotedNote = note(
+            eventId = quotedEventId,
+            content = "Quoted content",
+        )
+        val reference = nevent(quotedEventId).uppercase()
+        val source = note(
+            eventId = "11".repeat(32),
+            content = "Additional comment\n\nnostr:$reference",
+        ).apply {
+            this.quotedEventId = quotedEventId
+            this.quotedNote = quotedNote
+        }
+
+        val comment = NostrMapper.comment(source, service())
+
+        assertEquals("Additional comment", comment.text?.displayText)
+        assertNotNull(comment.sharedComment)
+    }
+
+    @Test
     fun preservesQuoteReferenceUntilQuoteIsResolved() {
         val quotedEventId = "22".repeat(32)
         val reference = nevent(quotedEventId)
@@ -94,6 +138,10 @@ class NostrMapperTest {
     private fun nevent(eventId: String): String {
         val tlv = byteArrayOf(0, 32) + Hex.decode(eventId)
         return Bech32.encode("nevent", tlv)
+    }
+
+    private fun note1(eventId: String): String {
+        return Bech32.encode("note", Hex.decode(eventId))
     }
 
     private fun service(): Service {
