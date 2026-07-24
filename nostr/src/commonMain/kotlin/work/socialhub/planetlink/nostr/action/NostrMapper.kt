@@ -5,6 +5,7 @@ import work.socialhub.knostr.social.model.NostrNote
 import work.socialhub.knostr.social.model.NostrReaction
 import work.socialhub.knostr.social.model.NostrRelationship
 import work.socialhub.knostr.social.model.NostrUser as KnostrUser
+import work.socialhub.knostr.util.Nip21
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.ID
@@ -24,6 +25,9 @@ import work.socialhub.planetlink.nostr.model.NostrUser
 
 /** Nostr エンティティのマッピング */
 object NostrMapper {
+
+    private val NOSTR_EVENT_REFERENCE =
+        Regex("nostr:(?:note|nevent)1[ac-hj-np-z02-9]+", RegexOption.IGNORE_CASE)
 
     /** ユーザーマッピング */
     fun user(
@@ -184,7 +188,7 @@ object NostrMapper {
             .map { it[1].lowercase() }
             .toSet()
 
-        val attributed = AttributedString.plain(note.content)
+        val attributed = AttributedString.plain(displayContent(note))
 
         val validated = attributed.elements.map { elem ->
             if (elem.kind == AttributedKind.HASH_TAG && elem is AttributedItem) {
@@ -198,5 +202,25 @@ object NostrMapper {
             } else elem
         }
         return AttributedString(validated)
+    }
+
+    private fun displayContent(note: NostrNote): String {
+        val quotedEventId = note.quotedNote?.event?.id ?: return note.content
+        return stripQuoteReference(note.content, quotedEventId)
+    }
+
+    internal fun stripQuoteReference(
+        content: String,
+        quotedEventId: String,
+    ): String {
+        val stripped = NOSTR_EVENT_REFERENCE.replace(content) { match ->
+            val referencedEventId = Nip21.extractEventIds(match.value.lowercase()).singleOrNull()
+            if (referencedEventId.equals(quotedEventId, ignoreCase = true)) {
+                ""
+            } else {
+                match.value
+            }
+        }
+        return if (stripped == content) content else stripped.trimEnd()
     }
 }
