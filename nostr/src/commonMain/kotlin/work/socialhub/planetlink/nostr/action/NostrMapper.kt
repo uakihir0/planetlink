@@ -27,7 +27,7 @@ import work.socialhub.planetlink.nostr.model.NostrUser
 object NostrMapper {
 
     private val NOSTR_EVENT_REFERENCE =
-        Regex("nostr:(?:note|nevent)1[ac-hj-np-z02-9]+")
+        Regex("nostr:(?:note|nevent)1[ac-hj-np-z02-9]+", RegexOption.IGNORE_CASE)
 
     /** ユーザーマッピング */
     fun user(
@@ -206,15 +206,21 @@ object NostrMapper {
 
     private fun displayContent(note: NostrNote): String {
         val quotedEventId = note.quotedNote?.event?.id ?: return note.content
+        return stripQuoteReference(note.content, quotedEventId)
+    }
 
-        val content = NOSTR_EVENT_REFERENCE.replace(note.content) { match ->
-            val referencedEventId = Nip21.extractEventIds(match.value).singleOrNull()
+    internal fun stripQuoteReference(
+        content: String,
+        quotedEventId: String,
+    ): String {
+        val stripped = NOSTR_EVENT_REFERENCE.replace(content) { match ->
+            val referencedEventId = Nip21.extractEventIds(match.value.lowercase()).singleOrNull()
             if (referencedEventId.equals(quotedEventId, ignoreCase = true)) {
                 ""
             } else {
                 match.value
             }
         }
-        return if (content == note.content) note.content else content.trimEnd()
+        return if (stripped == content) content else stripped.trimEnd()
     }
 }
