@@ -17,6 +17,7 @@ import work.socialhub.kbsky.model.app.bsky.embed.EmbedGalleryViewImage
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImages
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImagesView
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImagesViewImage
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecord
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecordView
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecordViewRecord
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecordWithMedia
@@ -778,6 +779,50 @@ object BlueskyMapper {
             shareCount = 0
             replyCount = 0
         }
+    }
+
+    internal fun eventReferenceUris(event: Event): List<String> {
+        val record = event.commit?.record?.asFeedPost ?: return emptyList()
+        val quoteUri = when (val embed = record.embed) {
+            is EmbedRecord -> embed.record?.uri
+            is EmbedRecordWithMedia -> embed.record?.record?.uri
+            else -> null
+        }
+        return listOfNotNull(
+            quoteUri,
+            record.reply?.parent?.uri,
+            record.reply?.root?.uri,
+        ).distinct()
+    }
+
+    internal fun hydrateEventReferences(
+        comment: BlueskyComment,
+        event: Event,
+        postsByUri: Map<String, FeedDefsPostView>,
+        service: Service,
+    ): BlueskyComment {
+        val record = event.commit?.record?.asFeedPost ?: return comment
+        val quoteUri = when (val embed = record.embed) {
+            is EmbedRecord -> embed.record?.uri
+            is EmbedRecordWithMedia -> embed.record?.record?.uri
+            else -> null
+        }
+        quoteUri?.let { uri ->
+            postsByUri[uri]?.let {
+                comment.sharedComment = simpleComment(it, service)
+            }
+        }
+        record.reply?.parent?.uri?.let { uri ->
+            postsByUri[uri]?.let {
+                comment.replyTo = simpleComment(it, service)
+            }
+        }
+        record.reply?.root?.uri?.let { uri ->
+            postsByUri[uri]?.let {
+                comment.replyRootTo = simpleComment(it, service)
+            }
+        }
+        return comment
     }
 
     // ============================================================== //

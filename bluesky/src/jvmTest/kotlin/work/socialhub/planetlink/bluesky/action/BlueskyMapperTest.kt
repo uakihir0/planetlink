@@ -4,14 +4,20 @@ import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewBasic
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecord
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecordWithMedia
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedUnion
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedVideo
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedVideoView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsPostView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
+import work.socialhub.kbsky.model.app.bsky.feed.FeedPostReplyRef
 import work.socialhub.kbsky.model.share.Blob
 import work.socialhub.kbsky.model.share.BlobRef
+import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Commit
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Event
+import work.socialhub.planetlink.bluesky.model.BlueskyComment
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Service
@@ -168,5 +174,109 @@ class BlueskyMapperTest {
             "https://video.bsky.app/watch/did%3Aplc%3Ahow3test/$cid/thumbnail.jpg",
             media.previewUrl,
         )
+    }
+
+    @Test
+    fun hydrateEventReferences_quote_populatesSharedComment() {
+        val quoteUri = "at://did:plc:quoted/app.bsky.feed.post/quoted"
+        val event = streamEvent(
+            EmbedRecord(record = RepoStrongRef(quoteUri, "bafyquoted")),
+        )
+        val comment = assertNotNull(BlueskyMapper.commentFromEvent(event, service))
+            as BlueskyComment
+        val quotedPost = postView(quoteUri, "Quoted post")
+
+        BlueskyMapper.hydrateEventReferences(
+            comment,
+            event,
+            mapOf(quoteUri to quotedPost),
+            service,
+        )
+
+        assertEquals(listOf(quoteUri), BlueskyMapper.eventReferenceUris(event))
+        assertEquals("Quoted post", comment.sharedComment?.text?.displayText)
+    }
+
+    @Test
+    fun eventReferenceUris_quoteWithMedia_includesQuote() {
+        val quoteUri = "at://did:plc:quoted/app.bsky.feed.post/with-media"
+        val event = streamEvent(
+            EmbedRecordWithMedia(
+                record = EmbedRecord(
+                    record = RepoStrongRef(quoteUri, "bafyquoted"),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(quoteUri), BlueskyMapper.eventReferenceUris(event))
+    }
+
+    @Test
+    fun hydrateEventReferences_reply_populatesParentAndRoot() {
+        val parentUri = "at://did:plc:parent/app.bsky.feed.post/parent"
+        val rootUri = "at://did:plc:root/app.bsky.feed.post/root"
+        val event = streamEvent(
+            reply = FeedPostReplyRef(
+                parent = RepoStrongRef(parentUri, "bafyparent"),
+                root = RepoStrongRef(rootUri, "bafyroot"),
+            ),
+        )
+        val comment = assertNotNull(BlueskyMapper.commentFromEvent(event, service))
+            as BlueskyComment
+
+        BlueskyMapper.hydrateEventReferences(
+            comment,
+            event,
+            mapOf(
+                parentUri to postView(parentUri, "Parent post"),
+                rootUri to postView(rootUri, "Root post"),
+            ),
+            service,
+        )
+
+        assertEquals(
+            listOf(parentUri, rootUri),
+            BlueskyMapper.eventReferenceUris(event),
+        )
+        assertEquals(
+            "Parent post",
+            (comment.replyTo as BlueskyComment).text?.displayText,
+        )
+        assertEquals("Root post", (comment.replyRootTo as BlueskyComment).text?.displayText)
+    }
+
+    private fun streamEvent(
+        embed: EmbedUnion? = null,
+        reply: FeedPostReplyRef? = null,
+    ): Event {
+        return Event(
+            did = "did:plc:author",
+            timeUs = 1_700_000_000_000_000L,
+            kind = "commit",
+            commit = Commit(
+                operation = "create",
+                collection = "app.bsky.feed.post",
+                rkey = "stream",
+                cid = "bafystream",
+                record = FeedPost().apply {
+                    text = "Stream post"
+                    this.embed = embed
+                    this.reply = reply
+                },
+            ),
+        )
+    }
+
+    private fun postView(uri: String, text: String): FeedDefsPostView {
+        return FeedDefsPostView().apply {
+            this.uri = uri
+            cid = "bafyview"
+            author = ActorDefsProfileViewBasic(
+                did = "did:plc:referenced",
+                handle = "referenced.bsky.social",
+            )
+            indexedAt = "2025-01-01T00:00:00.000Z"
+            record = FeedPost().apply { this.text = text }
+        }
     }
 }

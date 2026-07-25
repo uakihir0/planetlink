@@ -1,5 +1,7 @@
 package work.socialhub.planetlink.bluesky.model
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import work.socialhub.kbsky.stream.entity.app.bsky.JetStreamClient
@@ -8,7 +10,8 @@ import kotlin.js.JsExport
 
 @JsExport
 class BlueskyStream internal constructor(
-    private val clients: List<JetStreamClient>
+    private val clients: List<JetStreamClient>,
+    private val callbackScope: CoroutineScope? = null,
 ) : Stream {
 
     override suspend fun open() {
@@ -20,6 +23,7 @@ class BlueskyStream internal constructor(
     }
 
     override fun close() {
+        callbackScope?.cancel()
         clients.forEach { it.close() }
     }
 
