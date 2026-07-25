@@ -7,6 +7,11 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
 import work.socialhub.kbsky.ATProtocolException
 import work.socialhub.kbsky.BlueskyTypes
@@ -198,6 +203,8 @@ class BlueskyAction(
     private var accessJwt: String? = null
     private var expireAt: Long? = null
     private var did: String? = null
+    private val sessionMutex = Mutex()
+    private val hydrationSemaphore = Semaphore(4)
 
     // ============================================================== //
     // Account
@@ -1544,6 +1551,18 @@ class BlueskyAction(
     suspend fun homeTimeLineStream(
         callback: EventCallback
     ): Stream {
+        return doHomeTimeLineStream(callback)
+    }
+
+    override suspend fun setHomeTimeLineStream(
+        callback: EventCallback
+    ): Stream {
+        return doHomeTimeLineStream(callback)
+    }
+
+    private suspend fun doHomeTimeLineStream(
+        callback: EventCallback
+    ): Stream {
         return proceed {
             val profiles = getAllFollowingProfiles()
             val profileCache = profiles.associateBy { it.did }
@@ -1578,21 +1597,35 @@ class BlueskyAction(
                                 }
 
                                 callbackScope.launch {
-                                    val postsByUri = try {
-                                        postViews(referenceUris).associateBy { it.uri!! }
-                                    } catch (_: Exception) {
-                                        emptyMap()
-                                    }
-                                    callback.onUpdate(
-                                        CommentEvent(
-                                            Mapper.hydrateEventReferences(
-                                                comment as BlueskyComment,
-                                                event,
-                                                postsByUri,
-                                                service(),
+                                    hydrationSemaphore.withPermit {
+                                        val postsByUri = try {
+                                            proceed {
+                                                postViews(referenceUris)
+                                                    .mapNotNull { pv ->
+                                                        pv.uri?.let { it to pv }
+                                                    }
+                                                    .toMap()
+                                            }
+                                        } catch (e: CancellationException) {
+                                            throw e
+                                        } catch (_: Exception) {
+                                            emptyMap()
+                                        }
+                                        try {
+                                            callback.onUpdate(
+                                                CommentEvent(
+                                                    Mapper.hydrateEventReferences(
+                                                        comment as BlueskyComment,
+                                                        event,
+                                                        postsByUri,
+                                                        service(),
+                                                    )
+                                                )
                                             )
-                                        )
-                                    )
+                                        } catch (_: Exception) {
+                                            // ignore consumer callback exception
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1633,12 +1666,6 @@ class BlueskyAction(
 
             BlueskyStream(clients, callbackScope)
         }
-    }
-
-    override suspend fun setHomeTimeLineStream(
-        callback: EventCallback
-    ): Stream {
-        return homeTimeLineStream(callback)
     }
 
     /**
@@ -2050,25 +2077,27 @@ class BlueskyAction(
     }
 
     private suspend fun authProvider(): AuthProvider {
-        // 初回アクセスの場合
-        if (accessJwt == null) {
-            createSession()
-            return BearerTokenAuthProvider(accessJwt!!)
-        }
+        return sessionMutex.withLock {
+            if (accessJwt == null) {
+                createSession()
+                return@withLock BearerTokenAuthProvider(accessJwt!!)
+            }
 
-        // 有効期限が切れている場合
-        val now = Clock.System.now().toEpochMilliseconds() / 1000
-        if (now > (expireAt!! + 60)) {
-            createSession()
-            return BearerTokenAuthProvider(accessJwt!!)
-        }
+            val now = Clock.System.now().toEpochMilliseconds() / 1000
+            if (now > (expireAt!! + 60)) {
+                createSession()
+                return@withLock BearerTokenAuthProvider(accessJwt!!)
+            }
 
-        return BearerTokenAuthProvider(accessJwt!!)
+            BearerTokenAuthProvider(accessJwt!!)
+        }
     }
 
     private suspend fun did(): String {
-        if (did == null) createSession()
-        return did!!
+        return sessionMutex.withLock {
+            if (did == null) createSession()
+            did!!
+        }
     }
 
     private fun service(): Service {
