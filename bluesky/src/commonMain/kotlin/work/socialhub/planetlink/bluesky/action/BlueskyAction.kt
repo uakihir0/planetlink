@@ -1,8 +1,12 @@
 package work.socialhub.planetlink.bluesky.action
 
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import work.socialhub.kbsky.ATProtocolException
 import work.socialhub.kbsky.BlueskyTypes
@@ -1544,6 +1548,7 @@ class BlueskyAction(
             val profiles = getAllFollowingProfiles()
             val profileCache = profiles.associateBy { it.did }
             val followingDids = profiles.map { it.did } + did()
+            val callbackScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
             val clients = followingDids
                 .chunked(MAX_WANTED_DIDS_PER_CONNECTION)
@@ -1566,7 +1571,29 @@ class BlueskyAction(
 
                                 val comment = Mapper.commentFromEvent(event, service(), profileCache)
                                     ?: return
-                                callback.onUpdate(CommentEvent(comment))
+                                val referenceUris = Mapper.eventReferenceUris(event)
+                                if (referenceUris.isEmpty()) {
+                                    callback.onUpdate(CommentEvent(comment))
+                                    return
+                                }
+
+                                callbackScope.launch {
+                                    val postsByUri = try {
+                                        postViews(referenceUris).associateBy { it.uri!! }
+                                    } catch (_: Exception) {
+                                        emptyMap()
+                                    }
+                                    callback.onUpdate(
+                                        CommentEvent(
+                                            Mapper.hydrateEventReferences(
+                                                comment as BlueskyComment,
+                                                event,
+                                                postsByUri,
+                                                service(),
+                                            )
+                                        )
+                                    )
+                                }
                             }
                         }
                     })
@@ -1604,7 +1631,7 @@ class BlueskyAction(
                     client
                 }
 
-            BlueskyStream(clients)
+            BlueskyStream(clients, callbackScope)
         }
     }
 
