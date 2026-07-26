@@ -8,6 +8,7 @@ import work.socialhub.knostr.social.model.NostrUser as KnostrUser
 import work.socialhub.knostr.util.Nip21
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.Emoji
 import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Media
 import work.socialhub.planetlink.model.Pageable
@@ -28,6 +29,8 @@ object NostrMapper {
 
     private val NOSTR_EVENT_REFERENCE =
         Regex("nostr:(?:note|nevent)1[ac-hj-np-z02-9]+", RegexOption.IGNORE_CASE)
+
+    private val NOSTR_EMOJI_SHORTCODE = Regex("[A-Za-z0-9_]+")
 
     /** ユーザーマッピング */
     fun user(
@@ -201,7 +204,30 @@ object NostrMapper {
                 }
             } else elem
         }
-        return AttributedString(validated)
+        return AttributedString(validated).also {
+            it.addEmojiElement(extractEmojis(note))
+        }
+    }
+
+    internal fun extractEmojis(note: NostrNote): List<Emoji> {
+        val shortCodes = mutableSetOf<String>()
+        return note.event.tags.mapNotNull { tag ->
+            if (tag.size < 3 || tag[0] != "emoji") return@mapNotNull null
+
+            val shortCode = tag[1]
+            val imageUrl = tag[2]
+            if (!NOSTR_EMOJI_SHORTCODE.matches(shortCode) ||
+                imageUrl.isBlank() ||
+                !shortCodes.add(shortCode)
+            ) {
+                return@mapNotNull null
+            }
+
+            Emoji().also {
+                it.addShortCode(shortCode)
+                it.imageUrl = imageUrl
+            }
+        }
     }
 
     private fun displayContent(note: NostrNote): String {
