@@ -18,6 +18,9 @@ import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.Space
 import work.socialhub.planetlink.model.Thread
 import work.socialhub.planetlink.model.User
+import work.socialhub.planetlink.model.common.AttributedElement
+import work.socialhub.planetlink.model.common.AttributedItem
+import work.socialhub.planetlink.model.common.AttributedKind
 import work.socialhub.planetlink.model.common.AttributedString
 import kotlin.time.Instant
 import work.socialhub.kdiscord.entity.Attachment
@@ -67,10 +70,61 @@ object DiscordMapper {
             guildId = message.guildId
             createAt = parseTimestamp(message.timestamp)
             user = message.author?.let { user(it, service) }
-            text = AttributedString.plain(message.content ?: "")
+            text = attributedText(message)
             directMessage = (message.guildId == null)
             medias = medias(message)
             reactions = reactions(message.reactions, userMe)
+        }
+    }
+
+    private fun attributedText(
+        message: Message,
+    ): AttributedString {
+        val content = message.content ?: ""
+        val mentionsById = message.mentions
+            .orEmpty()
+            .mapNotNull { user -> user.id?.let { it to user } }
+            .toMap()
+        val elements = mutableListOf<AttributedElement>()
+        var readIndex = 0
+        var hasResolvedMention = false
+
+        for (match in USER_MENTION_REGEX.findAll(content)) {
+            val mentionId = match.groupValues[1]
+            val mention = mentionsById[mentionId] ?: continue
+            val displayName = mention.globalName?.takeIf { it.isNotBlank() }
+                ?: mention.username?.takeIf { it.isNotBlank() }
+                ?: continue
+
+            addPlainElements(
+                elements,
+                content.substring(readIndex, match.range.first),
+            )
+            elements.add(
+                AttributedItem().also {
+                    it.kind = AttributedKind.ACCOUNT
+                    it.displayText = "@$displayName"
+                    it.expandedText = mentionId
+                }
+            )
+            readIndex = match.range.last + 1
+            hasResolvedMention = true
+        }
+
+        if (!hasResolvedMention) {
+            return AttributedString.plain(content)
+        }
+
+        addPlainElements(elements, content.substring(readIndex))
+        return AttributedString.elements(elements)
+    }
+
+    private fun addPlainElements(
+        elements: MutableList<AttributedElement>,
+        text: String,
+    ) {
+        if (text.isNotEmpty()) {
+            elements.addAll(AttributedString.plain(text).elements)
         }
     }
 
@@ -251,4 +305,6 @@ object DiscordMapper {
             null
         }
     }
+
+    private val USER_MENTION_REGEX = """<@!?([0-9]+)>""".toRegex()
 }
