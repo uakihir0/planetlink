@@ -56,6 +56,9 @@ class CommentsRequestUpdateStreamTest {
     ) : AccountActionImpl(account) {
         var createdStream: FakeCommentUpdateStream? = null
 
+        override suspend fun userMeWithCache() =
+            throw UnsupportedOperationException("Not used by this test")
+
         override fun capabilities(): Capabilities {
             return Capabilities(setOf(StreamActionType.CommentUpdateStream))
         }
