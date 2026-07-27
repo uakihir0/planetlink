@@ -527,13 +527,46 @@ class NostrAction(
     // ============================================================== //
 
     override suspend fun postComment(req: CommentForm) {
+        doPostComment(req)
+    }
+
+    private suspend fun doPostComment(req: CommentForm) {
+        ensureRelayConnected()
         proceedUnit {
             val replyToEventId = if (!req.isMessage) req.replyId?.value<String>() else null
+            val quoteEventId = req.quoteId?.value<String>()
+            val quoteTags = quoteEventId?.let { listOf(listOf("q", it)) }.orEmpty()
+            val uploads = req.images.map { it.toNostrMediaUpload() }
 
-            if (replyToEventId != null) {
+            if (uploads.isNotEmpty() && replyToEventId != null) {
+                social.media().uploadAndReply(
+                    uploads = uploads,
+                    replyToEventId = replyToEventId,
+                    content = req.text.orEmpty(),
+                    tags = quoteTags,
+                    contentWarning = req.warning,
+                    sensitive = req.isSensitive,
+                )
+            } else if (uploads.isNotEmpty()) {
+                social.media().uploadManyAndPost(
+                    uploads = uploads,
+                    content = req.text.orEmpty(),
+                    tags = quoteTags,
+                    contentWarning = req.warning,
+                    sensitive = req.isSensitive,
+                )
+            } else if (replyToEventId != null) {
                 social.feed().reply(
                     content = req.text ?: "",
+                    tags = quoteTags,
                     replyToEventId = replyToEventId,
+                    contentWarning = req.warning,
+                    sensitive = req.isSensitive,
+                )
+            } else if (quoteEventId != null) {
+                social.feed().quoteRepost(
+                    eventId = quoteEventId,
+                    comment = req.text.orEmpty(),
                     contentWarning = req.warning,
                     sensitive = req.isSensitive,
                 )
