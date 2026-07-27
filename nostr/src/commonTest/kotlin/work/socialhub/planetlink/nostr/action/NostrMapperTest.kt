@@ -262,6 +262,75 @@ class NostrMapperTest {
         assertNotNull(comment.sharedComment)
     }
 
+    @Test
+    fun preservesEmojiAfterStripQuotePreservingAttributes() {
+        val quotedEventId = "22".repeat(32)
+        val reference = nevent(quotedEventId)
+        val source = note(
+            eventId = "11".repeat(32),
+            content = ":wave: hello nostr:$reference",
+            tags = listOf(
+                listOf("emoji", "wave", "https://example.com/wave.webp"),
+            ),
+        ).apply {
+            this.quotedEventId = quotedEventId
+        }
+
+        val comment = NostrMapper.comment(source, service())
+        assertEquals(1, emojiElements(comment).size)
+
+        val preserved = NostrMapper.stripQuotePreservingAttributes(
+            comment.text!!, quotedEventId
+        )
+
+        assertEquals(":wave: hello", preserved.displayText)
+        assertEquals(1, preserved.elements.filter { it.kind == AttributedKind.EMOJI }.size)
+    }
+
+    @Test
+    fun preservesEmojiAndHashtagAfterStripQuotePreservingAttributes() {
+        val quotedEventId = "22".repeat(32)
+        val reference = nevent(quotedEventId)
+        val source = note(
+            eventId = "11".repeat(32),
+            content = "#nostr says :wave:\n\nnostr:$reference",
+            tags = listOf(
+                listOf("t", "nostr"),
+                listOf("emoji", "wave", "https://example.com/wave.webp"),
+            ),
+        ).apply {
+            this.quotedEventId = quotedEventId
+            this.quotedNote = note(quotedEventId, "Quoted content")
+        }
+
+        val comment = NostrMapper.comment(source, service())
+        val nonPlain = comment.text?.elements?.filter { it.kind != AttributedKind.PLAIN }
+        assertEquals(setOf(AttributedKind.HASH_TAG, AttributedKind.EMOJI), nonPlain?.map { it.kind }?.toSet())
+
+        val preserved = NostrMapper.stripQuotePreservingAttributes(
+            comment.text!!, quotedEventId
+        )
+
+        assertEquals("#nostr says :wave:", preserved.displayText)
+        val nonPlainAfter = preserved.elements.filter { it.kind != AttributedKind.PLAIN }
+        assertEquals(setOf(AttributedKind.HASH_TAG, AttributedKind.EMOJI), nonPlainAfter.map { it.kind }.toSet())
+    }
+
+    @Test
+    fun limitsEmojiTagCount() {
+        val tags = (0 until 70).map { i ->
+            listOf("emoji", "emoji$i", "https://example.com/$i.webp")
+        }
+        val source = note(
+            eventId = "11".repeat(32),
+            content = (0 until 70).joinToString(" ") { ":emoji$it:" },
+            tags = tags,
+        )
+
+        val emojis = NostrMapper.extractEmojis(source)
+        assertEquals(64, emojis.size)
+    }
+
     private fun emojiElements(comment: Comment): List<AttributedElement> {
         return comment.text?.elements?.filter { it.kind == AttributedKind.EMOJI }.orEmpty()
     }
