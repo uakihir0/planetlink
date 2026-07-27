@@ -247,7 +247,7 @@ class NostrAction(
     /**
      * {@inheritDoc}
      * kind:0 は全置換のため、既存プロフィールを取得してマージする。
-     * avatar/banner は NIP-96 サーバー (auth.nip96Server) にアップロードして URL を設定。
+     * avatar/banner は設定済みの NIP-96 サーバーにアップロードして URL を設定。
      */
     override suspend fun updateProfile(form: ProfileForm) {
         ensureRelayConnected()
@@ -258,20 +258,18 @@ class NostrAction(
             var banner = existing.banner
 
             form.avatar?.let { bytes ->
-                val uploaded = social.media().upload(
-                    serverUrl = auth.nip96Server,
+                val uploaded = social.media().uploadToConfiguredServer(
                     fileData = bytes,
                     fileName = form.avatarName ?: "avatar",
-                    mimeType = guessImageMimeType(form.avatarName),
+                    mimeType = nostrMediaMimeType(form.avatarName),
                 )
                 if (uploaded.data.url.isNotEmpty()) picture = uploaded.data.url
             }
             form.banner?.let { bytes ->
-                val uploaded = social.media().upload(
-                    serverUrl = auth.nip96Server,
+                val uploaded = social.media().uploadToConfiguredServer(
                     fileData = bytes,
                     fileName = form.bannerName ?: "banner",
-                    mimeType = guessImageMimeType(form.bannerName),
+                    mimeType = nostrMediaMimeType(form.bannerName),
                 )
                 if (uploaded.data.url.isNotEmpty()) banner = uploaded.data.url
             }
@@ -289,14 +287,6 @@ class NostrAction(
             social.users().updateProfile(profile)
         }
     }
-
-    private fun guessImageMimeType(fileName: String?): String =
-        when (fileName?.substringAfterLast('.', "")?.lowercase()) {
-            "png" -> "image/png"
-            "gif" -> "image/gif"
-            "webp" -> "image/webp"
-            else -> "image/jpeg"
-        }
 
     override suspend fun blockUser(id: Identify) {
         throw NotSupportedException("Nostr does not support blocking users")

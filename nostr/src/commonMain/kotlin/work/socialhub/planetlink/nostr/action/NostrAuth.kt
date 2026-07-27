@@ -5,6 +5,7 @@ import work.socialhub.knostr.Nostr
 import work.socialhub.knostr.NostrFactory
 import work.socialhub.knostr.entity.Nip19Entity
 import work.socialhub.knostr.social.NostrSocial
+import work.socialhub.knostr.social.NostrSocialConfig
 import work.socialhub.knostr.social.NostrSocialFactory
 import work.socialhub.planetlink.action.ServiceAuth
 import work.socialhub.planetlink.model.Account
@@ -15,11 +16,28 @@ import work.socialhub.planetlink.model.Service
 class NostrAuth(
     var relays: List<String> = listOf(),
     var nsec: String? = null,
-    /** NIP-96 media server used for avatar/banner uploads (updateProfile). */
-    var nip96Server: String = "https://nostr.build",
+    nip96Server: String = NostrSocialConfig.DEFAULT_MEDIA_UPLOAD_SERVER_URL,
 ) : ServiceAuth<NostrAuth.NostrAccessor> {
 
     private var _accessor: NostrAccessor? = null
+
+    /** NIP-96 server used for post images and profile images. */
+    var mediaUploadServerUrl: String = nip96Server
+        set(value) {
+            field = value
+            _accessor?.social?.config()?.mediaUploadServerUrl = value
+        }
+
+    /** Backward-compatible alias for [mediaUploadServerUrl]. */
+    @Deprecated(
+        message = "Use mediaUploadServerUrl",
+        replaceWith = ReplaceWith("mediaUploadServerUrl"),
+    )
+    var nip96Server: String
+        get() = mediaUploadServerUrl
+        set(value) {
+            mediaUploadServerUrl = value
+        }
 
     override val accessor: NostrAccessor
         get() = checkNotNull(_accessor) { "Nostr accessor is not initialized." }
@@ -30,7 +48,12 @@ class NostrAuth(
             ?: throw IllegalArgumentException("nsec is required for accountWithPrivateKey")
 
         val nostr = createNostr(relays, key)
-        val social = NostrSocialFactory.instance(nostr)
+        val social = NostrSocialFactory.instance(
+            nostr,
+            NostrSocialConfig().also {
+                it.mediaUploadServerUrl = mediaUploadServerUrl
+            },
+        )
 
         val signer = nostr.signer()
             ?: throw IllegalStateException("Signer not available without private key")
