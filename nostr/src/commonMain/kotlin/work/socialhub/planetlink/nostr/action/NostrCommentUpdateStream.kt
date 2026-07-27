@@ -19,7 +19,6 @@ import work.socialhub.planetlink.action.callback.comment.UpdateCommentCallback
 import work.socialhub.planetlink.action.callback.lifecycle.ConnectCallback
 import work.socialhub.planetlink.action.callback.lifecycle.DisconnectCallback
 import work.socialhub.planetlink.action.callback.lifecycle.ErrorCallback
-import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.CommentUpdateStream
@@ -223,8 +222,8 @@ internal class NostrCommentUpdateStream(
         }
         if (quotedEventId == note.event.id) {
             sharedComment = NostrMapper.comment(note, service, userMe)
-            text = text?.displayText?.let { content ->
-                AttributedString.plain(NostrMapper.stripQuoteReference(content, note.event.id))
+            text = text?.let { original ->
+                NostrMapper.stripQuotePreservingAttributes(original, note.event.id)
             }
             return true
         }

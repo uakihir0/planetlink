@@ -8,6 +8,7 @@ import work.socialhub.knostr.social.model.NostrUser as KnostrUser
 import work.socialhub.knostr.util.Nip21
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.Emoji
 import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Media
 import work.socialhub.planetlink.model.Pageable
@@ -28,6 +29,8 @@ object NostrMapper {
 
     private val NOSTR_EVENT_REFERENCE =
         Regex("nostr:(?:note|nevent)1[ac-hj-np-z02-9]+", RegexOption.IGNORE_CASE)
+
+    private val NOSTR_EMOJI_SHORTCODE = Regex("[A-Za-z0-9_]{1,64}")
 
     /** ユーザーマッピング */
     fun user(
@@ -201,12 +204,58 @@ object NostrMapper {
                 }
             } else elem
         }
-        return AttributedString(validated)
+        return AttributedString(validated).also {
+            it.addEmojiElement(extractEmojis(note))
+        }
+    }
+
+    internal fun extractEmojis(note: NostrNote): List<Emoji> {
+        val shortCodes = mutableSetOf<String>()
+        var processed = 0
+        return note.event.tags.mapNotNull { tag ->
+            if (tag.size < 3 || tag[0] != "emoji") return@mapNotNull null
+            if (processed >= 64) return@mapNotNull null
+
+            val shortCode = tag[1]
+            val imageUrl = tag[2]
+            if (!NOSTR_EMOJI_SHORTCODE.matches(shortCode) ||
+                imageUrl.isBlank() ||
+                !shortCodes.add(shortCode)
+            ) {
+                return@mapNotNull null
+            }
+            processed++
+
+            Emoji().also {
+                it.addShortCode(shortCode)
+                it.imageUrl = imageUrl
+            }
+        }
     }
 
     private fun displayContent(note: NostrNote): String {
         val quotedEventId = note.quotedNote?.event?.id ?: return note.content
         return stripQuoteReference(note.content, quotedEventId)
+    }
+
+    internal fun stripQuotePreservingAttributes(
+        text: AttributedString,
+        quotedEventId: String,
+    ): AttributedString {
+        val updatedElements = text.elements.mapNotNull { elem ->
+            if (elem.kind == AttributedKind.PLAIN) {
+                val stripped = stripQuoteReference(elem.displayText, quotedEventId)
+                if (stripped.isEmpty()) null
+                else AttributedItem().also {
+                    it.kind = AttributedKind.PLAIN
+                    it.displayText = stripped
+                    it.expandedText = stripped
+                }
+            } else {
+                elem
+            }
+        }
+        return AttributedString.elements(updatedElements)
     }
 
     internal fun stripQuoteReference(
