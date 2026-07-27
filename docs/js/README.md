@@ -133,6 +133,7 @@ import { KtList } from "planetlink-js/kotlin/kotlin-kotlin-stdlib.mjs";
 
 const relays = KtList.fromJsArray(["wss://relay.damus.io"]);
 const auth = new NostrAuth(relays, "YOUR_NSEC_KEY");
+auth.mediaUploadServerUrl = "https://your-nip96-server.example";
 const account = auth.accountWithPrivateKey();
 
 const user = await account.action.userMe();
