@@ -85,47 +85,81 @@ object DiscordMapper {
             .orEmpty()
             .mapNotNull { user -> user.id?.let { it to user } }
             .toMap()
-        val elements = mutableListOf<AttributedElement>()
-        var readIndex = 0
-        var hasResolvedMention = false
 
-        for (match in USER_MENTION_REGEX.findAll(content)) {
-            val mentionId = match.groupValues[1]
-            val mention = mentionsById[mentionId] ?: continue
-            val displayName = mention.globalName?.takeIf { it.isNotBlank() }
-                ?: mention.username?.takeIf { it.isNotBlank() }
-                ?: continue
+        if (mentionsById.isEmpty()) return AttributedString.plain(content)
 
-            addPlainElements(
-                elements,
-                content.substring(readIndex, match.range.first),
-            )
-            elements.add(
-                AttributedItem().also {
-                    it.kind = AttributedKind.ACCOUNT
-                    it.displayText = "@$displayName"
-                    it.expandedText = mentionId
+        data class MentionInfo(val displayName: String, val id: String)
+        val resolved = mutableListOf<MentionInfo>()
+        val markerRegex = "\u0000(\\d+)\u0000".toRegex()
+
+        val cleaned = buildString {
+            var last = 0
+            for (match in USER_MENTION_REGEX.findAll(content)) {
+                val mentionId = match.groupValues[1]
+                val mention = mentionsById[mentionId]
+                val displayName = mention?.globalName?.takeIf { it.isNotBlank() }
+                    ?: mention?.username?.takeIf { it.isNotBlank() }
+                if (displayName != null) {
+                    append(content.substring(last, match.range.first))
+                    append("\u0000${resolved.size}\u0000")
+                    resolved.add(MentionInfo(displayName, mentionId))
+                    last = match.range.last + 1
                 }
-            )
-            readIndex = match.range.last + 1
-            hasResolvedMention = true
+            }
+            append(content.substring(last))
         }
 
-        if (!hasResolvedMention) {
-            return AttributedString.plain(content)
+        if (resolved.isEmpty()) return AttributedString.plain(content)
+
+        val parsed = AttributedString.plain(cleaned)
+        val newElements = mutableListOf<AttributedElement>()
+
+        for (element in parsed.elements) {
+            if (element.kind == AttributedKind.PLAIN) {
+                val text = element.displayText
+                var readIndex = 0
+                var changed = false
+
+                for (match in markerRegex.findAll(text)) {
+                    val index = match.groupValues[1].toInt()
+                    val info = resolved[index]
+
+                    val before = text.substring(readIndex, match.range.first)
+                    if (before.isNotEmpty()) {
+                        AttributedItem().also {
+                            it.kind = AttributedKind.PLAIN
+                            it.displayText = before
+                            newElements.add(it)
+                        }
+                    }
+                    AttributedItem().also {
+                        it.kind = AttributedKind.ACCOUNT
+                        it.displayText = "@${info.displayName}"
+                        it.expandedText = info.id
+                        newElements.add(it)
+                    }
+                    readIndex = match.range.last + 1
+                    changed = true
+                }
+
+                if (changed) {
+                    val after = text.substring(readIndex)
+                    if (after.isNotEmpty()) {
+                        AttributedItem().also {
+                            it.kind = AttributedKind.PLAIN
+                            it.displayText = after
+                            newElements.add(it)
+                        }
+                    }
+                } else {
+                    newElements.add(element)
+                }
+            } else {
+                newElements.add(element)
+            }
         }
 
-        addPlainElements(elements, content.substring(readIndex))
-        return AttributedString.elements(elements)
-    }
-
-    private fun addPlainElements(
-        elements: MutableList<AttributedElement>,
-        text: String,
-    ) {
-        if (text.isNotEmpty()) {
-            elements.addAll(AttributedString.plain(text).elements)
-        }
+        return AttributedString.elements(newElements)
     }
 
     fun timeLine(
