@@ -6,6 +6,7 @@ import work.socialhub.knostr.social.model.NostrReaction
 import work.socialhub.knostr.social.model.NostrRelationship
 import work.socialhub.knostr.social.model.NostrUser as KnostrUser
 import work.socialhub.knostr.util.Nip21
+import work.socialhub.knostr.social.model.NostrMediaUpload
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Emoji
@@ -20,6 +21,7 @@ import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.common.AttributedItem
 import work.socialhub.planetlink.model.common.AttributedKind
 import work.socialhub.planetlink.model.common.AttributedString
+import work.socialhub.planetlink.model.request.MediaForm
 import work.socialhub.planetlink.nostr.model.NostrComment
 import work.socialhub.planetlink.nostr.model.NostrPaging
 import work.socialhub.planetlink.nostr.model.NostrUser
@@ -54,6 +56,28 @@ object NostrMapper {
 
             followingCount = knostrUser.followingCount
             followersCount = knostrUser.followersCount
+        }
+    }
+
+    fun toNostrMediaUpload(form: MediaForm): NostrMediaUpload {
+        return NostrMediaUpload(
+            fileData = form.data,
+            fileName = form.name,
+            mimeType = nostrMediaMimeType(form.name),
+            description = form.description.orEmpty(),
+        )
+    }
+
+    fun nostrMediaMimeType(fileName: String?): String {
+        return when (fileName?.substringAfterLast('.', "")?.lowercase()) {
+            "avif" -> "image/avif"
+            "gif" -> "image/gif"
+            "heic" -> "image/heic"
+            "heif" -> "image/heif"
+            "png" -> "image/png"
+            "svg" -> "image/svg+xml"
+            "webp" -> "image/webp"
+            else -> "application/octet-stream"
         }
     }
 

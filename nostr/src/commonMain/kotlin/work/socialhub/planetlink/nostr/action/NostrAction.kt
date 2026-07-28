@@ -261,7 +261,7 @@ class NostrAction(
                 val uploaded = social.media().uploadToConfiguredServer(
                     fileData = bytes,
                     fileName = form.avatarName ?: "avatar",
-                    mimeType = nostrMediaMimeType(form.avatarName),
+                    mimeType = NostrMapper.nostrMediaMimeType(form.avatarName),
                 )
                 if (uploaded.data.url.isNotEmpty()) picture = uploaded.data.url
             }
@@ -269,7 +269,7 @@ class NostrAction(
                 val uploaded = social.media().uploadToConfiguredServer(
                     fileData = bytes,
                     fileName = form.bannerName ?: "banner",
-                    mimeType = nostrMediaMimeType(form.bannerName),
+                    mimeType = NostrMapper.nostrMediaMimeType(form.bannerName),
                 )
                 if (uploaded.data.url.isNotEmpty()) banner = uploaded.data.url
             }
@@ -531,12 +531,23 @@ class NostrAction(
     }
 
     private suspend fun doPostComment(req: CommentForm) {
-        ensureRelayConnected()
         proceedUnit {
-            val replyToEventId = if (!req.isMessage) req.replyId?.value<String>() else null
+            ensureRelayConnected()
+
+            if (req.isMessage) {
+                val recipientPubkey = req.replyId?.value<String>()
+                    ?: throw SocialHubException("recipient pubkey is required for direct message")
+                if (req.images.isNotEmpty()) {
+                    throw NotSupportedException("Image attachments are not yet supported for Nostr direct messages")
+                }
+                social.messages().sendMessage(recipientPubkey, req.text ?: "")
+                return@proceedUnit
+            }
+
+            val replyToEventId = req.replyId?.value<String>()
             val quoteEventId = req.quoteId?.value<String>()
             val quoteTags = quoteEventId?.let { listOf(listOf("q", it)) }.orEmpty()
-            val uploads = req.images.map { it.toNostrMediaUpload() }
+            val uploads = req.images.map { NostrMapper.toNostrMediaUpload(it) }
 
             if (uploads.isNotEmpty() && replyToEventId != null) {
                 social.media().uploadAndReply(
