@@ -1977,7 +1977,6 @@ class BlueskyAction(
                 )
                 val fetched = response.data.follows.map(Mapper::streamProfile)
                 fetched.forEach { profiles[it.did] = it }
-                cache?.merge(fetched)
 
                 profiles[response.data.subject.did] =
                     Mapper.streamProfile(response.data.subject)
@@ -1996,12 +1995,12 @@ class BlueskyAction(
                 cache?.replace(profiles.values.toTypedArray(), true)
             } else {
                 // Early stop: merge cached entries for un-fetched older pages
-                cache?.isComplete = true
                 cachedProfiles.forEach { (did, profile) ->
                     if (did !in profiles) {
                         profiles[did] = profile
                     }
                 }
+                cache?.replace(profiles.values.toTypedArray(), true)
             }
 
             profiles
