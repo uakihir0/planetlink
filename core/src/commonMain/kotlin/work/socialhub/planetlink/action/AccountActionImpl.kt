@@ -34,10 +34,9 @@ abstract class AccountActionImpl(
     /**
      * Get User me with cache.
      * キャッシュ付きで自分のユーザーを取得
+     *
+     * Each adapter must implement this through a private suspend fetcher to
+     * avoid Kotlin/JS virtual suspend bridge dispatch to [userMe].
      */
-    open suspend fun userMeWithCache(): User {
-        return me ?: run {
-            userMe().also { me = it }
-        }
-    }
+    abstract suspend fun userMeWithCache(): User
 }

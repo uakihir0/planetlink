@@ -247,7 +247,7 @@ class NostrAction(
     /**
      * {@inheritDoc}
      * kind:0 は全置換のため、既存プロフィールを取得してマージする。
-     * avatar/banner は NIP-96 サーバー (auth.nip96Server) にアップロードして URL を設定。
+     * avatar/banner は設定済みの NIP-96 サーバーにアップロードして URL を設定。
      */
     override suspend fun updateProfile(form: ProfileForm) {
         ensureRelayConnected()
@@ -258,20 +258,18 @@ class NostrAction(
             var banner = existing.banner
 
             form.avatar?.let { bytes ->
-                val uploaded = social.media().upload(
-                    serverUrl = auth.nip96Server,
+                val uploaded = social.media().uploadToConfiguredServer(
                     fileData = bytes,
                     fileName = form.avatarName ?: "avatar",
-                    mimeType = guessImageMimeType(form.avatarName),
+                    mimeType = NostrMapper.nostrMediaMimeType(form.avatarName),
                 )
                 if (uploaded.data.url.isNotEmpty()) picture = uploaded.data.url
             }
             form.banner?.let { bytes ->
-                val uploaded = social.media().upload(
-                    serverUrl = auth.nip96Server,
+                val uploaded = social.media().uploadToConfiguredServer(
                     fileData = bytes,
                     fileName = form.bannerName ?: "banner",
-                    mimeType = guessImageMimeType(form.bannerName),
+                    mimeType = NostrMapper.nostrMediaMimeType(form.bannerName),
                 )
                 if (uploaded.data.url.isNotEmpty()) banner = uploaded.data.url
             }
@@ -289,14 +287,6 @@ class NostrAction(
             social.users().updateProfile(profile)
         }
     }
-
-    private fun guessImageMimeType(fileName: String?): String =
-        when (fileName?.substringAfterLast('.', "")?.lowercase()) {
-            "png" -> "image/png"
-            "gif" -> "image/gif"
-            "webp" -> "image/webp"
-            else -> "image/jpeg"
-        }
 
     override suspend fun blockUser(id: Identify) {
         throw NotSupportedException("Nostr does not support blocking users")
@@ -537,13 +527,57 @@ class NostrAction(
     // ============================================================== //
 
     override suspend fun postComment(req: CommentForm) {
-        proceedUnit {
-            val replyToEventId = if (!req.isMessage) req.replyId?.value<String>() else null
+        doPostComment(req)
+    }
 
-            if (replyToEventId != null) {
+    private suspend fun doPostComment(req: CommentForm) {
+        proceedUnit {
+            ensureRelayConnected()
+
+            if (req.isMessage) {
+                val recipientPubkey = req.replyId?.value<String>()
+                    ?: throw SocialHubException("recipient pubkey is required for direct message")
+                if (req.images.isNotEmpty()) {
+                    throw NotSupportedException("Image attachments are not yet supported for Nostr direct messages")
+                }
+                social.messages().sendMessage(recipientPubkey, req.text ?: "")
+                return@proceedUnit
+            }
+
+            val replyToEventId = req.replyId?.value<String>()
+            val quoteEventId = req.quoteId?.value<String>()
+            val quoteTags = quoteEventId?.let { listOf(listOf("q", it)) }.orEmpty()
+            val uploads = req.images.map { NostrMapper.toNostrMediaUpload(it) }
+
+            if (uploads.isNotEmpty() && replyToEventId != null) {
+                social.media().uploadAndReply(
+                    uploads = uploads,
+                    replyToEventId = replyToEventId,
+                    content = req.text.orEmpty(),
+                    tags = quoteTags,
+                    contentWarning = req.warning,
+                    sensitive = req.isSensitive,
+                )
+            } else if (uploads.isNotEmpty()) {
+                social.media().uploadManyAndPost(
+                    uploads = uploads,
+                    content = req.text.orEmpty(),
+                    tags = quoteTags,
+                    contentWarning = req.warning,
+                    sensitive = req.isSensitive,
+                )
+            } else if (replyToEventId != null) {
                 social.feed().reply(
                     content = req.text ?: "",
+                    tags = quoteTags,
                     replyToEventId = replyToEventId,
+                    contentWarning = req.warning,
+                    sensitive = req.isSensitive,
+                )
+            } else if (quoteEventId != null) {
+                social.feed().quoteRepost(
+                    eventId = quoteEventId,
+                    comment = req.text.orEmpty(),
                     contentWarning = req.warning,
                     sensitive = req.isSensitive,
                 )
