@@ -14,6 +14,7 @@ import work.socialhub.knostr.entity.NostrProfile
 import work.socialhub.knostr.entity.UnsignedEvent
 import work.socialhub.knostr.social.model.NostrDirectMessage
 import work.socialhub.knostr.social.model.NostrNote
+import work.socialhub.knostr.social.model.NostrChannel as KnostrChannel
 import work.socialhub.knostr.social.model.NostrUser as KnostrUser
 import work.socialhub.knostr.social.stream.NotificationStream
 import work.socialhub.knostr.social.stream.TimelineStream
@@ -545,32 +546,47 @@ class NostrAction(
         return proceed {
             val eventIds = social.bookmarks().getBookmarks().data
             if (eventIds.isEmpty()) {
-                return@proceed Pageable<Comment>().also { it.paging = paging }
+                return@proceed Pageable<Comment>().also { it.paging = NostrPaging.fromPaging(paging) }
             }
 
-            val fetchLimit = (paging.count ?: 50) * 3
-            val targetIds = eventIds.asReversed().take(fetchLimit)
-
-            val notes: List<NostrNote> = coroutineScope {
-                targetIds.map { eventId ->
-                    async<NostrNote?> {
-                        try {
-                            social.feed().getNote(eventId).data
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (_: Exception) {
-                            null
-                        }
-                    }
-                }.awaitAll().filterNotNull()
-            }
-
+            val pageSize = paging.count ?: 50
+            val batchSize = pageSize * 3
             val np = NostrPaging.fromPaging(paging)
+            val allIds = eventIds.asReversed()
+
+            val notes = mutableListOf<NostrNote>()
+            for (offset in 0 until allIds.size step batchSize) {
+                val batchIds = allIds.drop(offset).take(batchSize)
+                if (batchIds.isEmpty()) break
+
+                val batchNotes: List<NostrNote> = coroutineScope {
+                    batchIds.map { eventId ->
+                        async<NostrNote?> {
+                            try {
+                                social.feed().getNote(eventId).data
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (_: Exception) {
+                                null
+                            }
+                        }
+                    }.awaitAll().filterNotNull()
+                }
+
+                notes.addAll(batchNotes)
+
+                val inWindow = notes.count {
+                    (np.since == null || it.createdAt >= np.since!!) &&
+                        (np.until == null || it.createdAt <= np.until!!)
+                }
+                if (inWindow >= pageSize) break
+            }
+
             val filtered = notes
                 .filter { np.since == null || it.createdAt >= np.since!! }
                 .filter { np.until == null || it.createdAt <= np.until!! }
                 .sortedByDescending { it.createdAt }
-                .take(paging.count ?: 50)
+                .take(pageSize)
             NostrMapper.timeLine(filtered, service(), paging, me ?: fetchUserMe())
         }
     }
@@ -822,8 +838,27 @@ class NostrAction(
     override suspend fun channels(id: Identify, paging: Paging): Pageable<Channel> {
         ensureRelayConnected()
         return proceed {
-            val response = social.channels().getChannels(paging.count ?: 50)
-            NostrMapper.channels(response.data, service(), paging)
+            val np = NostrPaging.fromPaging(paging)
+            val filter = NostrFilter(
+                kinds = listOf(EventKind.CHANNEL_CREATE),
+                since = np.since,
+                until = np.until,
+                limit = paging.count ?: 50,
+            )
+            val response = nostr.events().queryEvents(listOf(filter))
+            val channels = response.data.map { event ->
+                KnostrChannel().apply {
+                    this.id = event.id
+                    this.createdAt = event.createdAt
+                    try {
+                        val meta = Json.parseToJsonElement(event.content).jsonObject
+                        this.name = meta["name"]?.jsonPrimitive?.content.orEmpty()
+                        this.about = meta["about"]?.jsonPrimitive?.content.orEmpty()
+                        this.picture = meta["picture"]?.jsonPrimitive?.content.orEmpty()
+                    } catch (_: Exception) {}
+                }
+            }
+            NostrMapper.channels(channels, service(), paging)
         }
     }
 
