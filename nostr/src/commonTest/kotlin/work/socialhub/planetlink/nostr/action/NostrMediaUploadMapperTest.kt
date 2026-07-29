@@ -28,10 +28,13 @@ class NostrMediaUploadMapperTest {
         assertEquals("image/gif", NostrMapper.nostrMediaMimeType("photo.gif"))
         assertEquals("image/heic", NostrMapper.nostrMediaMimeType("photo.heic"))
         assertEquals("image/heif", NostrMapper.nostrMediaMimeType("photo.heif"))
+        assertEquals("image/jpeg", NostrMapper.nostrMediaMimeType("photo.jpeg"))
+        assertEquals("image/jpeg", NostrMapper.nostrMediaMimeType("photo.JPG"))
         assertEquals("image/png", NostrMapper.nostrMediaMimeType("photo.png"))
         assertEquals("image/svg+xml", NostrMapper.nostrMediaMimeType("photo.svg"))
         assertEquals("image/webp", NostrMapper.nostrMediaMimeType("photo.webp"))
-        assertEquals("application/octet-stream", NostrMapper.nostrMediaMimeType("photo.jpg"))
+        assertEquals("video/mp4", NostrMapper.nostrMediaMimeType("clip.mp4"))
+        assertEquals("audio/mpeg", NostrMapper.nostrMediaMimeType("voice.mp3"))
         assertEquals("application/octet-stream", NostrMapper.nostrMediaMimeType("photo"))
     }
 }

@@ -125,8 +125,7 @@ class PostCommentTest {
 
         @Test
         fun testNostr() = runTest {
-            // Nostr file uploads not supported yet
-            nostr().act(text = "Image")
+            nostr().act(text = "Image", fileData = icon(), fileName = "icon.png")
         }
 
         @Test

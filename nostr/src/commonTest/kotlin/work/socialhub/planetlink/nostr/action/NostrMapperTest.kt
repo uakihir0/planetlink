@@ -1,19 +1,108 @@
 package work.socialhub.planetlink.nostr.action
 
 import work.socialhub.knostr.entity.NostrEvent
+import work.socialhub.knostr.social.model.NostrChannel
+import work.socialhub.knostr.social.model.NostrChannelMessage
+import work.socialhub.knostr.social.model.NostrMedia
 import work.socialhub.knostr.social.model.NostrNote
+import work.socialhub.knostr.social.model.NostrUser as KnostrUser
 import work.socialhub.knostr.util.Bech32
 import work.socialhub.knostr.util.Hex
+import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.Paging
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.common.AttributedElement
 import work.socialhub.planetlink.model.common.AttributedKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class NostrMapperTest {
+
+    @Test
+    fun mapsMediaMetadataAndSensitiveFlag() {
+        val source = note(
+            eventId = "11".repeat(32),
+            content = "Media",
+        ).apply {
+            isSensitive = true
+            medias = listOf(
+                NostrMedia().apply {
+                    url = "https://example.com/video.mp4"
+                    mimeType = "video/mp4"
+                    width = 1920
+                    height = 1080
+                    thumbnailUrl = "https://example.com/video.jpg"
+                    alt = "Launch video"
+                    blurhash = "LEHV6nWB2yk8pyo0adR*.7kCMdnj"
+                }
+            )
+        }
+
+        val comment = NostrMapper.comment(source, service())
+        val media = comment.medias.single()
+
+        assertTrue(comment.possiblySensitive)
+        assertEquals(MediaType.Movie, media.type)
+        assertEquals(1920, media.width)
+        assertEquals(1080, media.height)
+        assertEquals("https://example.com/video.jpg", media.previewUrl)
+        assertEquals("Launch video", media.description)
+        assertEquals("LEHV6nWB2yk8pyo0adR*.7kCMdnj", media.blurhash)
+    }
+
+    @Test
+    fun mapsChannelsAndChannelMessages() {
+        val service = service()
+        val channel = NostrChannel().apply {
+            id = "channel-id"
+            name = "PlanetLink"
+            about = "Development"
+            createdAt = 1_000
+        }
+        val message = NostrChannelMessage().apply {
+            event = NostrEvent(
+                id = "11".repeat(32),
+                pubkey = "44".repeat(32),
+                createdAt = 2_000,
+                kind = 42,
+                tags = listOf(listOf("e", channel.id)),
+                content = "Hello",
+                sig = "55".repeat(64),
+            )
+            content = event.content
+            channelId = channel.id
+            createdAt = event.createdAt
+        }
+        val author = KnostrUser().apply {
+            pubkey = message.event.pubkey
+            name = "Alice"
+        }
+
+        val mappedChannel = NostrMapper.channel(channel, service)
+        val mappedMessage = NostrMapper.channelMessages(
+            messages = listOf(message),
+            users = mapOf(author.pubkey to author),
+            service = service,
+            paging = Paging(20),
+        ).entities.single() as work.socialhub.planetlink.nostr.model.NostrComment
+
+        assertEquals("channel-id", mappedChannel.id?.value)
+        assertEquals("PlanetLink", mappedChannel.name)
+        assertEquals("Development", mappedChannel.description)
+        assertEquals("channel-id", mappedMessage.channelId)
+        assertEquals("Hello", mappedMessage.text?.displayText)
+        assertEquals("Alice", mappedMessage.user?.name)
+        assertEquals(
+            "channel-id",
+            mappedMessage.replyForm.params[
+                work.socialhub.planetlink.nostr.model.NostrComment.CHANNEL_ID_KEY
+            ],
+        )
+    }
 
     @Test
     fun removesResolvedQuoteReferenceFromDisplayText() {
