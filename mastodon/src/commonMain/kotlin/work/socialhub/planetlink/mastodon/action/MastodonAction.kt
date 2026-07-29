@@ -1292,20 +1292,45 @@ class MastodonAction(
         id: Identify,
         paging: Paging
     ): Pageable<Channel> {
-        return proceed {
-            if (!id.isSameIdentify(userMeWithCache())) {
-                throw NotSupportedException(
-                    "Sorry, authenticated user only."
-                )
-            }
+        if (!id.isSameIdentify(me ?: fetchUserMe())) {
+            throw NotSupportedException(
+                "Sorry, authenticated user only."
+            )
+        }
+        return fetchOwnedLists()
+    }
 
+    private suspend fun fetchOwnedLists(): Pageable<Channel> {
+        return proceed {
+            val lists = auth.accessor.lists().ownedLists()
+            service().rateLimit.addInfo(
+                SocialActionType.GetChannels,
+                MastodonMapper.rateLimit(lists),
+            )
+            MastodonMapper.channels(
+                lists.data,
+                service(),
+            )
+        }
+    }
+
+    /**
+     * Get the lists that contain the specified account.
+     *
+     * This exposes Mastodon's `GET /api/v1/accounts/:id/lists` separately from
+     * [channels], which returns the authenticated user's owned lists.
+     */
+    suspend fun listsContainingAccount(
+        id: Identify,
+    ): Pageable<Channel> {
+        return proceed {
             val lists = auth.accessor.lists().lists(
                 ListsListsRequest().also {
                     it.id = id.id<String>()
                 }
             )
             service().rateLimit.addInfo(
-                SocialActionType.GetChannels,
+                MastodonActionType.GetListsContainingAccount,
                 MastodonMapper.rateLimit(lists),
             )
             MastodonMapper.channels(
@@ -2329,6 +2354,7 @@ class MastodonAction(
                 MastodonActionType.PinComment,
                 MastodonActionType.UnpinComment,
                 MastodonActionType.ClearNotifications,
+                MastodonActionType.GetListsContainingAccount,
             )
         )
 
