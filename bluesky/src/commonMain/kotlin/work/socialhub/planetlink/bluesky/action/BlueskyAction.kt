@@ -299,7 +299,9 @@ class BlueskyAction(
                     .also { it.uri = uri }
             )
         }
-        auth.streamCache?.isComplete = false
+        streamCacheMutex.withLock {
+            auth.streamCache?.isComplete = false
+        }
     }
 
     /**
