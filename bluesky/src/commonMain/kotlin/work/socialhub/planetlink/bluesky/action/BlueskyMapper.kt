@@ -45,6 +45,7 @@ import work.socialhub.planetlink.bluesky.define.BlueskyNotificationType
 import work.socialhub.planetlink.bluesky.model.BlueskyChannel
 import work.socialhub.planetlink.bluesky.model.BlueskyComment
 import work.socialhub.planetlink.bluesky.model.BlueskyPaging
+import work.socialhub.planetlink.bluesky.model.BlueskyStreamProfile
 import work.socialhub.planetlink.bluesky.model.BlueskyUser
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.Channel
@@ -116,6 +117,48 @@ object BlueskyMapper {
             description = AttributedString.plain(account.description)
 
             userViewer(this, account.viewer)
+        }
+    }
+
+    private fun user(
+        profile: BlueskyStreamProfile,
+        service: Service,
+    ): User {
+        return BlueskyUser(service).apply {
+            isSimple = true
+            isProtected = false
+
+            id = ID(profile.did)
+            name = profile.displayName ?: profile.handle.orEmpty()
+            screenName = profile.handle
+            iconImageUrl = profile.avatar
+            description = AttributedString.plain(profile.description)
+
+            followRecordUri = profile.followRecordUri
+            followedRecordUri = profile.followedRecordUri
+            blockingRecordUri = profile.blockingRecordUri
+            muted = profile.muted
+            blockedBy = profile.blockedBy
+        }
+    }
+
+    internal fun streamProfile(
+        account: ActorDefsProfileView,
+    ): BlueskyStreamProfile {
+        return BlueskyStreamProfile(
+            did = account.did,
+            handle = account.handle,
+            displayName = account.displayName,
+            avatar = account.avatar,
+            description = account.description,
+        ).also { profile ->
+            account.viewer?.let {
+                profile.followRecordUri = it.following
+                profile.followedRecordUri = it.followedBy
+                profile.blockingRecordUri = it.blocking
+                profile.muted = it.muted
+                profile.blockedBy = it.blockedBy
+            }
         }
     }
 
@@ -741,7 +784,7 @@ object BlueskyMapper {
     fun commentFromEvent(
         event: Event,
         service: Service,
-        profileCache: Map<String, ActorDefsProfileView> = emptyMap(),
+        profileCache: Map<String, BlueskyStreamProfile> = emptyMap(),
     ): Comment? {
         val commit = event.commit ?: return null
         val record = commit.record?.asFeedPost ?: return null

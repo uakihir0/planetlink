@@ -4,6 +4,7 @@ import io.ktor.http.*
 import work.socialhub.kbsky.Bluesky
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.planetlink.action.ServiceAuth
+import work.socialhub.planetlink.bluesky.model.BlueskyStreamCache
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Service
 import kotlin.js.JsExport
@@ -19,6 +20,11 @@ class BlueskyAuth(
 
     var identifier: String? = null
     var password: String? = null
+
+    /**
+     * Optional externally owned cache used to build Bluesky stream filters.
+     */
+    var streamCache: BlueskyStreamCache? = null
 
     init {
         apiHost = toUrl(apiHost, "https")

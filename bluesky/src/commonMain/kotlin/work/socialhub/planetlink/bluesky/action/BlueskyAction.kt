@@ -64,7 +64,6 @@ import work.socialhub.kbsky.stream.BlueskyStreamFactory
 import work.socialhub.kbsky.stream.api.entity.app.bsky.JetStreamSubscribeRequest
 import work.socialhub.kbsky.stream.entity.app.bsky.callback.JetStreamEventCallback
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Event
-import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeedsPref
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedExternal
@@ -100,7 +99,9 @@ import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.bluesky.model.BlueskyComment
 import work.socialhub.planetlink.bluesky.model.BlueskyPaging
 import work.socialhub.planetlink.bluesky.model.BlueskyStream
+import work.socialhub.planetlink.bluesky.model.BlueskyStreamProfile
 import work.socialhub.planetlink.bluesky.model.BlueskyUser
+import work.socialhub.planetlink.bluesky.model.shouldStopFollowingSync
 import work.socialhub.planetlink.bluesky.support.Utils
 import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.action.callback.comment.UpdateCommentCallback
@@ -204,6 +205,7 @@ class BlueskyAction(
     private var expireAt: Long? = null
     private var did: String? = null
     private val sessionMutex = Mutex()
+    private val streamCacheMutex = Mutex()
     private val hydrationSemaphore = Semaphore(4)
 
     // ============================================================== //
@@ -296,6 +298,9 @@ class BlueskyAction(
                 GraphDeleteFollowRequest(authProvider())
                     .also { it.uri = uri }
             )
+        }
+        streamCacheMutex.withLock {
+            auth.streamCache?.isComplete = false
         }
     }
 
@@ -1564,9 +1569,8 @@ class BlueskyAction(
         callback: EventCallback
     ): Stream {
         return proceed {
-            val profiles = getAllFollowingProfiles()
-            val profileCache = profiles.associateBy { it.did }
-            val followingDids = profiles.map { it.did } + did()
+            val profileCache = fetchStreamFollowingProfiles()
+            val followingDids = (profileCache.keys + did()).distinct()
             val callbackScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
             val clients = followingDids
@@ -1676,7 +1680,7 @@ class BlueskyAction(
     ): Stream {
         return proceed {
             val myDid = did()
-            val followingDids = getAllFollowingDids()
+            val followingDids = (fetchStreamFollowingProfiles().keys + myDid).distinct()
 
             val clients = followingDids
                 .chunked(MAX_WANTED_DIDS_PER_CONNECTION)
@@ -1954,33 +1958,53 @@ class BlueskyAction(
     // ============================================================== //
     // Support
     // ============================================================== //
-    /**
-     * フォロー中の全ユーザーの DID を取得
-     */
-    private suspend fun getAllFollowingDids(): List<String> {
-        return getAllFollowingProfiles().map { it.did }
-    }
+    private suspend fun fetchStreamFollowingProfiles(): Map<String, BlueskyStreamProfile> {
+        return streamCacheMutex.withLock {
+            val cache = auth.streamCache
+            val cachedProfiles = cache?.snapshot().orEmpty()
+            val cachedDids = cachedProfiles.keys
+            val profiles = mutableMapOf<String, BlueskyStreamProfile>()
+            var cursor: String? = null
+            var reachedCachedProfile = false
 
-    private suspend fun getAllFollowingProfiles(): List<ActorDefsProfileView> {
-        val profiles = mutableListOf<ActorDefsProfileView>()
-        var cursor: String? = null
+            do {
+                val response = auth.accessor.graph().getFollows(
+                    GraphGetFollowsRequest(authProvider()).also {
+                        it.actor = did()
+                        it.cursor = cursor
+                        it.limit = 100
+                    }
+                )
+                val fetched = response.data.follows.map(Mapper::streamProfile)
+                fetched.forEach { profiles[it.did] = it }
 
-        do {
-            val response = auth.accessor.graph().getFollows(
-                GraphGetFollowsRequest(authProvider()).also {
-                    it.actor = did()
-                    it.cursor = cursor
-                    it.limit = 100
+                profiles[response.data.subject.did] =
+                    Mapper.streamProfile(response.data.subject)
+                cursor = response.data.cursor
+                // getFollows is traversed newest-first. Once a complete cache
+                // overlaps the current page, older pages contain cached data.
+                reachedCachedProfile = shouldStopFollowingSync(
+                    cacheIsComplete = cache?.isComplete == true,
+                    cachedDids = cachedDids,
+                    fetchedDids = fetched.map { it.did },
+                )
+            } while (cursor != null && !reachedCachedProfile)
+
+            if (cursor == null) {
+                // Full traversal: replace cache with only fetched profiles
+                cache?.replace(profiles.values.toTypedArray(), true)
+            } else {
+                // Early stop: merge cached entries for un-fetched older pages
+                cachedProfiles.forEach { (did, profile) ->
+                    if (did !in profiles) {
+                        profiles[did] = profile
+                    }
                 }
-            )
-            if (profiles.isEmpty()) {
-                profiles.add(response.data.subject)
+                cache?.replace(profiles.values.toTypedArray(), true)
             }
-            profiles.addAll(response.data.follows)
-            cursor = response.data.cursor
-        } while (cursor != null)
 
-        return profiles
+            profiles
+        }
     }
 
     /**
