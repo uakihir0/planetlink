@@ -25,7 +25,10 @@ class BlueskyStreamProfile(
  *
  * Set [profiles] and [isComplete] from persistent storage before injecting
  * this instance into `BlueskyAuth.streamCache`. Stream setup merges newly
- * fetched profiles into this cache. Removed follows are intentionally retained.
+ * fetched profiles into this cache. After a full traversal the cache is
+ * replaced with only currently-followed accounts. Callers should set
+ * [isComplete] to false after performing an unfollow so that the next
+ * stream startup performs a full traversal and removes stale entries.
  */
 @JsExport
 class BlueskyStreamCache {

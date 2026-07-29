@@ -299,6 +299,7 @@ class BlueskyAction(
                     .also { it.uri = uri }
             )
         }
+        auth.streamCache?.isComplete = false
     }
 
     /**
@@ -1566,7 +1567,7 @@ class BlueskyAction(
         callback: EventCallback
     ): Stream {
         return proceed {
-            val profileCache = getStreamFollowingProfiles()
+            val profileCache = fetchStreamFollowingProfiles()
             val followingDids = (profileCache.keys + did()).distinct()
             val callbackScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -1677,7 +1678,7 @@ class BlueskyAction(
     ): Stream {
         return proceed {
             val myDid = did()
-            val followingDids = (getStreamFollowingProfiles().keys + myDid).distinct()
+            val followingDids = (fetchStreamFollowingProfiles().keys + myDid).distinct()
 
             val clients = followingDids
                 .chunked(MAX_WANTED_DIDS_PER_CONNECTION)
@@ -1955,12 +1956,12 @@ class BlueskyAction(
     // ============================================================== //
     // Support
     // ============================================================== //
-    private suspend fun getStreamFollowingProfiles(): Map<String, BlueskyStreamProfile> {
+    private suspend fun fetchStreamFollowingProfiles(): Map<String, BlueskyStreamProfile> {
         return streamCacheMutex.withLock {
             val cache = auth.streamCache
             val cachedProfiles = cache?.snapshot().orEmpty()
             val cachedDids = cachedProfiles.keys
-            val profiles = cachedProfiles.toMutableMap()
+            val profiles = mutableMapOf<String, BlueskyStreamProfile>()
             var cursor: String? = null
             var reachedCachedProfile = false
 
@@ -1972,9 +1973,9 @@ class BlueskyAction(
                         it.limit = 100
                     }
                 )
-                val fetchedProfiles = response.data.follows.map(Mapper::streamProfile)
-                fetchedProfiles.forEach { profiles[it.did] = it }
-                cache?.merge(fetchedProfiles)
+                val fetched = response.data.follows.map(Mapper::streamProfile)
+                fetched.forEach { profiles[it.did] = it }
+                cache?.merge(fetched)
 
                 profiles[response.data.subject.did] =
                     Mapper.streamProfile(response.data.subject)
@@ -1984,13 +1985,23 @@ class BlueskyAction(
                 reachedCachedProfile = shouldStopFollowingSync(
                     cacheIsComplete = cache?.isComplete == true,
                     cachedDids = cachedDids,
-                    fetchedDids = fetchedProfiles.map { it.did },
+                    fetchedDids = fetched.map { it.did },
                 )
             } while (cursor != null && !reachedCachedProfile)
 
-            if (cache != null && cursor == null) {
-                cache.isComplete = true
+            if (cursor == null) {
+                // Full traversal: replace cache with only fetched profiles
+                cache?.replace(profiles.values.toTypedArray(), true)
+            } else {
+                // Early stop: merge cached entries for un-fetched older pages
+                cache?.isComplete = true
+                cachedProfiles.forEach { (did, profile) ->
+                    if (did !in profiles) {
+                        profiles[did] = profile
+                    }
+                }
             }
+
             profiles
         }
     }
