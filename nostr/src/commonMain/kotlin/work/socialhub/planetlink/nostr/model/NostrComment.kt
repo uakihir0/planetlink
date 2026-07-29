@@ -66,11 +66,14 @@ class NostrComment(
     /** {@inheritDoc} */
     override val replyForm: CommentForm
         get() = CommentForm().also {
-            it.replyId(id)
+            channelId?.let { channel ->
+                it.addParam(CHANNEL_ID_KEY, channel)
+            } ?: it.replyId(id)
         }
 
     companion object {
         const val EVENT_ID_KEY = "eventId"
         const val AUTHOR_PUBKEY_KEY = "authorPubkey"
+        const val CHANNEL_ID_KEY = "channelId"
     }
 }
