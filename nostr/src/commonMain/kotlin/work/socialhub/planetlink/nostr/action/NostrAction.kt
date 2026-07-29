@@ -8,6 +8,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.withLock
 import work.socialhub.knostr.EventKind
+import work.socialhub.knostr.NostrException
 import work.socialhub.knostr.entity.Nip19Entity
 import work.socialhub.knostr.entity.NostrFilter
 import work.socialhub.knostr.entity.NostrProfile
@@ -566,8 +567,8 @@ class NostrAction(
                                 social.feed().getNote(eventId).data
                             } catch (e: CancellationException) {
                                 throw e
-                            } catch (_: Exception) {
-                                null
+                            } catch (e: NostrException) {
+                                if (e.message == "Note not found: $eventId") null else throw e
                             }
                         }
                     }.awaitAll().filterNotNull()
