@@ -10,6 +10,7 @@ import work.socialhub.knostr.social.model.NostrRelationship
 import work.socialhub.knostr.social.model.NostrUser as KnostrUser
 import work.socialhub.knostr.util.Nip21
 import work.socialhub.planetlink.define.MediaType
+import work.socialhub.planetlink.model.Channel
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Emoji
 import work.socialhub.planetlink.model.ID
@@ -209,8 +210,8 @@ object NostrMapper {
     fun channel(
         source: KnostrChannel,
         service: Service,
-    ): work.socialhub.planetlink.model.Channel {
-        return work.socialhub.planetlink.model.Channel(service).apply {
+    ): Channel {
+        return Channel(service).apply {
             id = ID(source.id)
             name = source.name
             description = source.about
@@ -223,8 +224,8 @@ object NostrMapper {
         sources: List<KnostrChannel>,
         service: Service,
         paging: Paging,
-    ): Pageable<work.socialhub.planetlink.model.Channel> {
-        return Pageable<work.socialhub.planetlink.model.Channel>().apply {
+    ): Pageable<Channel> {
+        return Pageable<Channel>().apply {
             entities = sources.map { channel(it, service) }
             this.paging = NostrPaging.fromPaging(paging)
         }
