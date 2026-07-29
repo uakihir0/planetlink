@@ -543,8 +543,8 @@ class NostrAction(
     }
 
     private suspend fun fetchUserBookmarks(paging: Paging): Pageable<Comment> {
-        ensureRelayConnected()
         return proceed {
+            ensureRelayConnected()
             val eventIds = social.bookmarks().getBookmarks().data
             if (eventIds.isEmpty()) {
                 return@proceed Pageable<Comment>().also { it.paging = NostrPaging.fromPaging(paging) }
@@ -789,15 +789,15 @@ class NostrAction(
     }
 
     override suspend fun bookmarkComment(id: Identify) {
-        ensureRelayConnected()
         proceedUnit {
+            ensureRelayConnected()
             social.bookmarks().bookmark(id.id!!.value<String>())
         }
     }
 
     override suspend fun unbookmarkComment(id: Identify) {
-        ensureRelayConnected()
         proceedUnit {
+            ensureRelayConnected()
             social.bookmarks().unbookmark(id.id!!.value<String>())
         }
     }
@@ -806,8 +806,8 @@ class NostrAction(
         if (choices.isEmpty()) {
             throw SocialHubException("At least one poll choice is required")
         }
-        ensureRelayConnected()
         proceedUnit {
+            ensureRelayConnected()
             social.polls().vote(id.id!!.value<String>(), choices)
         }
     }
@@ -837,8 +837,8 @@ class NostrAction(
     // ============================================================== //
 
     override suspend fun channels(id: Identify, paging: Paging): Pageable<Channel> {
-        ensureRelayConnected()
         return proceed {
+            ensureRelayConnected()
             val np = NostrPaging.fromPaging(paging)
             val filter = NostrFilter(
                 kinds = listOf(EventKind.CHANNEL_CREATE),
@@ -864,8 +864,8 @@ class NostrAction(
     }
 
     override suspend fun channelTimeLine(id: Identify, paging: Paging): Pageable<Comment> {
-        ensureRelayConnected()
         return proceed {
+            ensureRelayConnected()
             val np = NostrPaging.fromPaging(paging)
             val messages = social.channels().getChannelMessages(
                 channelId = id.id!!.value<String>(),
@@ -894,8 +894,8 @@ class NostrAction(
     }
 
     override suspend fun createList(name: String, description: String?): Channel {
-        ensureRelayConnected()
         return proceed {
+            ensureRelayConnected()
             val event = social.channels().createChannel(
                 name = name,
                 about = description.orEmpty(),
