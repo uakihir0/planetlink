@@ -17,4 +17,5 @@ enum class MastodonActionType : ActionType {
     PinComment,
     UnpinComment,
     ClearNotifications,
+    GetListsContainingAccount,
 }
