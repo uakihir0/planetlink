@@ -68,7 +68,8 @@ class NostrComment(
         get() = CommentForm().also {
             channelId?.let { channel ->
                 it.addParam(CHANNEL_ID_KEY, channel)
-            } ?: it.replyId(id)
+            }
+            it.replyId(id)
         }
 
     companion object {

@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.nostr.model
 
+import work.socialhub.planetlink.model.Channel
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
@@ -14,7 +15,13 @@ class NostrPaging : Paging() {
     override fun <T : Identify> newPage(entities: List<T>): Paging {
         val pg = copy()
         if (entities.isNotEmpty()) {
-            val newest = entities.firstNotNullOfOrNull { (it as? Comment)?.createAt }
+            val newest = entities.firstNotNullOfOrNull {
+                when (it) {
+                    is Comment -> it.createAt
+                    is Channel -> it.createAt
+                    else -> null
+                }
+            }
             if (newest != null) {
                 pg.since = newest.epochSeconds + 1
                 pg.until = null
@@ -26,7 +33,13 @@ class NostrPaging : Paging() {
     override fun <T : Identify> pastPage(entities: List<T>): Paging {
         val pg = copy()
         if (entities.isNotEmpty()) {
-            val oldest = entities.mapNotNull { (it as? Comment)?.createAt }.minOrNull()
+            val oldest = entities.mapNotNull {
+                when (it) {
+                    is Comment -> it.createAt
+                    is Channel -> it.createAt
+                    else -> null
+                }
+            }.minOrNull()
             if (oldest != null) {
                 pg.until = oldest.epochSeconds - 1
                 pg.since = null
