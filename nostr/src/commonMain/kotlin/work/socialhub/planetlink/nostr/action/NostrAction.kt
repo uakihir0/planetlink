@@ -3,11 +3,15 @@ package work.socialhub.planetlink.nostr.action
 import kotlin.time.Instant
 import kotlin.time.Clock
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.withLock
 import work.socialhub.knostr.EventKind
 import work.socialhub.knostr.entity.Nip19Entity
 import work.socialhub.knostr.entity.NostrFilter
 import work.socialhub.knostr.entity.NostrProfile
+import work.socialhub.knostr.entity.UnsignedEvent
 import work.socialhub.knostr.social.model.NostrDirectMessage
 import work.socialhub.knostr.social.model.NostrNote
 import work.socialhub.knostr.social.model.NostrUser as KnostrUser
@@ -540,15 +544,25 @@ class NostrAction(
         ensureRelayConnected()
         return proceed {
             val eventIds = social.bookmarks().getBookmarks().data
-            val notes = mutableListOf<NostrNote>()
-            for (eventId in eventIds.asReversed()) {
-                try {
-                    notes.add(social.feed().getNote(eventId).data)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    // The bookmark may reference a deleted or currently unavailable event.
-                }
+            if (eventIds.isEmpty()) {
+                return@proceed Pageable<Comment>().also { it.paging = paging }
+            }
+
+            val fetchLimit = (paging.count ?: 50) * 3
+            val targetIds = eventIds.asReversed().take(fetchLimit)
+
+            val notes: List<NostrNote> = coroutineScope {
+                targetIds.map { eventId ->
+                    async<NostrNote?> {
+                        try {
+                            social.feed().getNote(eventId).data
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                }.awaitAll().filterNotNull()
             }
 
             val np = NostrPaging.fromPaging(paging)
@@ -574,7 +588,7 @@ class NostrAction(
             ensureRelayConnected()
 
             if (req.isMessage) {
-                sendDirectMessage(req)
+                doSendDirectMessage(req)
                 return@proceedUnit
             }
 
@@ -583,13 +597,34 @@ class NostrAction(
                 if (req.poll != null) {
                     throw NotSupportedException("Polls are not supported in Nostr channels")
                 }
-                social.channels().sendMessage(channelId, contentWithUploadedMedia(req))
+                val replyToEventId = req.replyId?.value<String>()
+                if (replyToEventId != null) {
+                    val signer = nostr.signer()
+                        ?: throw SocialHubException("Signer is required for channel reply")
+                    val unsigned = UnsignedEvent(
+                        pubkey = signer.getPublicKey(),
+                        createdAt = Clock.System.now().epochSeconds,
+                        kind = EventKind.CHANNEL_MESSAGE,
+                        tags = listOf(
+                            listOf("e", channelId, "", "root"),
+                            listOf("e", replyToEventId, "", "reply"),
+                        ),
+                        content = contentWithUploadedMedia(req),
+                    )
+                    val signed = signer.sign(unsigned)
+                    nostr.events().publishEvent(signed)
+                } else {
+                    social.channels().sendMessage(channelId, contentWithUploadedMedia(req))
+                }
                 return@proceedUnit
             }
 
             req.poll?.let { poll ->
                 if (req.images.isNotEmpty() || req.replyId != null || req.quoteId != null) {
                     throw NotSupportedException("Nostr polls cannot include media, replies, or quotes")
+                }
+                if (poll.multiple) {
+                    throw NotSupportedException("Nostr does not support multiple-choice polls")
                 }
                 if (poll.options.size < 2) {
                     throw SocialHubException("Nostr polls require at least two options")
@@ -909,26 +944,30 @@ class NostrAction(
     override suspend fun postMessage(req: CommentForm) {
         proceedUnit {
             ensureRelayConnected()
-            sendDirectMessage(req)
+            doSendDirectMessage(req)
         }
     }
 
-    private suspend fun sendDirectMessage(req: CommentForm) {
+    private suspend fun doSendDirectMessage(req: CommentForm) {
         val recipientPubkey = req.replyId?.value<String>()
             ?: throw SocialHubException("recipient pubkey is required for direct message")
         social.messages().sendMessage(recipientPubkey, contentWithUploadedMedia(req))
     }
 
     private suspend fun contentWithUploadedMedia(req: CommentForm): String {
-        val urls = req.images.map { image ->
-            val media = social.media().uploadToConfiguredServer(
-                fileData = image.data,
-                fileName = image.name,
-                mimeType = NostrMapper.nostrMediaMimeType(image.name),
-                description = image.description.orEmpty(),
-            ).data
-            media.url.takeIf { it.isNotBlank() }
-                ?: throw SocialHubException("NIP-96 upload returned an empty media URL")
+        val urls: List<String> = coroutineScope {
+            req.images.map { image ->
+                async {
+                    val media = social.media().uploadToConfiguredServer(
+                        fileData = image.data,
+                        fileName = image.name,
+                        mimeType = NostrMapper.nostrMediaMimeType(image.name),
+                        description = image.description.orEmpty(),
+                    ).data
+                    media.url.takeIf { it.isNotBlank() }
+                        ?: throw SocialHubException("NIP-96 upload returned an empty media URL")
+                }
+            }.awaitAll()
         }
         return buildList {
             req.text?.takeIf { it.isNotBlank() }?.let(::add)
