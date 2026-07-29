@@ -19,7 +19,8 @@ class MastodonListsEndpointTest {
             val path = exchange.requestURI.path
             requestedPaths.add(path)
             val json = when (path) {
-                "/api/v1/accounts/verify_credentials" -> """{"id":"me"}"""
+                "/api/v1/accounts/verify_credentials" ->
+                    """{"id":"me","username":"test","acct":"test","url":"https://example.com/@test","display_name":"Test","note":"","avatar":"https://example.com/avatar.png","header":"https://example.com/header.png","created_at":"2024-01-01T00:00:00Z"}"""
                 "/api/v1/lists" -> """[{"id":"owned","title":"Owned"}]"""
                 "/api/v1/accounts/me/lists" ->
                     """[{"id":"containing","title":"Containing"}]"""
