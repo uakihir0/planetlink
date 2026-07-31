@@ -1,13 +1,16 @@
 package work.socialhub.planetlink.nostr.action
 
 import kotlin.time.Instant
+import work.socialhub.knostr.social.model.NostrChannel as KnostrChannel
+import work.socialhub.knostr.social.model.NostrChannelMessage
+import work.socialhub.knostr.social.model.NostrMediaUpload
 import work.socialhub.knostr.social.model.NostrNote
 import work.socialhub.knostr.social.model.NostrReaction
 import work.socialhub.knostr.social.model.NostrRelationship
 import work.socialhub.knostr.social.model.NostrUser as KnostrUser
 import work.socialhub.knostr.util.Nip21
-import work.socialhub.knostr.social.model.NostrMediaUpload
 import work.socialhub.planetlink.define.MediaType
+import work.socialhub.planetlink.model.Channel
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Emoji
 import work.socialhub.planetlink.model.ID
@@ -71,12 +74,26 @@ object NostrMapper {
     fun nostrMediaMimeType(fileName: String?): String {
         return when (fileName?.substringAfterLast('.', "")?.lowercase()) {
             "avif" -> "image/avif"
+            "bmp" -> "image/bmp"
             "gif" -> "image/gif"
             "heic" -> "image/heic"
             "heif" -> "image/heif"
+            "jpe", "jpeg", "jpg" -> "image/jpeg"
             "png" -> "image/png"
             "svg" -> "image/svg+xml"
+            "tif", "tiff" -> "image/tiff"
             "webp" -> "image/webp"
+            "m4v" -> "video/x-m4v"
+            "mkv" -> "video/x-matroska"
+            "mov" -> "video/quicktime"
+            "mp4" -> "video/mp4"
+            "webm" -> "video/webm"
+            "aac" -> "audio/aac"
+            "flac" -> "audio/flac"
+            "m4a" -> "audio/mp4"
+            "mp3" -> "audio/mpeg"
+            "oga", "ogg" -> "audio/ogg"
+            "wav" -> "audio/wav"
             else -> "application/octet-stream"
         }
     }
@@ -105,6 +122,7 @@ object NostrMapper {
             replyCount = note.replyCount
             likeCount = note.likeCount
             repostCount = note.repostCount
+            possiblySensitive = note.isSensitive
 
             reactions = reactions(note.reactions, note.likeCount, note.repostCount, userMe, service)
 
@@ -163,10 +181,79 @@ object NostrMapper {
             Media().apply {
                 sourceUrl = media.url
                 previewUrl = media.thumbnailUrl ?: media.url
-                type = MediaType.Image
+                type = mediaType(media.mimeType, media.url)
+                width = media.width
+                height = media.height
                 description = media.alt
                 blurhash = media.blurhash
             }
+        }
+    }
+
+    private fun mediaType(mimeType: String?, url: String): MediaType {
+        val normalizedMimeType = mimeType?.lowercase()
+        return when {
+            normalizedMimeType?.startsWith("image/") == true -> MediaType.Image
+            normalizedMimeType?.startsWith("video/") == true -> MediaType.Movie
+            normalizedMimeType?.startsWith("audio/") == true -> MediaType.Audio
+            normalizedMimeType != null && normalizedMimeType != "application/octet-stream" -> MediaType.File
+            else -> when (url.substringBefore('?').substringAfterLast('.', "").lowercase()) {
+                "avif", "bmp", "gif", "heic", "heif", "jpeg", "jpg", "png", "svg", "tif", "tiff", "webp" ->
+                    MediaType.Image
+                "m4v", "mkv", "mov", "mp4", "webm" -> MediaType.Movie
+                "aac", "flac", "m4a", "mp3", "oga", "ogg", "wav" -> MediaType.Audio
+                else -> MediaType.File
+            }
+        }
+    }
+
+    fun channel(
+        source: KnostrChannel,
+        service: Service,
+    ): Channel {
+        return Channel(service).apply {
+            id = ID(source.id)
+            name = source.name
+            description = source.about
+            createAt = Instant.fromEpochSeconds(source.createdAt)
+            isPublic = true
+        }
+    }
+
+    fun channels(
+        sources: List<KnostrChannel>,
+        service: Service,
+        paging: Paging,
+    ): Pageable<Channel> {
+        return Pageable<Channel>().apply {
+            entities = sources.map { channel(it, service) }
+            this.paging = NostrPaging.fromPaging(paging)
+        }
+    }
+
+    fun channelMessages(
+        messages: List<NostrChannelMessage>,
+        users: Map<String, KnostrUser>,
+        service: Service,
+        paging: Paging,
+    ): Pageable<Comment> {
+        return Pageable<Comment>().apply {
+            entities = messages
+                .sortedByDescending { it.createdAt }
+                .map { message ->
+                    NostrComment(service).apply {
+                        id = ID(message.event.id)
+                        eventId = message.event.id
+                        channelId = message.channelId
+                        authorPubkey = message.event.pubkey
+                        createAt = Instant.fromEpochSeconds(message.createdAt)
+                        text = AttributedString.plain(message.content)
+                        users[message.event.pubkey]?.let {
+                            user = user(it, service)
+                        }
+                    }
+                }
+            this.paging = NostrPaging.fromPaging(paging)
         }
     }
 
