@@ -12,12 +12,16 @@ import work.socialhub.kbsky.model.app.bsky.embed.EmbedVideoView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsPostView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPostReplyRef
+import work.socialhub.kbsky.model.app.bsky.graph.GraphDefsListView
 import work.socialhub.kbsky.model.share.Blob
 import work.socialhub.kbsky.model.share.BlobRef
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Commit
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Event
+import work.socialhub.planetlink.bluesky.define.BlueskyActionType
+import work.socialhub.planetlink.bluesky.model.BlueskyChannel
 import work.socialhub.planetlink.bluesky.model.BlueskyComment
+import work.socialhub.planetlink.bluesky.model.BlueskyPaging
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Service
@@ -29,6 +33,55 @@ import kotlin.test.assertTrue
 class BlueskyMapperTest {
 
     private val service = Service("bluesky", Account())
+
+    @Test
+    fun channel_listView_mapsListMetadataAndPaging() {
+        val list = GraphDefsListView(
+            uri = "at://did:plc:owner/app.bsky.graph.list/list-key",
+            cid = "bafy-list",
+            creator = ActorDefsProfileView(
+                did = "did:plc:owner",
+                handle = "owner.bsky.social",
+                displayName = "Owner",
+            ),
+            name = "Kotlin",
+            purpose = "app.bsky.graph.defs#curatelist",
+            description = "Kotlin developers",
+            avatar = "https://cdn.bsky.app/list.png",
+            indexedAt = "2025-01-01T00:00:00.000Z",
+        )
+
+        val result = BlueskyMapper.channels(
+            listOf(list),
+            "next-cursor",
+            BlueskyPaging(),
+            service,
+        )
+        val channel = result.entities.single() as BlueskyChannel
+
+        assertEquals(list.uri, channel.id<String>())
+        assertEquals(list.cid, channel.cid)
+        assertEquals(list.name, channel.name)
+        assertEquals(list.description, channel.description)
+        assertEquals(list.purpose, channel.purpose)
+        assertEquals(list.avatar, channel.iconUrl)
+        assertEquals("Owner", channel.owner?.name)
+        assertEquals("next-cursor", (result.paging as BlueskyPaging).cursorHint)
+    }
+
+    @Test
+    fun capabilities_includeCustomFeedApis() {
+        assertTrue(
+            BlueskyAction.CAPABILITIES.isSupported(
+                BlueskyActionType.GetCustomFeeds
+            )
+        )
+        assertTrue(
+            BlueskyAction.CAPABILITIES.isSupported(
+                BlueskyActionType.CustomFeedTimeLine
+            )
+        )
+    }
 
     @Test
     fun userDetailed_nullDisplayName_fallbackToHandle() {
