@@ -37,6 +37,7 @@ import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsViewerState
 import work.socialhub.kbsky.model.app.bsky.feed.FeedLike
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.app.bsky.feed.FeedRepost
+import work.socialhub.kbsky.model.app.bsky.graph.GraphDefsListView
 import work.socialhub.kbsky.model.app.bsky.notification.NotificationListNotificationsNotification
 import work.socialhub.kbsky.model.app.bsky.richtext.RichtextFacetLink
 import work.socialhub.kbsky.model.app.bsky.richtext.RichtextFacetMention
@@ -586,7 +587,7 @@ object BlueskyMapper {
     /**
      * チャンネルマッピング
      */
-    fun channel(
+    fun customFeed(
         generator: FeedDefsGeneratorView,
         service: Service
     ): Channel {
@@ -602,6 +603,38 @@ object BlueskyMapper {
             owner = user(generator.creator!!, service)
             likeCount = generator.likeCount ?: 0
             iconUrl = generator.avatar
+        }
+    }
+
+    /**
+     * チャンネルマッピング
+     */
+    fun channel(
+        generator: FeedDefsGeneratorView,
+        service: Service,
+    ): Channel {
+        return customFeed(generator, service)
+    }
+
+    /**
+     * Bluesky リストマッピング
+     */
+    fun channel(
+        list: GraphDefsListView,
+        service: Service,
+    ): Channel {
+        return BlueskyChannel(service).apply {
+            id = ID(list.uri!!)
+            cid = list.cid
+            isPublic = true
+
+            name = list.name
+            description = list.description
+            createAt = list.indexedAt?.let { Instant.parse(it) }
+
+            owner = list.creator?.let { user(it, service) }
+            iconUrl = list.avatar
+            purpose = list.purpose
         }
     }
 
@@ -749,7 +782,8 @@ object BlueskyMapper {
      * チャンネル一覧マッピング
      */
     fun channels(
-        channels: List<FeedDefsGeneratorView>,
+        channels: List<GraphDefsListView>,
+        cursor: String?,
         paging: Paging,
         service: Service
     ): Pageable<Channel> {
@@ -772,7 +806,47 @@ object BlueskyMapper {
         val model = Pageable<Channel>()
         model.entities = channelList.map { channel(it, service) }
         model.paging = BlueskyPaging.fromPaging(paging)
+            .also { it.cursorHint = cursor }
         return model
+    }
+
+    /**
+     * カスタムフィード一覧マッピング
+     */
+    fun customFeeds(
+        feeds: List<FeedDefsGeneratorView>,
+        paging: Paging,
+        service: Service,
+    ): Pageable<Channel> {
+        var feedList = feeds
+        if (paging is BlueskyPaging) {
+            feedList = feedList.takeUntil {
+                val id = paging.latestRecord
+                id != null && it.uri == id.id<String>()
+            }
+        }
+
+        if (feedList.isEmpty()) {
+            return Pageable<Channel>().also {
+                it.paging = paging
+            }
+        }
+
+        val model = Pageable<Channel>()
+        model.entities = feedList.map { customFeed(it, service) }
+        model.paging = BlueskyPaging.fromPaging(paging)
+        return model
+    }
+
+    /**
+     * チャンネル一覧マッピング
+     */
+    fun channels(
+        channels: List<FeedDefsGeneratorView>,
+        paging: Paging,
+        service: Service,
+    ): Pageable<Channel> {
+        return customFeeds(channels, paging, service)
     }
 
     // ============================================================== //

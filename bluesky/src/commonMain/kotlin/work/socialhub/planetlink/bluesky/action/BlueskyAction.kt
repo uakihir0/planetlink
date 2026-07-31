@@ -27,6 +27,7 @@ import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetAuthorFeedRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetFeedGeneratorsRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetFeedRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetLikesRequest
+import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetListFeedRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetPostThreadRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetPostsRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetRepostedByRequest
@@ -46,6 +47,7 @@ import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphUnmuteActorRequest
 import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphCreateListRequest
 import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphAddUserToListRequest
 import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphGetListRequest
+import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphGetListsRequest
 import work.socialhub.kbsky.api.entity.app.bsky.graph.GraphRemoveUserFromListRequest
 import work.socialhub.kbsky.api.entity.app.bsky.actor.ActorUpdateProfileRequest
 import work.socialhub.kbsky.api.entity.com.atproto.moderation.ModerationCreateReportRequest
@@ -65,6 +67,7 @@ import work.socialhub.kbsky.stream.api.entity.app.bsky.JetStreamSubscribeRequest
 import work.socialhub.kbsky.stream.entity.app.bsky.callback.JetStreamEventCallback
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Event
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeedsPref
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeedsPrefV2
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedExternal
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedExternalExternal
@@ -90,6 +93,7 @@ import work.socialhub.kbsky.util.facet.FacetUtil
 import work.socialhub.planetlink.action.AccountActionImpl
 import work.socialhub.planetlink.action.Capabilities
 import work.socialhub.planetlink.action.RequestAction
+import work.socialhub.planetlink.bluesky.define.BlueskyActionType
 import work.socialhub.planetlink.bluesky.define.BlueskyReactionType
 import work.socialhub.planetlink.define.action.MessageActionType
 import work.socialhub.planetlink.define.action.SocialActionType
@@ -195,6 +199,9 @@ class BlueskyAction(
 
                 StreamActionType.HomeTimeLineStream,
                 StreamActionType.NotificationStream,
+
+                BlueskyActionType.GetCustomFeeds,
+                BlueskyActionType.CustomFeedTimeLine,
             )
         )
     }
@@ -1423,14 +1430,55 @@ class BlueskyAction(
         id: Identify,
         paging: Paging,
     ): Pageable<Channel> {
-        return proceed {
+        if (!id.isSameIdentify(me ?: fetchUserMe())) {
+            throw NotSupportedException(
+                "Sorry, authenticated user only."
+            )
+        }
+        return fetchLists(id, paging)
+    }
 
-            // ページング指定があった場合結果は空
-            if (paging is BlueskyPaging) {
-                if (paging.latestRecord != null || paging.cursor != null) {
-                    val results = Pageable<Channel>()
-                    results.paging = paging
-                    return@proceed results
+    private suspend fun fetchLists(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<Channel> {
+        return proceed {
+            val response = auth.accessor.graph().getLists(
+                GraphGetListsRequest(authProvider()).also {
+                    it.actor = id.id!!.value()
+                    it.cursor = cursor(paging)
+                    it.limit = limit(paging)
+                }
+            )
+
+            Mapper.channels(
+                response.data.lists,
+                response.data.cursor,
+                paging,
+                service(),
+            )
+        }
+    }
+
+    /**
+     * Get the custom feeds saved by the authenticated Bluesky user.
+     */
+    suspend fun customFeeds(
+        paging: Paging,
+    ): Pageable<Channel> {
+        return fetchCustomFeeds(paging)
+    }
+
+    private suspend fun fetchCustomFeeds(
+        paging: Paging,
+    ): Pageable<Channel> {
+        return proceed {
+            // Saved custom feeds are not paginated by the preferences API.
+            if (paging is BlueskyPaging &&
+                (paging.latestRecord != null || paging.cursor != null)
+            ) {
+                return@proceed Pageable<Channel>().also {
+                    it.paging = paging
                 }
             }
 
@@ -1441,15 +1489,23 @@ class BlueskyAction(
             val uris = mutableListOf<String>()
             for (union in preferences.data.preferences) {
                 if (union is ActorDefsSavedFeedsPref) {
-                    uris.addAll(union.saved)
+                    union.saved.forEach {
+                        if (it !in uris) uris.add(it)
+                    }
+                }
+                if (union is ActorDefsSavedFeedsPrefV2) {
+                    union.items
+                        .filter { it.type == "feed" }
+                        .forEach {
+                            if (it.value !in uris) uris.add(it.value)
+                        }
                 }
             }
 
-            // 結果が空の場合
             if (uris.isEmpty()) {
-                val results = Pageable<Channel>()
-                results.paging = paging
-                return@proceed results
+                return@proceed Pageable<Channel>().also {
+                    it.paging = paging
+                }
             }
 
             val feeds = auth.accessor.feed().getFeedGenerators(
@@ -1457,7 +1513,7 @@ class BlueskyAction(
                     .also { it.feeds = uris }
             )
 
-            Mapper.channels(
+            Mapper.customFeeds(
                 feeds.data.feeds,
                 paging,
                 service(),
@@ -1472,7 +1528,44 @@ class BlueskyAction(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
+        return fetchListTimeLine(id, paging)
+    }
 
+    private suspend fun fetchListTimeLine(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<Comment> {
+        return proceed {
+            val response = auth.accessor.feed().getListFeed(
+                FeedGetListFeedRequest(authProvider()).also {
+                    it.list = id.id!!.value()
+                    it.cursor = cursor(paging)
+                    it.limit = limit(paging)
+                }
+            )
+            Mapper.timelineByFeeds(
+                response.data.feed,
+                response.data.cursor,
+                paging,
+                service(),
+            )
+        }
+    }
+
+    /**
+     * Get a timeline generated by a saved Bluesky custom feed.
+     */
+    suspend fun customFeedTimeLine(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<Comment> {
+        return fetchCustomFeedTimeLine(id, paging)
+    }
+
+    private suspend fun fetchCustomFeedTimeLine(
+        id: Identify,
+        paging: Paging,
+    ): Pageable<Comment> {
         return proceed {
             val response = auth.accessor.feed().getFeed(
                 FeedGetFeedRequest(authProvider()).also {
