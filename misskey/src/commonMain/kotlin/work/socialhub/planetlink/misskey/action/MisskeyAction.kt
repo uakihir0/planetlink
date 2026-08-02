@@ -87,7 +87,6 @@ import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.misskey.define.MisskeyActionType
 import work.socialhub.planetlink.misskey.define.MisskeyReactionType.Favorite
 import work.socialhub.planetlink.misskey.define.MisskeyReactionType.Renote
-import work.socialhub.planetlink.misskey.model.MisskeyComment
 import work.socialhub.planetlink.misskey.model.MisskeyPaging
 import work.socialhub.planetlink.misskey.model.MisskeyPoll
 import work.socialhub.planetlink.model.*
@@ -770,21 +769,13 @@ class MisskeyAction(
             setPaging(request, paging)
             val response = misskey.accounts().iFavorites(request)
             val favorites = response.data.toList()
-            val favoriteIds = favorites.associate {
-                it.noteId to it.id
-            }
 
-            val result = MisskeyMapper.timeLine(
-                favorites.map { it.note },
+            MisskeyMapper.favoritesTimeLine(
+                favorites,
                 instanceHost,
                 service(),
                 paging,
             )
-            result.entities.forEach { comment ->
-                (comment as? MisskeyComment)?.pagingId =
-                    favoriteIds[comment.id<String>()]
-            }
-            result
         }
     }
 

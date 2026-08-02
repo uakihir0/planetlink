@@ -2,6 +2,7 @@ package work.socialhub.planetlink.misskey.action
 
 import kotlin.time.Clock
 import kotlin.time.Instant
+import work.socialhub.kmisskey.api.response.i.IFavoritesResponse
 import work.socialhub.kmisskey.entity.File
 import work.socialhub.kmisskey.entity.Note
 import work.socialhub.kmisskey.entity.NoteList
@@ -400,6 +401,24 @@ object MisskeyMapper {
                 .map { comment(it, host, service) }
                 .sortedBy { it.createAt }
                 .reversed()
+            pg.paging = MisskeyPaging.fromPaging(paging)
+        }
+    }
+
+    /**
+     * お気に入りタイムラインマッピング
+     */
+    fun favoritesTimeLine(
+        favorites: List<IFavoritesResponse>,
+        host: String,
+        service: Service,
+        paging: Paging?,
+    ): Pageable<Comment> {
+        return Pageable<Comment>().also { pg ->
+            pg.entities = favorites.map { favorite ->
+                (comment(favorite.note, host, service) as MisskeyComment)
+                    .also { it.pagingId = favorite.id }
+            }
             pg.paging = MisskeyPaging.fromPaging(paging)
         }
     }
