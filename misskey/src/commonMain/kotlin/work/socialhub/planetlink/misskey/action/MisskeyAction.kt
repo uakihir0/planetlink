@@ -87,6 +87,7 @@ import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.misskey.define.MisskeyActionType
 import work.socialhub.planetlink.misskey.define.MisskeyReactionType.Favorite
 import work.socialhub.planetlink.misskey.define.MisskeyReactionType.Renote
+import work.socialhub.planetlink.misskey.model.MisskeyComment
 import work.socialhub.planetlink.misskey.model.MisskeyPaging
 import work.socialhub.planetlink.misskey.model.MisskeyPoll
 import work.socialhub.planetlink.model.*
@@ -133,6 +134,7 @@ class MisskeyAction(
                 SocialActionType.ReactionComment,
                 SocialActionType.UnreactionComment,
                 SocialActionType.GetNotification,
+                SocialActionType.GetUserBookmarks,
                 SocialActionType.BookmarkComment,
                 SocialActionType.UnbookmarkComment,
                 SocialActionType.VotePoll,
@@ -152,6 +154,7 @@ class MisskeyAction(
                 TimeLineActionType.UserLikeTimeLine,
                 TimeLineActionType.UserMediaTimeLine,
                 TimeLineActionType.SearchTimeLine,
+                TimeLineActionType.UserBookmarkTimeLine,
                 TimeLineActionType.ChannelTimeLine,
 
                 UsersActionType.GetFollowingUsers,
@@ -745,20 +748,43 @@ class MisskeyAction(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
+        return fetchFavoritesTimeLine(paging)
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun userBookmarkTimeLine(
+        paging: Paging,
+    ): Pageable<Comment> {
+        return fetchFavoritesTimeLine(paging)
+    }
+
+    private suspend fun fetchFavoritesTimeLine(
+        paging: Paging,
+    ): Pageable<Comment> {
         return proceed {
-            // FIXME: 自分のいいねのみを取得
             val misskey = auth.accessor
             val request = IFavoritesRequest()
 
             setPaging(request, paging)
             val response = misskey.accounts().iFavorites(request)
+            val favorites = response.data.toList()
+            val favoriteIds = favorites.associate {
+                it.noteId to it.id
+            }
 
-            MisskeyMapper.timeLine(
-                response.data.map { it.note },
+            val result = MisskeyMapper.timeLine(
+                favorites.map { it.note },
                 instanceHost,
                 service(),
                 paging,
             )
+            result.entities.forEach { comment ->
+                (comment as? MisskeyComment)?.pagingId =
+                    favoriteIds[comment.id<String>()]
+            }
+            result
         }
     }
 
