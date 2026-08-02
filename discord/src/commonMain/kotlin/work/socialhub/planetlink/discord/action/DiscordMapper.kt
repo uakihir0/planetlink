@@ -591,19 +591,24 @@ object DiscordMapper {
     fun medias(
         message: Message,
     ): List<Media> {
-        val models = mutableListOf<Media>()
-        models.addAll(message.attachments.orEmpty().map { media(it) })
+        val attachmentMedias = message.attachments.orEmpty().map { media(it) }
+        val attachmentKeys = attachmentMedias.map { mediaLocationKey(it) }.toSet()
+        val models = mutableListOf<Media>().apply {
+            addAll(attachmentMedias)
+        }
         message.embeds.orEmpty().forEach { embed ->
-            embed.image?.let { models.add(embedMedia(it, MediaType.Image)) }
-            embed.thumbnail?.let { models.add(embedMedia(it, MediaType.Image)) }
-            embed.video?.let { models.add(embedMedia(it, MediaType.Movie)) }
+            listOfNotNull(
+                embed.image?.let { embedMedia(it, MediaType.Image) },
+                embed.thumbnail?.let { embedMedia(it, MediaType.Image) },
+                embed.video?.let { embedMedia(it, MediaType.Movie) },
+            ).filterNot { mediaLocationKey(it) in attachmentKeys }
+                .let(models::addAll)
         }
         message.components.orEmpty().forEach {
             collectComponentMedias(it, models)
         }
         return models
             .filter { it.sourceUrl != null || it.previewUrl != null }
-            .distinctBy { "${it.type}:${it.sourceUrl}:${it.previewUrl}" }
     }
 
     fun media(
@@ -668,6 +673,12 @@ object DiscordMapper {
         componentChildren(component).forEach {
             collectComponentMedias(it, destination, spoiler)
         }
+    }
+
+    private fun mediaLocationKey(
+        media: Media,
+    ): Triple<MediaType?, String?, String?> {
+        return Triple(media.type, media.sourceUrl, media.previewUrl)
     }
 
     private fun mediaType(

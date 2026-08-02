@@ -291,6 +291,41 @@ class DiscordMapperTest {
     }
 
     @Test
+    fun preservesGalleryItemsWithSharedUrls() {
+        val sharedUrl = "https://cdn.example.com/shared.png"
+        val message = Message().also {
+            it.components = arrayOf(
+                MediaGalleryComponent().also { gallery ->
+                    gallery.items = arrayOf(
+                        MediaGalleryItem().also { item ->
+                            item.description = "First image"
+                            item.media = UnfurledMediaItem().also { media ->
+                                media.url = sharedUrl
+                                media.contentType = "image/png"
+                            }
+                        },
+                        MediaGalleryItem().also { item ->
+                            item.description = "Second image"
+                            item.media = UnfurledMediaItem().also { media ->
+                                media.url = sharedUrl
+                                media.contentType = "image/png"
+                            }
+                        },
+                    )
+                }
+            )
+        }
+
+        val comment = DiscordMapper.comment(message, null, service)
+
+        assertEquals(2, comment.medias.size)
+        assertEquals(
+            listOf("First image", "Second image"),
+            comment.medias.map { it.description },
+        )
+    }
+
+    @Test
     fun mapsNormalAndBurstReactionDetails() {
         val message = Message().also {
             it.reactions = arrayOf(
