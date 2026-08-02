@@ -3,10 +3,19 @@ package work.socialhub.planetlink.discord.action
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.discord.model.DiscordChannel
 import work.socialhub.planetlink.discord.model.DiscordComment
+import work.socialhub.planetlink.discord.model.DiscordEmbed
+import work.socialhub.planetlink.discord.model.DiscordEmbedAuthor
+import work.socialhub.planetlink.discord.model.DiscordEmbedField
+import work.socialhub.planetlink.discord.model.DiscordEmbedFooter
+import work.socialhub.planetlink.discord.model.DiscordEmbedProvider
+import work.socialhub.planetlink.discord.model.DiscordMedia
+import work.socialhub.planetlink.discord.model.DiscordMessageComponent
 import work.socialhub.planetlink.discord.model.DiscordPaging
+import work.socialhub.planetlink.discord.model.DiscordReactionDetails
 import work.socialhub.planetlink.discord.model.DiscordSpace
 import work.socialhub.planetlink.discord.model.DiscordThread
 import work.socialhub.planetlink.discord.model.DiscordUser
+import work.socialhub.planetlink.discord.model.DiscordUserPrimaryGuild
 import work.socialhub.planetlink.model.Channel
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.ID
@@ -23,11 +32,32 @@ import work.socialhub.planetlink.model.common.AttributedItem
 import work.socialhub.planetlink.model.common.AttributedKind
 import work.socialhub.planetlink.model.common.AttributedString
 import kotlin.time.Instant
+import work.socialhub.kdiscord.entity.ActionRowComponent
 import work.socialhub.kdiscord.entity.Attachment
+import work.socialhub.kdiscord.entity.ButtonComponent
+import work.socialhub.kdiscord.entity.ChannelSelectComponent
+import work.socialhub.kdiscord.entity.CheckboxGroupComponent
 import work.socialhub.kdiscord.entity.Channel as DcChannel
+import work.socialhub.kdiscord.entity.ContainerComponent
+import work.socialhub.kdiscord.entity.Embed as DcEmbed
+import work.socialhub.kdiscord.entity.EmbedMedia as DcEmbedMedia
+import work.socialhub.kdiscord.entity.FileComponent
 import work.socialhub.kdiscord.entity.Guild
+import work.socialhub.kdiscord.entity.LabelComponent
+import work.socialhub.kdiscord.entity.MediaGalleryComponent
+import work.socialhub.kdiscord.entity.MentionableSelectComponent
 import work.socialhub.kdiscord.entity.Message
+import work.socialhub.kdiscord.entity.MessageComponent
+import work.socialhub.kdiscord.entity.RadioGroupComponent
 import work.socialhub.kdiscord.entity.Reaction as DcReaction
+import work.socialhub.kdiscord.entity.RoleSelectComponent
+import work.socialhub.kdiscord.entity.SectionComponent
+import work.socialhub.kdiscord.entity.StringSelectComponent
+import work.socialhub.kdiscord.entity.TextDisplayComponent
+import work.socialhub.kdiscord.entity.TextInputComponent
+import work.socialhub.kdiscord.entity.ThumbnailComponent
+import work.socialhub.kdiscord.entity.UnfurledMediaItem
+import work.socialhub.kdiscord.entity.UserSelectComponent
 import work.socialhub.kdiscord.entity.User as DcUser
 
 /** Discord エンティティのマッピング */
@@ -47,6 +77,10 @@ object DiscordMapper {
             username = user.username
             discriminator = user.discriminator
             isBot = user.bot ?: false
+            flags = user.flags
+            publicFlags = user.publicFlags
+            clan = user.clan?.let { primaryGuild(it) }
+            primaryGuild = user.primaryGuild?.let { primaryGuild(it) }
             user.avatar?.let { avatar ->
                 user.id?.let { uid ->
                     iconImageUrl = "https://cdn.discordapp.com/avatars/$uid/$avatar.png"
@@ -69,18 +103,29 @@ object DiscordMapper {
             channelId = message.channelId
             guildId = message.guildId
             createAt = parseTimestamp(message.timestamp)
+            editedTimestamp = message.editedTimestamp
             user = message.author?.let { user(it, service) }
             text = attributedText(message)
             directMessage = (message.guildId == null)
             medias = medias(message)
             reactions = reactions(message.reactions, userMe)
+            tts = message.tts ?: false
+            mentionEveryone = message.mentionEveryone ?: false
+            mentionRoleIds = message.mentionRoles?.toList() ?: emptyList()
+            pinned = message.pinned ?: false
+            webhookId = message.webhookId
+            messageType = message.type
+            messageFlags = message.flags
+            embeds = message.embeds?.map { embed(it) } ?: emptyList()
+            components = message.components?.map { component(it) } ?: emptyList()
+            reactionDetails = reactionDetails(message.reactions)
         }
     }
 
     private fun attributedText(
         message: Message,
     ): AttributedString {
-        val content = message.content ?: ""
+        val content = displayText(message)
         val mentionsById = message.mentions
             .orEmpty()
             .mapNotNull { user -> user.id?.let { it to user } }
@@ -160,6 +205,32 @@ object DiscordMapper {
         }
 
         return AttributedString.elements(newElements)
+    }
+
+    private fun displayText(message: Message): String {
+        val parts = mutableListOf<String>()
+        message.content?.takeIf { it.isNotBlank() }?.let(parts::add)
+
+        message.embeds.orEmpty().forEach { embed ->
+            embed.author?.name?.takeIf { it.isNotBlank() }?.let(parts::add)
+            embed.title?.takeIf { it.isNotBlank() }?.let(parts::add)
+            embed.description?.takeIf { it.isNotBlank() }?.let(parts::add)
+            embed.fields.orEmpty().forEach { field ->
+                listOfNotNull(
+                    field.name?.takeIf { it.isNotBlank() },
+                    field.value?.takeIf { it.isNotBlank() },
+                ).joinToString("\n")
+                    .takeIf { it.isNotBlank() }
+                    ?.let(parts::add)
+            }
+            embed.footer?.text?.takeIf { it.isNotBlank() }?.let(parts::add)
+            embed.provider?.name?.takeIf { it.isNotBlank() }?.let(parts::add)
+        }
+
+        message.components.orEmpty().forEach { component ->
+            componentTextParts(component, parts)
+        }
+        return parts.joinToString("\n\n")
     }
 
     fun timeLine(
@@ -282,6 +353,184 @@ object DiscordMapper {
     }
 
     // ---------------------------------------------------------------- //
+    // Rich message
+    // ---------------------------------------------------------------- //
+
+    private fun primaryGuild(
+        source: work.socialhub.kdiscord.entity.UserPrimaryGuild,
+    ): DiscordUserPrimaryGuild {
+        return DiscordUserPrimaryGuild().apply {
+            identityGuildId = source.identityGuildId
+            identityEnabled = source.identityEnabled ?: false
+            tag = source.tag
+            badge = source.badge
+        }
+    }
+
+    fun embed(source: DcEmbed): DiscordEmbed {
+        return DiscordEmbed().apply {
+            title = source.title
+            type = source.type
+            description = source.description
+            url = source.url
+            timestamp = source.timestamp
+            color = source.color
+            footer = source.footer?.let {
+                DiscordEmbedFooter().apply {
+                    text = it.text
+                    iconUrl = it.iconUrl
+                    proxyIconUrl = it.proxyIconUrl
+                }
+            }
+            image = source.image?.let { embedMedia(it, MediaType.Image) }
+            thumbnail = source.thumbnail?.let { embedMedia(it, MediaType.Image) }
+            video = source.video?.let { embedMedia(it, MediaType.Movie) }
+            provider = source.provider?.let {
+                DiscordEmbedProvider().apply {
+                    name = it.name
+                    url = it.url
+                }
+            }
+            author = source.author?.let {
+                DiscordEmbedAuthor().apply {
+                    name = it.name
+                    url = it.url
+                    iconUrl = it.iconUrl
+                    proxyIconUrl = it.proxyIconUrl
+                }
+            }
+            fields = source.fields.orEmpty().map {
+                DiscordEmbedField().apply {
+                    name = it.name
+                    value = AttributedString.plain(it.value)
+                    inline = it.inline ?: false
+                }
+            }
+            contentScanVersion = source.contentScanVersion
+        }
+    }
+
+    fun component(source: MessageComponent): DiscordMessageComponent {
+        val ownText = componentOwnText(source).joinToString("\n")
+        return DiscordMessageComponent().apply {
+            type = source.type
+            id = source.id
+            text = ownText.takeIf { it.isNotBlank() }?.let(AttributedString::plain)
+            url = (source as? ButtonComponent)?.url
+            disabled = componentDisabled(source)
+            spoiler = componentSpoiler(source)
+            medias = componentOwnMedias(source)
+            children = componentChildren(source).map { component(it) }
+        }
+    }
+
+    private fun componentTextParts(
+        component: MessageComponent,
+        destination: MutableList<String>,
+    ) {
+        destination.addAll(componentOwnText(component).filter { it.isNotBlank() })
+        componentChildren(component).forEach {
+            componentTextParts(it, destination)
+        }
+    }
+
+    private fun componentOwnText(component: MessageComponent): List<String> {
+        return when (component) {
+            is ButtonComponent -> listOfNotNull(component.label)
+            is StringSelectComponent -> listOfNotNull(component.placeholder) +
+                component.options.orEmpty().flatMap {
+                    listOfNotNull(it.label, it.description)
+                }
+            is TextInputComponent -> listOfNotNull(component.label, component.value)
+            is UserSelectComponent -> listOfNotNull(component.placeholder)
+            is RoleSelectComponent -> listOfNotNull(component.placeholder)
+            is MentionableSelectComponent -> listOfNotNull(component.placeholder)
+            is ChannelSelectComponent -> listOfNotNull(component.placeholder)
+            is TextDisplayComponent -> listOfNotNull(component.content)
+            is ThumbnailComponent -> listOfNotNull(component.description)
+            is MediaGalleryComponent -> component.items.orEmpty()
+                .mapNotNull { it.description }
+            is FileComponent -> listOfNotNull(component.name)
+            is LabelComponent -> listOfNotNull(component.label, component.description)
+            is RadioGroupComponent -> component.options.orEmpty().flatMap {
+                listOfNotNull(it.label, it.description)
+            }
+            is CheckboxGroupComponent -> component.options.orEmpty().flatMap {
+                listOfNotNull(it.label, it.description)
+            }
+            else -> emptyList()
+        }
+    }
+
+    private fun componentChildren(component: MessageComponent): List<MessageComponent> {
+        return when (component) {
+            is ActionRowComponent -> component.components.orEmpty().toList()
+            is SectionComponent -> component.components.orEmpty().toList() +
+                listOfNotNull(component.accessory)
+            is ContainerComponent -> component.components.orEmpty().toList()
+            is LabelComponent -> listOfNotNull(component.component)
+            else -> emptyList()
+        }
+    }
+
+    private fun componentDisabled(component: MessageComponent): Boolean {
+        return when (component) {
+            is ButtonComponent -> component.disabled
+            is StringSelectComponent -> component.disabled
+            is UserSelectComponent -> component.disabled
+            is RoleSelectComponent -> component.disabled
+            is MentionableSelectComponent -> component.disabled
+            is ChannelSelectComponent -> component.disabled
+            else -> null
+        } ?: false
+    }
+
+    private fun componentSpoiler(component: MessageComponent): Boolean {
+        return when (component) {
+            is ThumbnailComponent -> component.spoiler
+            is FileComponent -> component.spoiler
+            is ContainerComponent -> component.spoiler
+            else -> null
+        } ?: false
+    }
+
+    private fun componentOwnMedias(component: MessageComponent): List<Media> {
+        return when (component) {
+            is ThumbnailComponent -> listOfNotNull(
+                component.media?.let {
+                    componentMedia(
+                        source = it,
+                        fallbackType = MediaType.Image,
+                        description = component.description,
+                        spoiler = component.spoiler ?: false,
+                    )
+                }
+            )
+            is MediaGalleryComponent -> component.items.orEmpty().mapNotNull { item ->
+                item.media?.let {
+                    componentMedia(
+                        source = it,
+                        fallbackType = MediaType.Image,
+                        description = item.description,
+                        spoiler = item.spoiler ?: false,
+                    )
+                }
+            }
+            is FileComponent -> listOfNotNull(
+                component.file?.let {
+                    componentMedia(
+                        source = it,
+                        fallbackType = MediaType.File,
+                        description = component.name,
+                        spoiler = component.spoiler ?: false,
+                    )
+                }
+            )
+            else -> emptyList()
+        }
+    }
+
+    // ---------------------------------------------------------------- //
     // Reaction / Media
     // ---------------------------------------------------------------- //
 
@@ -294,7 +543,9 @@ object DiscordMapper {
                 val emoji = reaction.emoji
                 it.name = emoji?.name
                 it.count = reaction.count
-                it.reacting = reaction.me ?: false
+                it.reacting = reaction.me == true ||
+                    reaction.meBurst == true ||
+                    reaction.burstMe == true
                 // Custom emoji: render the CDN image url.
                 if (emoji?.id != null) {
                     val ext = if (emoji.animated == true) "gif" else "png"
@@ -306,23 +557,110 @@ object DiscordMapper {
         } ?: emptyList()
     }
 
+    fun reactionDetails(
+        reactions: Array<DcReaction>?,
+    ): List<DiscordReactionDetails> {
+        return reactions.orEmpty().map { reaction ->
+            DiscordReactionDetails().apply {
+                name = reaction.emoji?.name
+                emojiId = reaction.emoji?.id
+                normalCount = reaction.countDetails?.normal
+                burstCount = reaction.countDetails?.burst ?: reaction.burstCount
+                burstColors = reaction.burstColors?.toList() ?: emptyList()
+                reactingNormally = reaction.me ?: false
+                reactingWithBurst = reaction.meBurst == true || reaction.burstMe == true
+            }
+        }
+    }
+
     fun medias(
         message: Message,
     ): List<Media> {
-        return message.attachments?.map { media(it) } ?: emptyList()
+        val models = mutableListOf<Media>()
+        models.addAll(message.attachments.orEmpty().map { media(it) })
+        message.embeds.orEmpty().forEach { embed ->
+            embed.image?.let { models.add(embedMedia(it, MediaType.Image)) }
+            embed.thumbnail?.let { models.add(embedMedia(it, MediaType.Image)) }
+            embed.video?.let { models.add(embedMedia(it, MediaType.Movie)) }
+        }
+        message.components.orEmpty().forEach {
+            collectComponentMedias(it, models)
+        }
+        return models
+            .filter { it.sourceUrl != null || it.previewUrl != null }
+            .distinctBy { "${it.type}:${it.sourceUrl}:${it.previewUrl}" }
     }
 
     fun media(
         attachment: Attachment,
-    ): Media {
-        return Media().also {
+    ): DiscordMedia {
+        return DiscordMedia().also {
             it.sourceUrl = attachment.url
             it.previewUrl = attachment.proxyUrl ?: attachment.url
-            it.type = when {
-                attachment.contentType?.startsWith("image/") == true -> MediaType.Image
-                attachment.contentType?.startsWith("video/") == true -> MediaType.Movie
-                else -> MediaType.File
-            }
+            it.type = mediaType(attachment.contentType, MediaType.File)
+            it.width = attachment.width
+            it.height = attachment.height
+            it.description = attachment.description
+            it.contentType = attachment.contentType
+            it.attachmentId = attachment.id
+        }
+    }
+
+    private fun embedMedia(
+        source: DcEmbedMedia,
+        fallbackType: MediaType,
+    ): DiscordMedia {
+        return DiscordMedia().also {
+            it.sourceUrl = source.url
+            it.previewUrl = source.proxyUrl ?: source.url
+            it.type = mediaType(source.contentType, fallbackType)
+            it.width = source.width
+            it.height = source.height
+            it.contentType = source.contentType
+            it.placeholder = source.placeholder
+            it.placeholderVersion = source.placeholderVersion
+        }
+    }
+
+    private fun componentMedia(
+        source: UnfurledMediaItem,
+        fallbackType: MediaType,
+        description: String?,
+        spoiler: Boolean,
+    ): DiscordMedia {
+        return DiscordMedia().also {
+            it.sourceUrl = source.url
+            it.previewUrl = source.proxyUrl ?: source.url
+            it.type = mediaType(source.contentType, fallbackType)
+            it.width = source.width
+            it.height = source.height
+            it.description = description
+            it.contentType = source.contentType
+            it.placeholder = source.placeholder
+            it.placeholderVersion = source.placeholderVersion
+            it.spoiler = spoiler
+            it.attachmentId = source.attachmentId
+        }
+    }
+
+    private fun collectComponentMedias(
+        component: MessageComponent,
+        destination: MutableList<Media>,
+    ) {
+        destination.addAll(componentOwnMedias(component))
+        componentChildren(component).forEach {
+            collectComponentMedias(it, destination)
+        }
+    }
+
+    private fun mediaType(
+        contentType: String?,
+        fallbackType: MediaType,
+    ): MediaType {
+        return when {
+            contentType?.startsWith("image/") == true -> MediaType.Image
+            contentType?.startsWith("video/") == true -> MediaType.Movie
+            else -> fallbackType
         }
     }
 
