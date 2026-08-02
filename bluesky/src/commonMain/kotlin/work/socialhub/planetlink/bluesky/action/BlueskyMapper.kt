@@ -800,7 +800,8 @@ object BlueskyMapper {
         // 空の場合
         if (channelList.isEmpty()) {
             val model = Pageable<Channel>()
-            model.paging = paging
+            model.paging = BlueskyPaging.fromPaging(paging)
+                .also { it.cursorHint = cursor }
             return model
         }
 
@@ -829,7 +830,7 @@ object BlueskyMapper {
 
         if (feedList.isEmpty()) {
             return Pageable<Channel>().also {
-                it.paging = paging
+                it.paging = BlueskyPaging.fromPaging(paging)
             }
         }
 

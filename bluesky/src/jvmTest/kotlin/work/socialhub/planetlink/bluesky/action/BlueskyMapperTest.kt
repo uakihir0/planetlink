@@ -3,6 +3,9 @@ package work.socialhub.planetlink.bluesky.action
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewBasic
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeed
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeedsPref
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeedsPrefV2
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecord
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecordWithMedia
@@ -27,6 +30,7 @@ import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Identify
+import work.socialhub.planetlink.model.Paging
 import work.socialhub.planetlink.model.Service
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -70,6 +74,31 @@ class BlueskyMapperTest {
         assertEquals(list.avatar, channel.iconUrl)
         assertEquals("Owner", channel.owner?.name)
         assertEquals("next-cursor", (result.paging as BlueskyPaging).cursorHint)
+    }
+
+    @Test
+    fun channels_emptyListWithDefaultPaging_usesBlueskyPaging() {
+        val result = BlueskyMapper.channels(
+            emptyList(),
+            null,
+            Paging(),
+            service,
+        )
+
+        assertTrue(result.entities.isEmpty())
+        assertTrue(result.paging is BlueskyPaging)
+    }
+
+    @Test
+    fun customFeeds_emptyListWithDefaultPaging_usesBlueskyPaging() {
+        val result = BlueskyMapper.customFeeds(
+            emptyList(),
+            Paging(),
+            service,
+        )
+
+        assertTrue(result.entities.isEmpty())
+        assertTrue(result.paging is BlueskyPaging)
     }
 
     @Test
@@ -127,6 +156,86 @@ class BlueskyMapperTest {
         assertEquals(
             listOf(newFeed.uri),
             result.entities.map { it.id<String>() },
+        )
+    }
+
+    @Test
+    fun savedCustomFeedUris_prefersV2AndPreservesOrder() {
+        val legacy = ActorDefsSavedFeedsPref(
+            saved = listOf("at://legacy", "at://removed"),
+        )
+        val v2 = ActorDefsSavedFeedsPrefV2(
+            items = listOf(
+                ActorDefsSavedFeed(
+                    id = "one",
+                    type = "feed",
+                    value = "at://current",
+                    pinned = false,
+                ),
+                ActorDefsSavedFeed(
+                    id = "list",
+                    type = "list",
+                    value = "at://not-a-feed",
+                    pinned = false,
+                ),
+                ActorDefsSavedFeed(
+                    id = "duplicate",
+                    type = "feed",
+                    value = "at://current",
+                    pinned = true,
+                ),
+                ActorDefsSavedFeed(
+                    id = "two",
+                    type = "feed",
+                    value = "at://second",
+                    pinned = false,
+                ),
+            )
+        )
+
+        assertEquals(
+            listOf("at://current", "at://second"),
+            savedCustomFeedUris(listOf(legacy, v2)),
+        )
+    }
+
+    @Test
+    fun savedCustomFeedUris_fallsBackToLegacy() {
+        val legacy = ActorDefsSavedFeedsPref(
+            saved = listOf("at://first", "at://first", "at://second"),
+        )
+
+        assertEquals(
+            listOf("at://first", "at://second"),
+            savedCustomFeedUris(listOf(legacy)),
+        )
+    }
+
+    @Test
+    fun customFeeds_newPageReturnsFeedsBeforeLatestRecord() {
+        val initial = BlueskyMapper.customFeeds(
+            listOf(
+                customFeed("at://existing"),
+                customFeed("at://older"),
+            ),
+            BlueskyPaging(),
+            service,
+        )
+        val refreshPaging = initial.paging!!.newPage(initial.entities)
+
+        val refreshed = BlueskyMapper.customFeeds(
+            listOf(
+                customFeed("at://new"),
+                customFeed("at://existing"),
+                customFeed("at://older"),
+            ),
+            refreshPaging,
+            service,
+        )
+
+        assertEquals(
+            listOf("at://new"),
+            refreshed.entities.map { it.id<String>() },
         )
     }
 
@@ -234,11 +343,11 @@ class BlueskyMapperTest {
 
     private fun customFeed(
         uri: String,
-        name: String,
+        name: String = uri.substringAfterLast('/'),
     ): FeedDefsGeneratorView {
         return FeedDefsGeneratorView().apply {
             this.uri = uri
-            cid = "bafy-feed"
+            cid = "bafy-${uri.substringAfterLast('/')}"
             did = "did:web:feed.example"
             creator = ActorDefsProfileView(
                 did = "did:plc:owner",
