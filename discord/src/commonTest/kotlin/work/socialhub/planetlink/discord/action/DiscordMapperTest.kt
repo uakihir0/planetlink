@@ -253,6 +253,44 @@ class DiscordMapperTest {
     }
 
     @Test
+    fun excludesSpoilerComponentTextAndPropagatesSpoilerToMedia() {
+        val message = Message().also {
+            it.content = "Visible content"
+            it.components = arrayOf(
+                ContainerComponent().also { container ->
+                    container.spoiler = true
+                    container.components = arrayOf(
+                        TextDisplayComponent().also { text ->
+                            text.content = "Hidden content"
+                        },
+                        MediaGalleryComponent().also { gallery ->
+                            gallery.items = arrayOf(
+                                MediaGalleryItem().also { item ->
+                                    item.description = "Hidden image"
+                                    item.media = UnfurledMediaItem().also { media ->
+                                        media.url = "https://cdn.example.com/hidden.png"
+                                        media.contentType = "image/png"
+                                    }
+                                }
+                            )
+                        },
+                    )
+                }
+            )
+        }
+
+        val comment = DiscordMapper.comment(message, null, service)
+
+        assertEquals("Visible content", comment.text?.displayText)
+        assertTrue(assertIs<DiscordMedia>(comment.medias.single()).spoiler)
+        assertTrue(
+            assertIs<DiscordMedia>(
+                comment.components.single().children[1].medias.single()
+            ).spoiler
+        )
+    }
+
+    @Test
     fun mapsNormalAndBurstReactionDetails() {
         val message = Message().also {
             it.reactions = arrayOf(

@@ -411,26 +411,38 @@ object DiscordMapper {
     }
 
     fun component(source: MessageComponent): DiscordMessageComponent {
+        return component(source, inheritedSpoiler = false)
+    }
+
+    private fun component(
+        source: MessageComponent,
+        inheritedSpoiler: Boolean,
+    ): DiscordMessageComponent {
         val ownText = componentOwnText(source).joinToString("\n")
+        val spoiler = inheritedSpoiler || componentSpoiler(source)
         return DiscordMessageComponent().apply {
             type = source.type
             id = source.id
             text = ownText.takeIf { it.isNotBlank() }?.let(AttributedString::plain)
             url = (source as? ButtonComponent)?.url
             disabled = componentDisabled(source)
-            spoiler = componentSpoiler(source)
-            medias = componentOwnMedias(source)
-            children = componentChildren(source).map { component(it) }
+            this.spoiler = spoiler
+            medias = componentOwnMedias(source, inheritedSpoiler)
+            children = componentChildren(source).map { component(it, spoiler) }
         }
     }
 
     private fun componentTextParts(
         component: MessageComponent,
         destination: MutableList<String>,
+        inheritedSpoiler: Boolean = false,
     ) {
+        val spoiler = inheritedSpoiler || componentSpoiler(component)
+        if (spoiler) return
+
         destination.addAll(componentOwnText(component).filter { it.isNotBlank() })
         componentChildren(component).forEach {
-            componentTextParts(it, destination)
+            componentTextParts(it, destination, spoiler)
         }
     }
 
@@ -494,7 +506,10 @@ object DiscordMapper {
         } ?: false
     }
 
-    private fun componentOwnMedias(component: MessageComponent): List<Media> {
+    private fun componentOwnMedias(
+        component: MessageComponent,
+        inheritedSpoiler: Boolean,
+    ): List<Media> {
         return when (component) {
             is ThumbnailComponent -> listOfNotNull(
                 component.media?.let {
@@ -502,7 +517,7 @@ object DiscordMapper {
                         source = it,
                         fallbackType = MediaType.Image,
                         description = component.description,
-                        spoiler = component.spoiler ?: false,
+                        spoiler = inheritedSpoiler || component.spoiler == true,
                     )
                 }
             )
@@ -512,7 +527,7 @@ object DiscordMapper {
                         source = it,
                         fallbackType = MediaType.Image,
                         description = item.description,
-                        spoiler = item.spoiler ?: false,
+                        spoiler = inheritedSpoiler || item.spoiler == true,
                     )
                 }
             }
@@ -522,7 +537,7 @@ object DiscordMapper {
                         source = it,
                         fallbackType = MediaType.File,
                         description = component.name,
-                        spoiler = component.spoiler ?: false,
+                        spoiler = inheritedSpoiler || component.spoiler == true,
                     )
                 }
             )
@@ -646,10 +661,12 @@ object DiscordMapper {
     private fun collectComponentMedias(
         component: MessageComponent,
         destination: MutableList<Media>,
+        inheritedSpoiler: Boolean = false,
     ) {
-        destination.addAll(componentOwnMedias(component))
+        val spoiler = inheritedSpoiler || componentSpoiler(component)
+        destination.addAll(componentOwnMedias(component, inheritedSpoiler))
         componentChildren(component).forEach {
-            collectComponentMedias(it, destination)
+            collectComponentMedias(it, destination, spoiler)
         }
     }
 
