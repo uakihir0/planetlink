@@ -1509,9 +1509,11 @@ class BlueskyAction(
             )
 
             if (uris.isEmpty()) {
-                return@proceed Pageable<Channel>().also {
-                    it.paging = paging
-                }
+                return@proceed Mapper.customFeeds(
+                    emptyList(),
+                    paging,
+                    service(),
+                )
             }
 
             val feeds = uris
