@@ -10,6 +10,7 @@ import work.socialhub.kbsky.model.app.bsky.embed.EmbedUnion
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedVideo
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedVideoView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsPostView
+import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsGeneratorView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPostReplyRef
 import work.socialhub.kbsky.model.app.bsky.graph.GraphDefsListView
@@ -24,6 +25,8 @@ import work.socialhub.planetlink.bluesky.model.BlueskyComment
 import work.socialhub.planetlink.bluesky.model.BlueskyPaging
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.Account
+import work.socialhub.planetlink.model.ID
+import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Service
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -80,6 +83,50 @@ class BlueskyMapperTest {
             BlueskyAction.CAPABILITIES.isSupported(
                 BlueskyActionType.CustomFeedTimeLine
             )
+        )
+    }
+
+    @Test
+    fun timelineByPosts_emptyPage_preservesCursor() {
+        val result = BlueskyMapper.timelineByPosts(
+            emptyList(),
+            "next-cursor",
+            BlueskyPaging(),
+            service,
+        )
+
+        assertTrue(result.entities.isEmpty())
+        assertEquals(
+            "next-cursor",
+            (result.paging as BlueskyPaging).cursorHint,
+        )
+    }
+
+    @Test
+    fun customFeeds_latestRecord_returnsNewFeeds() {
+        val oldFeed = customFeed(
+            "at://did:plc:owner/app.bsky.feed.generator/old",
+            "Old feed",
+        )
+        val newFeed = customFeed(
+            "at://did:plc:owner/app.bsky.feed.generator/new",
+            "New feed",
+        )
+        val paging = BlueskyPaging().also {
+            it.latestRecord = Identify(service).apply {
+                id = ID(oldFeed.uri!!)
+            }
+        }
+
+        val result = BlueskyMapper.customFeeds(
+            listOf(newFeed, oldFeed),
+            paging,
+            service,
+        )
+
+        assertEquals(
+            listOf(newFeed.uri),
+            result.entities.map { it.id<String>() },
         )
     }
 
@@ -183,6 +230,24 @@ class BlueskyMapperTest {
 
         assertEquals(1, comment.medias.size)
         assertEquals(MediaType.Movie, comment.medias.first().type)
+    }
+
+    private fun customFeed(
+        uri: String,
+        name: String,
+    ): FeedDefsGeneratorView {
+        return FeedDefsGeneratorView().apply {
+            this.uri = uri
+            cid = "bafy-feed"
+            did = "did:web:feed.example"
+            creator = ActorDefsProfileView(
+                did = "did:plc:owner",
+                handle = "owner.bsky.social",
+                displayName = "Owner",
+            )
+            displayName = name
+            indexedAt = "2025-01-01T00:00:00.000Z"
+        }
     }
 
     @Test

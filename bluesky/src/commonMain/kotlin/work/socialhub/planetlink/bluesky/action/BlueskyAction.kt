@@ -1502,10 +1502,9 @@ class BlueskyAction(
         paging: Paging,
     ): Pageable<Channel> {
         return proceed {
-            // Saved custom feeds are not paginated by the preferences API.
-            if (paging is BlueskyPaging &&
-                (paging.latestRecord != null || paging.cursor != null)
-            ) {
+            // The preferences API has no cursor pagination. latestRecord is
+            // still supported as a client-side refresh boundary.
+            if (paging is BlueskyPaging && paging.cursor != null) {
                 return@proceed Pageable<Channel>().also {
                     it.paging = paging
                 }
