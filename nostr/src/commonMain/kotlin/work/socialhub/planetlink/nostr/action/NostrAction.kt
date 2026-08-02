@@ -1,13 +1,21 @@
 package work.socialhub.planetlink.nostr.action
 
 import kotlin.time.Instant
+import kotlin.time.Clock
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.withLock
 import work.socialhub.knostr.EventKind
+import work.socialhub.knostr.NostrException
 import work.socialhub.knostr.entity.Nip19Entity
 import work.socialhub.knostr.entity.NostrFilter
 import work.socialhub.knostr.entity.NostrProfile
+import work.socialhub.knostr.entity.UnsignedEvent
 import work.socialhub.knostr.social.model.NostrDirectMessage
 import work.socialhub.knostr.social.model.NostrNote
+import work.socialhub.knostr.social.model.NostrChannel as KnostrChannel
 import work.socialhub.knostr.social.model.NostrUser as KnostrUser
 import work.socialhub.knostr.social.stream.NotificationStream
 import work.socialhub.knostr.social.stream.TimelineStream
@@ -72,6 +80,12 @@ class NostrAction(
                 SocialActionType.UnreactionComment,
                 SocialActionType.GetNotification,
                 SocialActionType.UpdateProfile,
+                SocialActionType.GetUserBookmarks,
+                SocialActionType.BookmarkComment,
+                SocialActionType.UnbookmarkComment,
+                SocialActionType.VotePoll,
+                SocialActionType.GetChannels,
+                SocialActionType.CreateList,
 
                 TimeLineActionType.HomeTimeLine,
                 TimeLineActionType.MentionTimeLine,
@@ -80,6 +94,8 @@ class NostrAction(
                 TimeLineActionType.UserMediaTimeLine,
                 TimeLineActionType.SearchTimeLine,
                 TimeLineActionType.MessageTimeLine,
+                TimeLineActionType.UserBookmarkTimeLine,
+                TimeLineActionType.ChannelTimeLine,
 
                 UsersActionType.GetFollowingUsers,
                 UsersActionType.GetFollowerUsers,
@@ -522,6 +538,60 @@ class NostrAction(
         }
     }
 
+    override suspend fun userBookmarkTimeLine(paging: Paging): Pageable<Comment> {
+        return fetchUserBookmarks(paging)
+    }
+
+    private suspend fun fetchUserBookmarks(paging: Paging): Pageable<Comment> {
+        return proceed {
+            ensureRelayConnected()
+            val eventIds = social.bookmarks().getBookmarks().data
+            if (eventIds.isEmpty()) {
+                return@proceed Pageable<Comment>().also { it.paging = NostrPaging.fromPaging(paging) }
+            }
+
+            val pageSize = paging.count ?: 50
+            val batchSize = pageSize * 3
+            val np = NostrPaging.fromPaging(paging)
+            val allIds = eventIds.asReversed()
+
+            val notes = mutableListOf<NostrNote>()
+            for (offset in 0 until allIds.size step batchSize) {
+                val batchIds = allIds.drop(offset).take(batchSize)
+                if (batchIds.isEmpty()) break
+
+                val batchNotes: List<NostrNote> = coroutineScope {
+                    batchIds.map { eventId ->
+                        async<NostrNote?> {
+                            try {
+                                social.feed().getNote(eventId).data
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: NostrException) {
+                                if (e.message == "Note not found: $eventId") null else throw e
+                            }
+                        }
+                    }.awaitAll().filterNotNull()
+                }
+
+                notes.addAll(batchNotes)
+
+                val inWindow = notes.count {
+                    (np.since == null || it.createdAt >= np.since!!) &&
+                        (np.until == null || it.createdAt <= np.until!!)
+                }
+                if (inWindow >= pageSize) break
+            }
+
+            val filtered = notes
+                .filter { np.since == null || it.createdAt >= np.since!! }
+                .filter { np.until == null || it.createdAt <= np.until!! }
+                .sortedByDescending { it.createdAt }
+                .take(pageSize)
+            NostrMapper.timeLine(filtered, service(), paging, me ?: fetchUserMe())
+        }
+    }
+
     // ============================================================== //
     // Comment API
     // ============================================================== //
@@ -535,12 +605,55 @@ class NostrAction(
             ensureRelayConnected()
 
             if (req.isMessage) {
-                val recipientPubkey = req.replyId?.value<String>()
-                    ?: throw SocialHubException("recipient pubkey is required for direct message")
-                if (req.images.isNotEmpty()) {
-                    throw NotSupportedException("Image attachments are not yet supported for Nostr direct messages")
+                doSendDirectMessage(req)
+                return@proceedUnit
+            }
+
+            val channelId = req.params[NostrComment.CHANNEL_ID_KEY] as? String
+            if (channelId != null) {
+                if (req.poll != null) {
+                    throw NotSupportedException("Polls are not supported in Nostr channels")
                 }
-                social.messages().sendMessage(recipientPubkey, req.text ?: "")
+                val replyToEventId = req.replyId?.value<String>()
+                if (replyToEventId != null) {
+                    val signer = nostr.signer()
+                        ?: throw SocialHubException("Signer is required for channel reply")
+                    val unsigned = UnsignedEvent(
+                        pubkey = signer.getPublicKey(),
+                        createdAt = Clock.System.now().epochSeconds,
+                        kind = EventKind.CHANNEL_MESSAGE,
+                        tags = listOf(
+                            listOf("e", channelId, "", "root"),
+                            listOf("e", replyToEventId, "", "reply"),
+                        ),
+                        content = contentWithUploadedMedia(req),
+                    )
+                    val signed = signer.sign(unsigned)
+                    nostr.events().publishEvent(signed)
+                } else {
+                    social.channels().sendMessage(channelId, contentWithUploadedMedia(req))
+                }
+                return@proceedUnit
+            }
+
+            req.poll?.let { poll ->
+                if (req.images.isNotEmpty() || req.replyId != null || req.quoteId != null) {
+                    throw NotSupportedException("Nostr polls cannot include media, replies, or quotes")
+                }
+                if (poll.multiple) {
+                    throw NotSupportedException("Nostr does not support multiple-choice polls")
+                }
+                if (poll.options.size < 2) {
+                    throw SocialHubException("Nostr polls require at least two options")
+                }
+                val closedAt = poll.expiresIn
+                    .takeIf { it > 0 }
+                    ?.let { Clock.System.now().epochSeconds + it * 60L }
+                social.polls().createPoll(
+                    content = req.text.orEmpty(),
+                    options = poll.options,
+                    closedAt = closedAt,
+                )
                 return@proceedUnit
             }
 
@@ -675,6 +788,30 @@ class NostrAction(
         }
     }
 
+    override suspend fun bookmarkComment(id: Identify) {
+        proceedUnit {
+            ensureRelayConnected()
+            social.bookmarks().bookmark(id.id!!.value<String>())
+        }
+    }
+
+    override suspend fun unbookmarkComment(id: Identify) {
+        proceedUnit {
+            ensureRelayConnected()
+            social.bookmarks().unbookmark(id.id!!.value<String>())
+        }
+    }
+
+    override suspend fun votePoll(id: Identify, choices: List<Int>) {
+        if (choices.isEmpty()) {
+            throw SocialHubException("At least one poll choice is required")
+        }
+        proceedUnit {
+            ensureRelayConnected()
+            social.polls().vote(id.id!!.value<String>(), choices)
+        }
+    }
+
     override suspend fun commentContexts(id: Identify): Context {
         return proceed {
             val eventId = id.id!!.value<String>()
@@ -700,15 +837,77 @@ class NostrAction(
     // ============================================================== //
 
     override suspend fun channels(id: Identify, paging: Paging): Pageable<Channel> {
-        throw NotSupportedException("Nostr channels (NIP-28) are not yet supported")
+        return proceed {
+            ensureRelayConnected()
+            val np = NostrPaging.fromPaging(paging)
+            val filter = NostrFilter(
+                kinds = listOf(EventKind.CHANNEL_CREATE),
+                since = np.since,
+                until = np.until,
+                limit = paging.count ?: 50,
+            )
+            val response = nostr.events().queryEvents(listOf(filter))
+            val channels = response.data.map { event ->
+                KnostrChannel().apply {
+                    this.id = event.id
+                    this.createdAt = event.createdAt
+                    try {
+                        val meta = Json.parseToJsonElement(event.content).jsonObject
+                        this.name = meta["name"]?.jsonPrimitive?.content.orEmpty()
+                        this.about = meta["about"]?.jsonPrimitive?.content.orEmpty()
+                        this.picture = meta["picture"]?.jsonPrimitive?.content.orEmpty()
+                    } catch (_: Exception) {}
+                }
+            }
+            NostrMapper.channels(channels, service(), paging)
+        }
     }
 
     override suspend fun channelTimeLine(id: Identify, paging: Paging): Pageable<Comment> {
-        throw NotSupportedException("Nostr channels (NIP-28) are not yet supported")
+        return proceed {
+            ensureRelayConnected()
+            val np = NostrPaging.fromPaging(paging)
+            val messages = social.channels().getChannelMessages(
+                channelId = id.id!!.value<String>(),
+                since = np.since,
+                until = np.until,
+                limit = paging.count ?: 50,
+            ).data
+            val pubkeys = messages.map { it.event.pubkey }.distinct()
+            val users = if (pubkeys.isEmpty()) {
+                emptyMap()
+            } else {
+                try {
+                    social.users().getProfiles(pubkeys).data.associateBy { it.pubkey }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    emptyMap()
+                }
+            }
+            NostrMapper.channelMessages(messages, users, service(), paging)
+        }
     }
 
     override suspend fun channelUsers(id: Identify, paging: Paging): Pageable<User> {
-        throw NotSupportedException("Nostr channels (NIP-28) are not yet supported")
+        throw NotSupportedException("NIP-28 does not provide a channel member list")
+    }
+
+    override suspend fun createList(name: String, description: String?): Channel {
+        return proceed {
+            ensureRelayConnected()
+            val event = social.channels().createChannel(
+                name = name,
+                about = description.orEmpty(),
+            ).data
+            Channel(service()).apply {
+                id = ID(event.id)
+                this.name = name
+                this.description = description
+                createAt = Instant.fromEpochSeconds(event.createdAt)
+                isPublic = true
+            }
+        }
     }
 
     // ============================================================== //
@@ -780,10 +979,36 @@ class NostrAction(
 
     override suspend fun postMessage(req: CommentForm) {
         proceedUnit {
-            val recipientPubkey = req.replyId?.value<String>()
-                ?: throw SocialHubException("recipient pubkey is required for direct message")
-            social.messages().sendMessage(recipientPubkey, req.text ?: "")
+            ensureRelayConnected()
+            doSendDirectMessage(req)
         }
+    }
+
+    private suspend fun doSendDirectMessage(req: CommentForm) {
+        val recipientPubkey = req.replyId?.value<String>()
+            ?: throw SocialHubException("recipient pubkey is required for direct message")
+        social.messages().sendMessage(recipientPubkey, contentWithUploadedMedia(req))
+    }
+
+    private suspend fun contentWithUploadedMedia(req: CommentForm): String {
+        val urls: List<String> = coroutineScope {
+            req.images.map { image ->
+                async {
+                    val media = social.media().uploadToConfiguredServer(
+                        fileData = image.data,
+                        fileName = image.name,
+                        mimeType = NostrMapper.nostrMediaMimeType(image.name),
+                        description = image.description.orEmpty(),
+                    ).data
+                    media.url.takeIf { it.isNotBlank() }
+                        ?: throw SocialHubException("NIP-96 upload returned an empty media URL")
+                }
+            }.awaitAll()
+        }
+        return buildList {
+            req.text?.takeIf { it.isNotBlank() }?.let(::add)
+            addAll(urls.filter { it.isNotBlank() })
+        }.joinToString("\n")
     }
 
     // ============================================================== //
