@@ -66,6 +66,7 @@ import work.socialhub.kbsky.stream.BlueskyStreamFactory
 import work.socialhub.kbsky.stream.api.entity.app.bsky.JetStreamSubscribeRequest
 import work.socialhub.kbsky.stream.entity.app.bsky.callback.JetStreamEventCallback
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Event
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsPreferencesUnion
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeedsPref
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeedsPrefV2
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
@@ -142,6 +143,24 @@ import kotlin.js.JsExport
 import kotlin.math.min
 import work.socialhub.planetlink.bluesky.action.BlueskyMapper as Mapper
 
+internal fun savedCustomFeedUris(
+    preferences: List<ActorDefsPreferencesUnion>,
+): List<String> {
+    val v2 = preferences.filterIsInstance<ActorDefsSavedFeedsPrefV2>()
+    return if (v2.isNotEmpty()) {
+        v2.flatMap { preference ->
+            preference.items
+                .filter { it.type == "feed" }
+                .map { it.value }
+        }.distinct()
+    } else {
+        preferences
+            .filterIsInstance<ActorDefsSavedFeedsPref>()
+            .flatMap { it.saved }
+            .distinct()
+    }
+}
+
 /** Bluesky プラットフォームのアクション実装 */
 @JsExport
 class BlueskyAction(
@@ -150,6 +169,7 @@ class BlueskyAction(
 ) : AccountActionImpl(account) {
 
     companion object {
+        private const val MAX_CUSTOM_FEEDS_PER_REQUEST = 25
         const val MAX_WANTED_DIDS_PER_CONNECTION = 300
 
         val CAPABILITIES = Capabilities(
@@ -1484,21 +1504,9 @@ class BlueskyAction(
                 ActorGetPreferencesRequest(authProvider())
             )
 
-            val uris = mutableListOf<String>()
-            for (union in preferences.data.preferences) {
-                if (union is ActorDefsSavedFeedsPref) {
-                    union.saved.forEach {
-                        if (it !in uris) uris.add(it)
-                    }
-                }
-                if (union is ActorDefsSavedFeedsPrefV2) {
-                    union.items
-                        .filter { it.type == "feed" }
-                        .forEach {
-                            if (it.value !in uris) uris.add(it.value)
-                        }
-                }
-            }
+            val uris = savedCustomFeedUris(
+                preferences.data.preferences
+            )
 
             if (uris.isEmpty()) {
                 return@proceed Pageable<Channel>().also {
@@ -1506,13 +1514,17 @@ class BlueskyAction(
                 }
             }
 
-            val feeds = auth.accessor.feed().getFeedGenerators(
-                FeedGetFeedGeneratorsRequest(authProvider())
-                    .also { it.feeds = uris }
-            )
+            val feeds = uris
+                .chunked(MAX_CUSTOM_FEEDS_PER_REQUEST)
+                .flatMap { batch ->
+                    auth.accessor.feed().getFeedGenerators(
+                        FeedGetFeedGeneratorsRequest(authProvider())
+                            .also { it.feeds = batch }
+                    ).data.feeds
+                }
 
             Mapper.customFeeds(
-                feeds.data.feeds,
+                feeds,
                 paging,
                 service(),
             )
