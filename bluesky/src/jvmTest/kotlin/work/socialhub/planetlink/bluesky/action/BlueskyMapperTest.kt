@@ -28,6 +28,7 @@ import work.socialhub.planetlink.bluesky.model.BlueskyComment
 import work.socialhub.planetlink.bluesky.model.BlueskyPaging
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.Account
+import work.socialhub.planetlink.model.Paging
 import work.socialhub.planetlink.model.Service
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -71,6 +72,31 @@ class BlueskyMapperTest {
         assertEquals(list.avatar, channel.iconUrl)
         assertEquals("Owner", channel.owner?.name)
         assertEquals("next-cursor", (result.paging as BlueskyPaging).cursorHint)
+    }
+
+    @Test
+    fun channels_emptyListWithDefaultPaging_usesBlueskyPaging() {
+        val result = BlueskyMapper.channels(
+            emptyList(),
+            null,
+            Paging(),
+            service,
+        )
+
+        assertTrue(result.entities.isEmpty())
+        assertTrue(result.paging is BlueskyPaging)
+    }
+
+    @Test
+    fun customFeeds_emptyListWithDefaultPaging_usesBlueskyPaging() {
+        val result = BlueskyMapper.customFeeds(
+            emptyList(),
+            Paging(),
+            service,
+        )
+
+        assertTrue(result.entities.isEmpty())
+        assertTrue(result.paging is BlueskyPaging)
     }
 
     @Test
