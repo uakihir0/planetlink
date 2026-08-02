@@ -20,6 +20,11 @@ class DiscordUser(
     /** Whether this user is a bot account. */
     var isBot: Boolean = false
 
+    var flags: Int? = null
+    var publicFlags: Int? = null
+    var clan: DiscordUserPrimaryGuild? = null
+    var primaryGuild: DiscordUserPrimaryGuild? = null
+
     override var webUrl: String
         get() {
             val userId = id?.value<String>() ?: return ""

@@ -18,6 +18,18 @@ class DiscordComment(
     /** Guild id the message belongs to (snowflake); null for DMs. */
     var guildId: String? = null
 
+    var editedTimestamp: String? = null
+    var tts: Boolean = false
+    var mentionEveryone: Boolean = false
+    var mentionRoleIds: List<String> = listOf()
+    var pinned: Boolean = false
+    var webhookId: String? = null
+    var messageType: Int? = null
+    var messageFlags: Int? = null
+    var embeds: List<DiscordEmbed> = listOf()
+    var components: List<DiscordMessageComponent> = listOf()
+    var reactionDetails: List<DiscordReactionDetails> = listOf()
+
     private var _reactions: MutableList<Reaction>? = null
 
     override var webUrl: String
