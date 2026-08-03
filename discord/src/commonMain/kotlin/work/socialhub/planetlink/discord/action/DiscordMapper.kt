@@ -623,6 +623,7 @@ object DiscordMapper {
             it.height = attachment.height
             it.description = attachment.description
             it.contentType = attachment.contentType
+            it.spoiler = attachment.filename?.startsWith("SPOILER_") == true
             it.attachmentId = attachment.id
         }
     }

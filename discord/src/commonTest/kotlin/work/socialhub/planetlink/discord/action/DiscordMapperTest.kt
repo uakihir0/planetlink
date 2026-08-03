@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.discord.action
 
+import work.socialhub.kdiscord.entity.Attachment
 import work.socialhub.kdiscord.entity.ContainerComponent
 import work.socialhub.kdiscord.entity.Embed
 import work.socialhub.kdiscord.entity.EmbedField
@@ -326,6 +327,25 @@ class DiscordMapperTest {
         )
         val media = comment.medias.single { it.sourceUrl == "https://cdn.example.com/hidden.png" }
         assertTrue(assertIs<DiscordMedia>(media).spoiler)
+    }
+
+    @Test
+    fun marksSpoilerAttachmentFromFilename() {
+        val message = Message().also {
+            it.content = "Message content"
+            it.attachments = arrayOf(
+                Attachment().also { attachment ->
+                    attachment.id = "1"
+                    attachment.filename = "SPOILER_secret.png"
+                    attachment.url = "https://cdn.example.com/secret.png"
+                    attachment.contentType = "image/png"
+                }
+            )
+        }
+
+        val comment = DiscordMapper.comment(message, null, service)
+
+        assertTrue(assertIs<DiscordMedia>(comment.medias.single()).spoiler)
     }
 
     @Test
