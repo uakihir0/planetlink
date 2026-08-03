@@ -20,6 +20,7 @@ import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.common.AttributedKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -330,8 +331,17 @@ class DiscordMapperTest {
             listOf("Visible image"),
             comment.components.single().text?.displayText?.lines(),
         )
-        val media = comment.medias.single { it.sourceUrl == "https://cdn.example.com/hidden.png" }
-        assertTrue(assertIs<DiscordMedia>(media).spoiler)
+        val visible = comment.medias.single { it.sourceUrl == "https://cdn.example.com/visible.png" }
+        assertFalse(assertIs<DiscordMedia>(visible).spoiler)
+        val hidden = comment.medias.single { it.sourceUrl == "https://cdn.example.com/hidden.png" }
+        assertTrue(assertIs<DiscordMedia>(hidden).spoiler)
+        assertTrue(
+            assertIs<DiscordMedia>(
+                comment.components.single().medias.single {
+                    it.sourceUrl == "https://cdn.example.com/hidden.png"
+                }
+            ).spoiler
+        )
     }
 
     @Test
