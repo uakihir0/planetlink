@@ -378,6 +378,10 @@ class DiscordMapperTest {
 
         assertEquals(2, comment.medias.size)
         assertEquals(
+            listOf(sharedUrl, sharedUrl),
+            comment.medias.map { it.sourceUrl },
+        )
+        assertEquals(
             listOf("First image", "Second image"),
             comment.medias.map { it.description },
         )
