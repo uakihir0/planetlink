@@ -55,15 +55,15 @@ class BlueskyPaging(
     ): Paging {
 
         val pg = copy()
+
+        // ヒントが設定されている場合はそれを使用
+        if (cursorHint != null) {
+            pg.cursor = cursorHint
+            pg.latestRecord = null
+            return pg.clearHint()
+        }
+
         if (entities.isNotEmpty()) {
-
-            // ヒントが設定されている場合はそれを使用
-            if (cursorHint != null) {
-                pg.cursor = cursorHint
-                pg.latestRecord = null
-                return pg.clearHint()
-            }
-
             val count = entities.size
             val last = entities[count - 1]
 

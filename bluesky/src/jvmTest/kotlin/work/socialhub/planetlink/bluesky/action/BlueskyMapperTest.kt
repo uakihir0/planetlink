@@ -28,6 +28,8 @@ import work.socialhub.planetlink.bluesky.model.BlueskyComment
 import work.socialhub.planetlink.bluesky.model.BlueskyPaging
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.Account
+import work.socialhub.planetlink.model.ID
+import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
 import work.socialhub.planetlink.model.Service
 import kotlin.test.Test
@@ -110,6 +112,50 @@ class BlueskyMapperTest {
             BlueskyAction.CAPABILITIES.isSupported(
                 BlueskyActionType.CustomFeedTimeLine
             )
+        )
+    }
+
+    @Test
+    fun timelineByPosts_emptyPage_preservesCursor() {
+        val result = BlueskyMapper.timelineByPosts(
+            emptyList(),
+            "next-cursor",
+            BlueskyPaging(),
+            service,
+        )
+
+        assertTrue(result.entities.isEmpty())
+        assertEquals(
+            "next-cursor",
+            (result.paging as BlueskyPaging).cursorHint,
+        )
+    }
+
+    @Test
+    fun customFeeds_latestRecord_returnsNewFeeds() {
+        val oldFeed = customFeed(
+            "at://did:plc:owner/app.bsky.feed.generator/old",
+            "Old feed",
+        )
+        val newFeed = customFeed(
+            "at://did:plc:owner/app.bsky.feed.generator/new",
+            "New feed",
+        )
+        val paging = BlueskyPaging().also {
+            it.latestRecord = Identify(service).apply {
+                id = ID(oldFeed.uri!!)
+            }
+        }
+
+        val result = BlueskyMapper.customFeeds(
+            listOf(newFeed, oldFeed),
+            paging,
+            service,
+        )
+
+        assertEquals(
+            listOf(newFeed.uri),
+            result.entities.map { it.id<String>() },
         )
     }
 
@@ -295,15 +341,20 @@ class BlueskyMapperTest {
         assertEquals(MediaType.Movie, comment.medias.first().type)
     }
 
-    private fun customFeed(uri: String): FeedDefsGeneratorView {
+    private fun customFeed(
+        uri: String,
+        name: String = uri.substringAfterLast('/'),
+    ): FeedDefsGeneratorView {
         return FeedDefsGeneratorView().apply {
             this.uri = uri
             cid = "bafy-${uri.substringAfterLast('/')}"
+            did = "did:web:feed.example"
             creator = ActorDefsProfileView(
                 did = "did:plc:owner",
                 handle = "owner.bsky.social",
+                displayName = "Owner",
             )
-            displayName = uri.substringAfterLast('/')
+            displayName = name
             indexedAt = "2025-01-01T00:00:00.000Z"
         }
     }

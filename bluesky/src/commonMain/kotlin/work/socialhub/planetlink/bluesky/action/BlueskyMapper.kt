@@ -733,7 +733,8 @@ object BlueskyMapper {
         // 空の場合
         if (postList.isEmpty()) {
             val model = Pageable<Comment>()
-            model.paging = paging
+            model.paging = BlueskyPaging.fromPaging(paging)
+                .also { it.cursorHint = cursor }
             return model
         }
 

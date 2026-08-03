@@ -24,6 +24,7 @@ import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedDeleteLikeRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedDeletePostRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedDeleteRepostRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetAuthorFeedRequest
+import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetBookmarksRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetFeedGeneratorsRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetFeedRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetLikesRequest
@@ -195,6 +196,7 @@ class BlueskyAction(
                 SocialActionType.UnreactionComment,
                 SocialActionType.GetChannels,
                 SocialActionType.GetNotification,
+                SocialActionType.GetUserBookmarks,
                 SocialActionType.BookmarkComment,
                 SocialActionType.UnbookmarkComment,
                 SocialActionType.ReportUser,
@@ -211,6 +213,7 @@ class BlueskyAction(
                 TimeLineActionType.UserLikeTimeLine,
                 TimeLineActionType.UserMediaTimeLine,
                 TimeLineActionType.SearchTimeLine,
+                TimeLineActionType.UserBookmarkTimeLine,
                 TimeLineActionType.ChannelTimeLine,
 
                 UsersActionType.GetFollowingUsers,
@@ -643,6 +646,32 @@ class BlueskyAction(
             pg.latestRecordHint = lid
             results.paging = pg
             results
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun userBookmarkTimeLine(
+        paging: Paging,
+    ): Pageable<Comment> {
+        return proceed {
+            val response = auth.accessor.feed().getBookmarks(
+                FeedGetBookmarksRequest(
+                    auth = authProvider(),
+                    cursor = cursor(paging),
+                    limit = limit(paging),
+                )
+            )
+
+            Mapper.timelineByPosts(
+                response.data.bookmarks.mapNotNull {
+                    it.item as? FeedDefsPostView
+                },
+                response.data.cursor,
+                paging,
+                service(),
+            )
         }
     }
 
@@ -1493,7 +1522,8 @@ class BlueskyAction(
         paging: Paging,
     ): Pageable<Channel> {
         return proceed {
-            // Saved custom feeds are not paginated by the preferences API.
+            // The preferences API has no cursor pagination. latestRecord is
+            // still supported as a client-side refresh boundary.
             if (paging is BlueskyPaging && paging.cursor != null) {
                 return@proceed Pageable<Channel>().also {
                     it.paging = paging

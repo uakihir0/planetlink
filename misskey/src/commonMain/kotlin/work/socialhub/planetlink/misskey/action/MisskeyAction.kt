@@ -133,6 +133,7 @@ class MisskeyAction(
                 SocialActionType.ReactionComment,
                 SocialActionType.UnreactionComment,
                 SocialActionType.GetNotification,
+                SocialActionType.GetUserBookmarks,
                 SocialActionType.BookmarkComment,
                 SocialActionType.UnbookmarkComment,
                 SocialActionType.VotePoll,
@@ -152,6 +153,7 @@ class MisskeyAction(
                 TimeLineActionType.UserLikeTimeLine,
                 TimeLineActionType.UserMediaTimeLine,
                 TimeLineActionType.SearchTimeLine,
+                TimeLineActionType.UserBookmarkTimeLine,
                 TimeLineActionType.ChannelTimeLine,
 
                 UsersActionType.GetFollowingUsers,
@@ -745,16 +747,31 @@ class MisskeyAction(
         id: Identify,
         paging: Paging,
     ): Pageable<Comment> {
+        return fetchFavoritesTimeLine(paging)
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    override suspend fun userBookmarkTimeLine(
+        paging: Paging,
+    ): Pageable<Comment> {
+        return fetchFavoritesTimeLine(paging)
+    }
+
+    private suspend fun fetchFavoritesTimeLine(
+        paging: Paging,
+    ): Pageable<Comment> {
         return proceed {
-            // FIXME: 自分のいいねのみを取得
             val misskey = auth.accessor
             val request = IFavoritesRequest()
 
             setPaging(request, paging)
             val response = misskey.accounts().iFavorites(request)
+            val favorites = response.data.toList()
 
-            MisskeyMapper.timeLine(
-                response.data.map { it.note },
+            MisskeyMapper.favoritesTimeLine(
+                favorites,
                 instanceHost,
                 service(),
                 paging,
