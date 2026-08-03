@@ -291,6 +291,44 @@ class DiscordMapperTest {
     }
 
     @Test
+    fun excludesSpoilerGalleryItemDescriptionFromText() {
+        val message = Message().also {
+            it.content = "Message content"
+            it.components = arrayOf(
+                MediaGalleryComponent().also { gallery ->
+                    gallery.items = arrayOf(
+                        MediaGalleryItem().also { item ->
+                            item.description = "Visible image"
+                            item.media = UnfurledMediaItem().also { media ->
+                                media.url = "https://cdn.example.com/visible.png"
+                                media.contentType = "image/png"
+                            }
+                        },
+                        MediaGalleryItem().also { item ->
+                            item.description = "Hidden image"
+                            item.spoiler = true
+                            item.media = UnfurledMediaItem().also { media ->
+                                media.url = "https://cdn.example.com/hidden.png"
+                                media.contentType = "image/png"
+                            }
+                        },
+                    )
+                }
+            )
+        }
+
+        val comment = DiscordMapper.comment(message, null, service)
+
+        assertEquals("Message content\n\nVisible image", comment.text?.displayText)
+        assertEquals(
+            listOf("Visible image"),
+            comment.components.single().text?.displayText?.lines(),
+        )
+        val media = comment.medias.single { it.sourceUrl == "https://cdn.example.com/hidden.png" }
+        assertTrue(assertIs<DiscordMedia>(media).spoiler)
+    }
+
+    @Test
     fun preservesGalleryItemsWithSharedUrls() {
         val sharedUrl = "https://cdn.example.com/shared.png"
         val message = Message().also {

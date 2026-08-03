@@ -461,6 +461,7 @@ object DiscordMapper {
             is TextDisplayComponent -> listOfNotNull(component.content)
             is ThumbnailComponent -> listOfNotNull(component.description)
             is MediaGalleryComponent -> component.items.orEmpty()
+                .filterNot { it.spoiler == true }
                 .mapNotNull { it.description }
             is FileComponent -> listOfNotNull(component.name)
             is LabelComponent -> listOfNotNull(component.label, component.description)
