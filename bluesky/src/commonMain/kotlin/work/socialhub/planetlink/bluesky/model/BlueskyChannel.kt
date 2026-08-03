@@ -18,4 +18,5 @@ class BlueskyChannel(
     var owner: User? = null
     var iconUrl: String? = null
     var likeCount: Int? = null
+    var purpose: String? = null
 }

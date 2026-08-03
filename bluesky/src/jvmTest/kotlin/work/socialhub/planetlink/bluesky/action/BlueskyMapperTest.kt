@@ -3,6 +3,9 @@ package work.socialhub.planetlink.bluesky.action
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewBasic
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeed
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeedsPref
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeedsPrefV2
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecord
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecordWithMedia
@@ -10,16 +13,22 @@ import work.socialhub.kbsky.model.app.bsky.embed.EmbedUnion
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedVideo
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedVideoView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsPostView
+import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsGeneratorView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPostReplyRef
+import work.socialhub.kbsky.model.app.bsky.graph.GraphDefsListView
 import work.socialhub.kbsky.model.share.Blob
 import work.socialhub.kbsky.model.share.BlobRef
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Commit
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Event
+import work.socialhub.planetlink.bluesky.define.BlueskyActionType
+import work.socialhub.planetlink.bluesky.model.BlueskyChannel
 import work.socialhub.planetlink.bluesky.model.BlueskyComment
+import work.socialhub.planetlink.bluesky.model.BlueskyPaging
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.Account
+import work.socialhub.planetlink.model.Paging
 import work.socialhub.planetlink.model.Service
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -29,6 +38,160 @@ import kotlin.test.assertTrue
 class BlueskyMapperTest {
 
     private val service = Service("bluesky", Account())
+
+    @Test
+    fun channel_listView_mapsListMetadataAndPaging() {
+        val list = GraphDefsListView(
+            uri = "at://did:plc:owner/app.bsky.graph.list/list-key",
+            cid = "bafy-list",
+            creator = ActorDefsProfileView(
+                did = "did:plc:owner",
+                handle = "owner.bsky.social",
+                displayName = "Owner",
+            ),
+            name = "Kotlin",
+            purpose = "app.bsky.graph.defs#curatelist",
+            description = "Kotlin developers",
+            avatar = "https://cdn.bsky.app/list.png",
+            indexedAt = "2025-01-01T00:00:00.000Z",
+        )
+
+        val result = BlueskyMapper.channels(
+            listOf(list),
+            "next-cursor",
+            BlueskyPaging(),
+            service,
+        )
+        val channel = result.entities.single() as BlueskyChannel
+
+        assertEquals(list.uri, channel.id<String>())
+        assertEquals(list.cid, channel.cid)
+        assertEquals(list.name, channel.name)
+        assertEquals(list.description, channel.description)
+        assertEquals(list.purpose, channel.purpose)
+        assertEquals(list.avatar, channel.iconUrl)
+        assertEquals("Owner", channel.owner?.name)
+        assertEquals("next-cursor", (result.paging as BlueskyPaging).cursorHint)
+    }
+
+    @Test
+    fun channels_emptyListWithDefaultPaging_usesBlueskyPaging() {
+        val result = BlueskyMapper.channels(
+            emptyList(),
+            null,
+            Paging(),
+            service,
+        )
+
+        assertTrue(result.entities.isEmpty())
+        assertTrue(result.paging is BlueskyPaging)
+    }
+
+    @Test
+    fun customFeeds_emptyListWithDefaultPaging_usesBlueskyPaging() {
+        val result = BlueskyMapper.customFeeds(
+            emptyList(),
+            Paging(),
+            service,
+        )
+
+        assertTrue(result.entities.isEmpty())
+        assertTrue(result.paging is BlueskyPaging)
+    }
+
+    @Test
+    fun capabilities_includeCustomFeedApis() {
+        assertTrue(
+            BlueskyAction.CAPABILITIES.isSupported(
+                BlueskyActionType.GetCustomFeeds
+            )
+        )
+        assertTrue(
+            BlueskyAction.CAPABILITIES.isSupported(
+                BlueskyActionType.CustomFeedTimeLine
+            )
+        )
+    }
+
+    @Test
+    fun savedCustomFeedUris_prefersV2AndPreservesOrder() {
+        val legacy = ActorDefsSavedFeedsPref(
+            saved = listOf("at://legacy", "at://removed"),
+        )
+        val v2 = ActorDefsSavedFeedsPrefV2(
+            items = listOf(
+                ActorDefsSavedFeed(
+                    id = "one",
+                    type = "feed",
+                    value = "at://current",
+                    pinned = false,
+                ),
+                ActorDefsSavedFeed(
+                    id = "list",
+                    type = "list",
+                    value = "at://not-a-feed",
+                    pinned = false,
+                ),
+                ActorDefsSavedFeed(
+                    id = "duplicate",
+                    type = "feed",
+                    value = "at://current",
+                    pinned = true,
+                ),
+                ActorDefsSavedFeed(
+                    id = "two",
+                    type = "feed",
+                    value = "at://second",
+                    pinned = false,
+                ),
+            )
+        )
+
+        assertEquals(
+            listOf("at://current", "at://second"),
+            savedCustomFeedUris(listOf(legacy, v2)),
+        )
+    }
+
+    @Test
+    fun savedCustomFeedUris_fallsBackToLegacy() {
+        val legacy = ActorDefsSavedFeedsPref(
+            saved = listOf("at://first", "at://first", "at://second"),
+        )
+
+        assertEquals(
+            listOf("at://first", "at://second"),
+            savedCustomFeedUris(listOf(legacy)),
+        )
+    }
+
+    @Test
+    fun customFeeds_newPageReturnsFeedsBeforeLatestRecord() {
+        val initial = BlueskyMapper.customFeeds(
+            listOf(
+                customFeed("at://existing"),
+                customFeed("at://older"),
+            ),
+            BlueskyPaging(),
+            service,
+        )
+        val refreshPaging = initial.paging!!.newPage(initial.entities)
+
+        val refreshed = BlueskyMapper.customFeeds(
+            listOf(
+                customFeed("at://new"),
+                customFeed("at://existing"),
+                customFeed("at://older"),
+            ),
+            refreshPaging,
+            service,
+        )
+
+        assertEquals(
+            listOf("at://new"),
+            refreshed.entities.map { it.id<String>() },
+        )
+    }
 
     @Test
     fun userDetailed_nullDisplayName_fallbackToHandle() {
@@ -130,6 +293,19 @@ class BlueskyMapperTest {
 
         assertEquals(1, comment.medias.size)
         assertEquals(MediaType.Movie, comment.medias.first().type)
+    }
+
+    private fun customFeed(uri: String): FeedDefsGeneratorView {
+        return FeedDefsGeneratorView().apply {
+            this.uri = uri
+            cid = "bafy-${uri.substringAfterLast('/')}"
+            creator = ActorDefsProfileView(
+                did = "did:plc:owner",
+                handle = "owner.bsky.social",
+            )
+            displayName = uri.substringAfterLast('/')
+            indexedAt = "2025-01-01T00:00:00.000Z"
+        }
     }
 
     @Test
