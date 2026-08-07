@@ -18,6 +18,7 @@ import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Request
 import work.socialhub.planetlink.model.User
+import work.socialhub.planetlink.utils.SerializeUtil
 
 @JsExport
 class MisskeyRequest(
@@ -160,8 +161,7 @@ class MisskeyRequest(
         raw: String
     ): Request? {
         try {
-            val result = super.fromRawString(raw) ?: return null
-            val request = checkNotNull(result.raw)
+            val request = SerializeUtil.json.decodeFromString<SerializedRequest>(raw)
             val params = request.params
             val action = request.action
 
@@ -172,8 +172,10 @@ class MisskeyRequest(
                     SocialTimeLine -> socialTimeLine
                     FederationTimeLine -> federationTimeLine
                     FeaturedTimeline -> featuredTimeLine
-                }
+                }.also { it.raw = request }
             }
+
+            val result = super.fromRawString(raw) ?: return null
 
             // Comment Mentions
             if (result is CommentsRequest) {
