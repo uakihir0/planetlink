@@ -8,6 +8,7 @@ enum class MisskeyActionType : ActionType {
 
     // TimeLine
     LocalTimeLine,
+    SocialTimeLine,
     FederationTimeLine,
     FeaturedTimeline,
 }

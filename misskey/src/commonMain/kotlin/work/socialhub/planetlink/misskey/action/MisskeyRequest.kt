@@ -13,6 +13,7 @@ import work.socialhub.planetlink.misskey.define.MisskeyActionType
 import work.socialhub.planetlink.misskey.define.MisskeyActionType.FeaturedTimeline
 import work.socialhub.planetlink.misskey.define.MisskeyActionType.FederationTimeLine
 import work.socialhub.planetlink.misskey.define.MisskeyActionType.LocalTimeLine
+import work.socialhub.planetlink.misskey.define.MisskeyActionType.SocialTimeLine
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Request
@@ -40,6 +41,20 @@ class MisskeyRequest(
 
             request.streamFunction = { cb -> action.localLineStream(cb) }
             return request
+        }
+
+    /**
+     * Get Social Timeline
+     * (No Streaming)
+     */
+    val socialTimeLine: CommentsRequest
+        get() {
+            val action = account.action as MisskeyAction
+            return getCommentsRequest(
+                SocialTimeLine,
+                action::socialTimeLine,
+                SerializedRequest(SocialTimeLine)
+            )
         }
 
     /**
@@ -154,6 +169,7 @@ class MisskeyRequest(
             if (isTypeIncluded(MisskeyActionType.entries, action)) {
                 return when (MisskeyActionType.valueOf(action)) {
                     LocalTimeLine -> localTimeLine
+                    SocialTimeLine -> socialTimeLine
                     FederationTimeLine -> federationTimeLine
                     FeaturedTimeline -> featuredTimeLine
                 }
