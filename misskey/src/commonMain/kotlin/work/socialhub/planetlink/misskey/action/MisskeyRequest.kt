@@ -13,10 +13,12 @@ import work.socialhub.planetlink.misskey.define.MisskeyActionType
 import work.socialhub.planetlink.misskey.define.MisskeyActionType.FeaturedTimeline
 import work.socialhub.planetlink.misskey.define.MisskeyActionType.FederationTimeLine
 import work.socialhub.planetlink.misskey.define.MisskeyActionType.LocalTimeLine
+import work.socialhub.planetlink.misskey.define.MisskeyActionType.SocialTimeLine
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Request
 import work.socialhub.planetlink.model.User
+import work.socialhub.planetlink.utils.SerializeUtil
 
 @JsExport
 class MisskeyRequest(
@@ -40,6 +42,20 @@ class MisskeyRequest(
 
             request.streamFunction = { cb -> action.localLineStream(cb) }
             return request
+        }
+
+    /**
+     * Get Social Timeline
+     * (No Streaming)
+     */
+    val socialTimeLine: CommentsRequest
+        get() {
+            val action = account.action as MisskeyAction
+            return getCommentsRequest(
+                SocialTimeLine,
+                action::socialTimeLine,
+                SerializedRequest(SocialTimeLine)
+            )
         }
 
     /**
@@ -145,8 +161,7 @@ class MisskeyRequest(
         raw: String
     ): Request? {
         try {
-            val result = super.fromRawString(raw) ?: return null
-            val request = checkNotNull(result.raw)
+            val request = SerializeUtil.json.decodeFromString<SerializedRequest>(raw)
             val params = request.params
             val action = request.action
 
@@ -154,10 +169,13 @@ class MisskeyRequest(
             if (isTypeIncluded(MisskeyActionType.entries, action)) {
                 return when (MisskeyActionType.valueOf(action)) {
                     LocalTimeLine -> localTimeLine
+                    SocialTimeLine -> socialTimeLine
                     FederationTimeLine -> federationTimeLine
                     FeaturedTimeline -> featuredTimeLine
-                }
+                }.also { it.raw = request }
             }
+
+            val result = super.fromRawString(raw) ?: return null
 
             // Comment Mentions
             if (result is CommentsRequest) {

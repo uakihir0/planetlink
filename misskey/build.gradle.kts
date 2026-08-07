@@ -55,6 +55,7 @@ kotlin {
             implementation(libs.kmisskey.core)
             implementation(libs.kmisskey.stream)
             implementation(libs.datetime)
+            implementation(libs.serialization.json)
         }
 
         commonTest.dependencies {

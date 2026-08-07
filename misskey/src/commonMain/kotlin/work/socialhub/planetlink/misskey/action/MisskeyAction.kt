@@ -35,6 +35,7 @@ import work.socialhub.kmisskey.api.request.notes.NotesCreateRequest
 import work.socialhub.kmisskey.api.request.notes.NotesDeleteRequest
 import work.socialhub.kmisskey.api.request.notes.NotesFeaturedRequest
 import work.socialhub.kmisskey.api.request.notes.NotesGlobalTimelineRequest
+import work.socialhub.kmisskey.api.request.notes.NotesHybridTimelineRequest
 import work.socialhub.kmisskey.api.request.notes.NotesLocalTimelineRequest
 import work.socialhub.kmisskey.api.request.notes.NotesSearchRequest
 import work.socialhub.kmisskey.api.request.notes.NotesShowRequest
@@ -165,6 +166,7 @@ class MisskeyAction(
                 StreamActionType.CommentUpdateStream,
 
                 MisskeyActionType.LocalTimeLine,
+                MisskeyActionType.SocialTimeLine,
                 MisskeyActionType.FederationTimeLine,
                 MisskeyActionType.FeaturedTimeline,
             )
@@ -1526,6 +1528,28 @@ class MisskeyAction(
     // ============================================================== //
     // Another TimeLines
     // ============================================================== //
+    /**
+     * Get Social Timeline
+     */
+    suspend fun socialTimeLine(
+        paging: Paging
+    ): Pageable<Comment> {
+        return proceed {
+            val misskey = auth.accessor
+            val request = NotesHybridTimelineRequest()
+
+            setPaging(request, paging)
+            val response = misskey.notes().hybridTimeline(request)
+
+            MisskeyMapper.timeLine(
+                response.data.toList(),
+                instanceHost,
+                service(),
+                paging,
+            )
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
