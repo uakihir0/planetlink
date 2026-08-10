@@ -7,11 +7,13 @@ import work.socialhub.knostr.social.model.NostrMediaUpload
 import work.socialhub.knostr.social.model.NostrNote
 import work.socialhub.knostr.social.model.NostrReaction
 import work.socialhub.knostr.social.model.NostrRelationship
+import work.socialhub.knostr.social.model.NostrThread
 import work.socialhub.knostr.social.model.NostrUser as KnostrUser
 import work.socialhub.knostr.util.Nip21
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.Channel
 import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.Context
 import work.socialhub.planetlink.model.Emoji
 import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Media
@@ -132,6 +134,43 @@ object NostrMapper {
 
             medias = medias(note)
         }
+    }
+
+    internal fun commentContext(
+        thread: NostrThread,
+        service: Service,
+        userMe: User? = null,
+    ): Context {
+        val targetId = thread.rootNote?.event?.id
+        val notes = thread.replies.distinctBy { it.event.id }
+        val notesById = notes.associateBy { it.event.id }
+        val ancestorIds = mutableSetOf<String>()
+
+        var current = thread.rootNote
+        while (current != null) {
+            val parentId = replyParentId(current) ?: break
+            if (!ancestorIds.add(parentId)) break
+            current = notesById[parentId] ?: break
+        }
+
+        return Context().also { context ->
+            context.ancestors = notes
+                .filter { it.event.id != targetId && it.event.id in ancestorIds }
+                .map { comment(it, service, userMe) }
+            context.descendants = notes
+                .filter { it.event.id != targetId && it.event.id !in ancestorIds }
+                .map { comment(it, service, userMe) }
+            context.sort()
+        }
+    }
+
+    private fun replyParentId(note: NostrNote): String? {
+        val eventTags = note.event.tags.filter { it.size >= 2 && it[0] == "e" }
+        if (eventTags.isEmpty()) return null
+
+        return eventTags.firstOrNull { it.size >= 4 && it[3] == "reply" }?.get(1)
+            ?: eventTags.firstOrNull { it.size >= 4 && it[3] == "root" }?.get(1)
+            ?: if (eventTags.size == 1) eventTags[0][1] else eventTags.last()[1]
     }
 
     private fun reactions(
