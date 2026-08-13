@@ -144,7 +144,11 @@ object NostrMapper {
         val targetId = thread.rootNote?.event?.id
         val notes = thread.replies.distinctBy { it.event.id }
         val notesById = notes.associateBy { it.event.id }
+        val childrenByParentId = notes.mapNotNull { note ->
+            replyParentId(note)?.let { parentId -> parentId to note.event.id }
+        }.groupBy({ it.first }, { it.second })
         val ancestorIds = mutableSetOf<String>()
+        val descendantIds = mutableSetOf<String>()
 
         var current = thread.rootNote
         while (current != null) {
@@ -153,12 +157,21 @@ object NostrMapper {
             current = notesById[parentId] ?: break
         }
 
+        val pendingParentIds = mutableListOf<String>()
+        if (targetId != null) pendingParentIds.add(targetId)
+        while (pendingParentIds.isNotEmpty()) {
+            val parentId = pendingParentIds.removeAt(pendingParentIds.lastIndex)
+            childrenByParentId[parentId].orEmpty().forEach { childId ->
+                if (descendantIds.add(childId)) pendingParentIds.add(childId)
+            }
+        }
+
         return Context().also { context ->
             context.ancestors = notes
                 .filter { it.event.id != targetId && it.event.id in ancestorIds }
                 .map { comment(it, service, userMe) }
             context.descendants = notes
-                .filter { it.event.id != targetId && it.event.id !in ancestorIds }
+                .filter { it.event.id in descendantIds }
                 .map { comment(it, service, userMe) }
             context.sort()
         }
