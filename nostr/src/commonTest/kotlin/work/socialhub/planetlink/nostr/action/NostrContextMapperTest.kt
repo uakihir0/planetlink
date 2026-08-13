@@ -34,6 +34,26 @@ class NostrContextMapperTest {
     }
 
     @Test
+    fun excludesSiblingBranchFromDescendants() {
+        val root = note("root", createdAt = 100)
+        val selected = note("selected", parentId = "root", createdAt = 200)
+        val reply = note("reply", parentId = "selected", createdAt = 300)
+        val sibling = note("sibling", parentId = "root", createdAt = 250)
+        val siblingReply = note("sibling-reply", parentId = "sibling", createdAt = 350)
+        val thread = NostrThread().apply {
+            rootNote = selected
+            replies = listOf(root, selected, reply, sibling, siblingReply)
+        }
+
+        val context = NostrMapper.commentContext(thread, service())
+        val descendantIds = context.descendants.orEmpty().map { it.id?.value<String>() }
+
+        assertEquals(listOf("reply"), descendantIds)
+        assertFalse("sibling" in descendantIds)
+        assertFalse("sibling-reply" in descendantIds)
+    }
+
+    @Test
     fun treatsRootMarkerAsParentForDirectReply() {
         val root = note("root", createdAt = 100)
         val selected = note(
