@@ -818,17 +818,7 @@ class NostrAction(
             val response = social.feed().getThread(eventId)
             val userMe = userMeWithCache()
 
-            val context = Context()
-            context.ancestors = response.data.rootNote?.let { root ->
-                listOf(NostrMapper.comment(root, service(), userMe))
-            } ?: emptyList()
-
-            context.descendants = response.data.replies.map { reply ->
-                NostrMapper.comment(reply, service(), userMe)
-            }
-
-            context.sort()
-            context
+            NostrMapper.commentContext(response.data, service(), userMe)
         }
     }
 
