@@ -149,8 +149,11 @@ class NostrAction(
                 .firstOrNull { it.size >= 2 && it[0] == "description" }
                 ?: return null
             return try {
-                val json = Json.parseToJsonElement(descriptionTag[1])
-                val requestTags = json.jsonObject["tags"]?.jsonArray
+                val request = Json.parseToJsonElement(descriptionTag[1]).jsonObject
+                if (request["kind"]?.jsonPrimitive?.content != "9734") {
+                    return null
+                }
+                val requestTags = request["tags"]?.jsonArray
                     ?.map { tag -> tag.jsonArray.map { it.jsonPrimitive.content } }
                     ?: return null
                 lastEventTag(requestTags)
