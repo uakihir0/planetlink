@@ -855,7 +855,7 @@ private fun EventsGetEventResponse.toRoomEvent(): RoomEvent {
  * than on the event, so [fallbackRoomId] fills it in — a comment without a room
  * id cannot be replied to or reacted on.
  */
-private fun NotificationsGetResponse.Event.toRoomEvent(
+internal fun NotificationsGetResponse.Event.toRoomEvent(
     fallbackRoomId: String? = null,
 ): RoomEvent? {
     if (type != "m.room.message") return null

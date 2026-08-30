@@ -1,6 +1,8 @@
 package work.socialhub.planetlink.matrix.action
 
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import work.socialhub.kmatrix.api.response.notifications.NotificationsGetResponse
 import work.socialhub.kmatrix.api.response.rooms.RoomEvent
 import work.socialhub.planetlink.define.NotificationActionType
@@ -11,6 +13,7 @@ import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.User
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -93,6 +96,38 @@ class MatrixNotificationMapperTest {
         assertEquals("m.room.member", mapped.type)
         assertNull(mapped.action)
         assertNull(mapped.comments)
+    }
+
+    @Test
+    fun replyNotificationWithObjectContentSkipsNonPrimitiveFields() {
+        // A reply carries object-valued content (m.relates_to). The conversion
+        // must not throw on such fields — one reply must not abort the whole
+        // notification page.
+        val notification = NotificationsGetResponse.Notification().apply {
+            this.roomId = this@MatrixNotificationMapperTest.roomId
+            ts = 1_000
+            event = NotificationsGetResponse.Event().apply {
+                type = "m.room.message"
+                eventId = "\$event"
+                sender = this@MatrixNotificationMapperTest.sender
+                originServerTs = 1_000
+                content = mapOf(
+                    "msgtype" to JsonPrimitive("m.text"),
+                    "body" to JsonPrimitive("Hello there"),
+                    "m.relates_to" to buildJsonObject {
+                        put("m.in_reply_to", buildJsonObject { put("event_id", "\$parent") })
+                    },
+                )
+            }
+        }
+
+        val event = notification.event.toRoomEvent(notification.roomId)
+        assertNotNull(event)
+        assertEquals("\$event", event.eventId)
+        assertEquals(roomId, event.roomId)
+        assertEquals("Hello there", event.content["body"])
+        // Object-valued fields are skipped rather than thrown on.
+        assertNull(event.content["m.relates_to"])
     }
 
     private fun service(): Service {
