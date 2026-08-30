@@ -555,7 +555,13 @@ class NostrAction(
             return emptyMap()
         }
 
-        val userMe = userMeWithCache()
+        val userMe = try {
+            me ?: fetchUserMe()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
         val comments = mutableMapOf<String, Comment>()
 
         // リレーへの同時リクエスト数を抑えるために分割して取得
