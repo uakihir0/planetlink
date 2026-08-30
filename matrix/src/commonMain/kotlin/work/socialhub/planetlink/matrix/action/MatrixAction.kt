@@ -7,6 +7,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import work.socialhub.kmatrix.api.request.events.EventsGetContextRequest
@@ -910,9 +911,10 @@ internal fun matrixReactionKey(content: Map<String, JsonElement>): String? {
 }
 
 private fun extractJsonValue(element: JsonElement): Any? {
+    val primitive = element as? JsonPrimitive ?: return null
     return when {
-        element.jsonPrimitive.isString -> element.jsonPrimitive.content
-        element.jsonPrimitive.contentOrNull != null -> element.jsonPrimitive.content
+        primitive.isString -> primitive.content
+        primitive.contentOrNull != null -> primitive.content
         else -> null
     }
 }
