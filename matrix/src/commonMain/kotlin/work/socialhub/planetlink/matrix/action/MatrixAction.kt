@@ -862,7 +862,7 @@ private fun NotificationsGetResponse.Event.toRoomEvent(
         eventId = this@toRoomEvent.eventId
         sender = this@toRoomEvent.sender
         originServerTs = this@toRoomEvent.originServerTs
-        roomId = this@toRoomEvent.roomId ?: fallbackRoomId
+        roomId = this@toRoomEvent.roomId?.takeIf { it.isNotEmpty() } ?: fallbackRoomId
         content = this@toRoomEvent.content.mapValues { (_, v) ->
             extractJsonValue(v)
         }
