@@ -281,7 +281,9 @@ class MatrixAction(
                 }
             ).data
 
-            val userMe = userMeWithCache()
+            // Free-standing impl avoids the unwired JS virtual suspend bridge
+            // for same-class calls to the overridden userMeWithCache().
+            val userMe = me ?: fetchUserMe()
             val notifications = response.notifications
 
             // 通知の対象となったメッセージを解決
