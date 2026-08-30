@@ -78,6 +78,20 @@ class NostrNotificationTargetTest {
     }
 
     @Test
+    fun zapReceiptWithNonZapRequestDescriptionHasNoTarget() {
+        val request = """
+            {"kind":1,"pubkey":"sender","tags":[["p","recipient"],["e","zapped"]]}
+        """.trimIndent()
+        val event = event(
+            id = "zap",
+            kind = EventKind.ZAP_RECEIPT,
+            tags = listOf(listOf("description", request), listOf("p", "recipient")),
+        )
+
+        assertNull(NostrAction.targetEventId(event))
+    }
+
+    @Test
     fun reactionWithoutReferenceHasNoTarget() {
         val event = event(
             id = "reaction",
