@@ -430,19 +430,26 @@ class NostrAction(
         }
     }
 
-    override suspend fun notification(paging: Paging): Pageable<Notification> {
+    override suspend fun notification(
+        paging: Paging,
+        actions: Array<NotificationActionType>?,
+    ): Pageable<Notification> {
+        // 取得する通知の種別に対応するイベント種別を指定
+        // (Nostr には引用/フォローの通知イベントが無いため、
+        //  それらを指定しても何も返らない)
+        val kinds = notificationKinds(actions)
+        if (kinds.isEmpty()) {
+            return Pageable<Notification>()
+                .also { it.paging = paging }
+        }
+
         ensureRelayConnected()
         return proceed {
             val np = NostrPaging.fromPaging(paging)
 
             val filter = NostrFilter(
                 pTags = listOf(pubkey),
-                kinds = listOf(
-                    EventKind.TEXT_NOTE,
-                    EventKind.REPOST,
-                    EventKind.REACTION,
-                    EventKind.ZAP_RECEIPT,
-                ),
+                kinds = kinds,
                 until = np.until,
                 limit = paging.count ?: 50,
             )
@@ -540,6 +547,39 @@ class NostrAction(
                 p.paging = NostrPaging.fromPaging(paging)
             }
         }
+    }
+
+    /**
+     * 通知種別から取得するイベント種別を解決
+     * Resolves the relay event kinds for the requested notification types.
+     *
+     * Nostr has no dedicated event for quotes, follows or polls, so
+     * QUOTE / FOLLOW / FOLLOW_REQUEST / POLL map to nothing.
+     * REACTION is folded into LIKE, same as the mapping below.
+     */
+    private fun notificationKinds(
+        actions: Array<NotificationActionType>?,
+    ): List<Int> {
+        if (actions == null) {
+            // 従来の挙動を維持 (メンションを含む全種別)
+            return listOf(
+                EventKind.TEXT_NOTE,
+                EventKind.REPOST,
+                EventKind.REACTION,
+                EventKind.ZAP_RECEIPT,
+            )
+        }
+        return actions.flatMap { action ->
+            when (action) {
+                NotificationActionType.MENTION -> listOf(EventKind.TEXT_NOTE)
+                NotificationActionType.SHARE -> listOf(EventKind.REPOST)
+                NotificationActionType.LIKE -> listOf(
+                    EventKind.REACTION,
+                    EventKind.ZAP_RECEIPT,
+                )
+                else -> emptyList()
+            }
+        }.distinct()
     }
 
     /**

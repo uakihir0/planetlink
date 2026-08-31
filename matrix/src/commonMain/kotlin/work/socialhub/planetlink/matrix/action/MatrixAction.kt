@@ -39,10 +39,12 @@ import work.socialhub.planetlink.define.action.UsersActionType
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.kmatrix.MatrixException
+import work.socialhub.planetlink.define.NotificationActionType
 import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.utils.ExceptionHandler
+import work.socialhub.planetlink.utils.NotificationUtil
 import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.matrix.model.MatrixComment
 import work.socialhub.planetlink.matrix.model.MatrixPaging
@@ -273,7 +275,10 @@ class MatrixAction(
         }
     }
 
-    override suspend fun notification(paging: Paging): Pageable<Notification> {
+    override suspend fun notification(
+        paging: Paging,
+        actions: Array<NotificationActionType>?,
+    ): Pageable<Notification> {
         return proceed {
             val response = accessor.notifications().getNotifications(
                 NotificationsGetRequest().apply {
@@ -300,12 +305,18 @@ class MatrixAction(
                 userMe,
             )
 
-            MatrixMapper.notifications(
-                notifications,
-                service(),
-                paging,
-                targets,
-                senders,
+            // Matrix has no per-type notification query, so the requested types
+            // are applied after mapping. Only a notified `m.room.message` gets a
+            // common action (MENTION), so any other requested type yields nothing.
+            NotificationUtil.filterActions(
+                MatrixMapper.notifications(
+                    notifications,
+                    service(),
+                    paging,
+                    targets,
+                    senders,
+                ),
+                actions,
             )
         }
     }
