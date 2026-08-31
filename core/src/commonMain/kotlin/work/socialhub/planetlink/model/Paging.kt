@@ -87,9 +87,11 @@ open class Paging(
     open fun setMarkPagingEnd(
         entities: List<*>
     ) {
+        // 件数未指定の場合は 1 件以上を要求したものとして扱う
+        // (count が null の場合に NPE となることを回避)
         if (isHasPast
             && entities.isEmpty()
-            && (count!! > 0)
+            && ((count ?: 1) > 0)
         ) {
             isHasPast = false
         }
