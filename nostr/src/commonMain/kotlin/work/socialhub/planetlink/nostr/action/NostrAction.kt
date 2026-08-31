@@ -10,6 +10,7 @@ import kotlinx.coroutines.sync.withLock
 import work.socialhub.knostr.EventKind
 import work.socialhub.knostr.NostrException
 import work.socialhub.knostr.entity.Nip19Entity
+import work.socialhub.knostr.entity.NostrEvent
 import work.socialhub.knostr.entity.NostrFilter
 import work.socialhub.knostr.entity.NostrProfile
 import work.socialhub.knostr.entity.UnsignedEvent
@@ -48,6 +49,7 @@ import work.socialhub.planetlink.nostr.model.NostrComment
 import work.socialhub.planetlink.nostr.model.NostrPaging
 import work.socialhub.planetlink.nostr.model.NostrUser
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.js.JsExport
@@ -110,6 +112,55 @@ class NostrAction(
                 StreamActionType.CommentUpdateStream,
             )
         )
+
+        /** 通知の対象投稿をリレーから取得する際の同時リクエスト数 */
+        private const val TARGET_COMMENT_FETCH_CHUNK_SIZE = 8
+
+        /**
+         * 通知が対象としている投稿のイベント ID を取得
+         *
+         * メンション (kind:1) は通知イベント自身が対象の投稿となる.
+         * リポスト (NIP-18) / リアクション (NIP-25) / Zap (NIP-57) は
+         * 対象の投稿を e タグで参照する.
+         * (いずれも規約上「最後の e タグ」が対象となる)
+         */
+        internal fun targetEventId(event: NostrEvent): String? {
+            if (event.kind == EventKind.TEXT_NOTE) {
+                return event.id
+            }
+            lastEventTag(event.tags)?.let { return it }
+
+            // Zap レシートは e タグを持たない場合があるため,
+            // 内包されている Zap リクエスト (kind:9734) からも参照する.
+            if (event.kind == EventKind.ZAP_RECEIPT) {
+                return extractZapRequestEventId(event.tags)
+            }
+            return null
+        }
+
+        private fun lastEventTag(tags: List<List<String>>): String? {
+            return tags
+                .lastOrNull { it.size >= 2 && it[0] == "e" }
+                ?.get(1)
+        }
+
+        private fun extractZapRequestEventId(tags: List<List<String>>): String? {
+            val descriptionTag = tags
+                .firstOrNull { it.size >= 2 && it[0] == "description" }
+                ?: return null
+            return try {
+                val request = Json.parseToJsonElement(descriptionTag[1]).jsonObject
+                if (request["kind"]?.jsonPrimitive?.content != "9734") {
+                    return null
+                }
+                val requestTags = request["tags"]?.jsonArray
+                    ?.map { tag -> tag.jsonArray.map { it.jsonPrimitive.content } }
+                    ?: return null
+                lastEventTag(requestTags)
+            } catch (_: Exception) {
+                null
+            }
+        }
     }
 
     override fun capabilities(): Capabilities = CAPABILITIES
@@ -418,6 +469,12 @@ class NostrAction(
                 emptyMap()
             }
 
+            // 通知の対象となった投稿を解決
+            // (リポスト/リアクション/Zap は対象イベントを e タグから参照する)
+            val commentMap = targetComments(
+                events.mapNotNull { targetEventId(it) }.distinct()
+            )
+
             val notifications = events.map { event ->
                 val senderPubkey = if (event.kind == EventKind.ZAP_RECEIPT) {
                     extractZapSenderPubkey(event.tags) ?: event.pubkey
@@ -433,13 +490,6 @@ class NostrAction(
                         EventKind.TEXT_NOTE -> {
                             action = NotificationActionType.MENTION.code
                             type = "mention"
-                            comments = listOf(
-                                NostrComment(service()).apply {
-                                    id = ID(event.id)
-                                    createAt = Instant.fromEpochSeconds(event.createdAt, 0)
-                                    text = work.socialhub.planetlink.model.common.AttributedString.plain(event.content)
-                                }
-                            )
                         }
                         EventKind.REPOST -> {
                             action = NotificationActionType.SHARE.code
@@ -453,6 +503,22 @@ class NostrAction(
                             action = NotificationActionType.LIKE.code
                             type = "reaction"
                         }
+                    }
+
+                    // ステータス情報
+                    // (リレーから取得できない場合はメンション本文のみを設定)
+                    val target = targetEventId(event)?.let { commentMap[it] }
+                    comments = when {
+                        target != null -> listOf(target)
+                        event.kind == EventKind.TEXT_NOTE -> listOf(
+                            NostrComment(service()).apply {
+                                id = ID(event.id)
+                                createAt = Instant.fromEpochSeconds(event.createdAt, 0)
+                                text = work.socialhub.planetlink.model.common.AttributedString
+                                    .plain(event.content)
+                            }
+                        )
+                        else -> null
                     }
 
                     val profile = profileMap[senderPubkey]
@@ -474,6 +540,52 @@ class NostrAction(
                 p.paging = NostrPaging.fromPaging(paging)
             }
         }
+    }
+
+    /**
+     * 対象の投稿をイベント ID から解決
+     *
+     * 解決できなかった投稿は結果に含まれない.
+     * (削除済みや保持しているリレーに存在しない投稿があり得るため)
+     */
+    private suspend fun targetComments(
+        eventIds: List<String>
+    ): Map<String, Comment> {
+        if (eventIds.isEmpty()) {
+            return emptyMap()
+        }
+
+        val userMe = try {
+            me ?: fetchUserMe()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+        val comments = mutableMapOf<String, Comment>()
+
+        // リレーへの同時リクエスト数を抑えるために分割して取得
+        // (取得済みの投稿は knostr のキャッシュから返るためリクエストは発生しない)
+        for (chunk in eventIds.chunked(TARGET_COMMENT_FETCH_CHUNK_SIZE)) {
+            val results = coroutineScope {
+                chunk.map { eventId ->
+                    async {
+                        try {
+                            val response = social.feed().getNote(eventId)
+                            eventId to NostrMapper.comment(response.data, service(), userMe)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                }.awaitAll()
+            }
+            results.filterNotNull().forEach { (eventId, comment) ->
+                comments[eventId] = comment
+            }
+        }
+        return comments
     }
 
     private fun extractZapSenderPubkey(tags: List<List<String>>): String? {
