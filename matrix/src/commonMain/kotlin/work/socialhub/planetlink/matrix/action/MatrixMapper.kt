@@ -12,6 +12,7 @@ import work.socialhub.kmatrix.api.response.rooms.RoomsGetJoinedMembersResponse
 import work.socialhub.kmatrix.api.response.profile.ProfileGetProfileResponse
 import work.socialhub.planetlink.define.AttributedType as AttributedTypeDef
 import work.socialhub.planetlink.define.MediaType
+import work.socialhub.planetlink.define.NotificationActionType
 import work.socialhub.planetlink.model.Channel
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.ID
@@ -459,18 +460,38 @@ object MatrixMapper {
         return model
     }
 
+    /**
+     * Maps one entry of the `/notifications` response.
+     *
+     * [targets] holds the notified messages keyed by event id, and [senders] the
+     * senders keyed by user id — both resolved by the caller
+     * ([MatrixAction.notification]) since they need the homeserver.
+     */
     fun notification(
         notification: NotificationsGetResponse.Notification,
         service: Service,
+        targets: Map<String, Comment> = emptyMap(),
+        senders: Map<String, User> = emptyMap(),
     ): Notification {
         return Notification(service).apply {
             id = ID(notification.event.eventId)
             createAt = Instant.fromEpochMilliseconds(notification.ts)
+
+            // Keep the raw Matrix event type as the origin type name, and expose a
+            // common action only for messages: a notified `m.room.message` is one
+            // that matched a push rule (mention, keyword, or direct room), which
+            // maps onto MENTION. Other event types (invites, calls) have no common
+            // action yet, so they stay action-less.
             type = notification.event.type
-            users = listOf(User(service).apply {
-                id = ID(notification.event.sender)
-                name = notification.event.sender
-            })
+            if (notification.event.type == "m.room.message") {
+                action = NotificationActionType.MENTION.code
+            }
+
+            val senderId = notification.event.sender
+            users = listOf(senders[senderId] ?: user(senderId, null, null, service))
+
+            // ステータス情報
+            targets[notification.event.eventId]?.let { comments = listOf(it) }
         }
     }
 
@@ -478,9 +499,11 @@ object MatrixMapper {
         notifications: Array<NotificationsGetResponse.Notification>,
         service: Service,
         paging: Paging?,
+        targets: Map<String, Comment> = emptyMap(),
+        senders: Map<String, User> = emptyMap(),
     ): Pageable<Notification> {
         return Pageable<Notification>().also { p ->
-            p.entities = notifications.map { notification(it, service) }
+            p.entities = notifications.map { notification(it, service, targets, senders) }
             p.paging = MatrixPaging.fromPaging(paging)
         }
     }

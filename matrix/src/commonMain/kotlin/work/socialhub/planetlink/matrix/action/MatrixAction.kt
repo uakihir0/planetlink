@@ -1,8 +1,13 @@
 package work.socialhub.planetlink.matrix.action
 
 import kotlin.time.Instant
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import work.socialhub.kmatrix.api.request.events.EventsGetContextRequest
@@ -261,8 +266,7 @@ class MatrixAction(
 
             val events = response.notifications
                 .filter { it.event.type == "m.room.message" }
-                .map { it.event.toRoomEvent() }
-                .filterNotNull()
+                .mapNotNull { it.event.toRoomEvent(it.roomId) }
 
             val userMe = userMeWithCache()
             MatrixMapper.timeLine(events, service(), paging, userMe)
@@ -277,8 +281,66 @@ class MatrixAction(
                 }
             ).data
 
-            MatrixMapper.notifications(response.notifications, service(), paging)
+            // Free-standing impl avoids the unwired JS virtual suspend bridge
+            // for same-class calls to the overridden userMeWithCache().
+            val userMe = me ?: fetchUserMe()
+            val notifications = response.notifications
+
+            // 通知の対象となったメッセージを解決
+            // (暗号化されたイベントやメッセージ以外のイベントは対象なしとなる)
+            val targets = notifications
+                .mapNotNull { it.event.toRoomEvent(it.roomId) }
+                .mapNotNull { event -> MatrixMapper.comment(event, service(), userMe) }
+                .mapNotNull { comment -> comment.eventId?.let { it to comment as Comment } }
+                .toMap()
+
+            // 通知の送信者を解決
+            val senders = senderUsers(
+                notifications.map { it.event.sender }.distinct(),
+                userMe,
+            )
+
+            MatrixMapper.notifications(
+                notifications,
+                service(),
+                paging,
+                targets,
+                senders,
+            )
         }
+    }
+
+    /**
+     * Resolves notification senders to users carrying a display name and avatar.
+     *
+     * Matrix has no batch profile endpoint, so this fans out one request per
+     * distinct sender. A sender whose profile cannot be read (deactivated or a
+     * federation failure) falls back to a user holding just the user id.
+     */
+    private suspend fun senderUsers(
+        userIds: List<String>,
+        userMe: User?,
+    ): Map<String, User> {
+        if (userIds.isEmpty()) return emptyMap()
+        val self = userMe as? MatrixUser
+
+        return coroutineScope {
+            userIds.map { userId ->
+                async {
+                    if (self != null && userId == self.userId) {
+                        return@async userId to self as User
+                    }
+                    val profile = try {
+                        accessor.profile().getProfile(userId).data
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        null
+                    }
+                    userId to MatrixMapper.user(userId, profile, service())
+                }
+            }.awaitAll()
+        }.toMap()
     }
 
     override suspend fun userCommentTimeLine(id: Identify, paging: Paging): Pageable<Comment> {
@@ -788,14 +850,21 @@ private fun EventsGetEventResponse.toRoomEvent(): RoomEvent {
     }
 }
 
-private fun NotificationsGetResponse.Event.toRoomEvent(): RoomEvent? {
+/**
+ * The `/notifications` response carries the room id on the notification rather
+ * than on the event, so [fallbackRoomId] fills it in — a comment without a room
+ * id cannot be replied to or reacted on.
+ */
+internal fun NotificationsGetResponse.Event.toRoomEvent(
+    fallbackRoomId: String? = null,
+): RoomEvent? {
     if (type != "m.room.message") return null
     return RoomEvent().apply {
         this.type = this@toRoomEvent.type
         eventId = this@toRoomEvent.eventId
         sender = this@toRoomEvent.sender
         originServerTs = this@toRoomEvent.originServerTs
-        roomId = this@toRoomEvent.roomId
+        roomId = this@toRoomEvent.roomId?.takeIf { it.isNotEmpty() } ?: fallbackRoomId
         content = this@toRoomEvent.content.mapValues { (_, v) ->
             extractJsonValue(v)
         }
@@ -844,9 +913,10 @@ internal fun matrixReactionKey(content: Map<String, JsonElement>): String? {
 }
 
 private fun extractJsonValue(element: JsonElement): Any? {
+    val primitive = element as? JsonPrimitive ?: return null
     return when {
-        element.jsonPrimitive.isString -> element.jsonPrimitive.content
-        element.jsonPrimitive.contentOrNull != null -> element.jsonPrimitive.content
+        primitive.isString -> primitive.content
+        primitive.contentOrNull != null -> primitive.content
         else -> null
     }
 }
