@@ -21,6 +21,8 @@ enum class MisskeyNotificationType(
 
     REACTION(NotificationActionType.REACTION, NotificationType.REACTION.code),
     MENTION(NotificationActionType.MENTION, NotificationType.MENTION.code),
+    REPLY(NotificationActionType.MENTION, NotificationType.REPLY.code),
+    QUOTE(NotificationActionType.QUOTE, NotificationType.QUOTE.code),
     POLL(NotificationActionType.POLL, NotificationType.POLL_ENDED.code),
     ;
 
@@ -30,6 +32,18 @@ enum class MisskeyNotificationType(
         ): MisskeyNotificationType? {
             return entries.toTypedArray()
                 .firstOrNull { it.code == code }
+        }
+
+        /**
+         * 指定された種別に対応する Misskey の通知種別を取得
+         * (mention 指定時は mention と reply の両方が対象)
+         */
+        fun codesOf(
+            actions: Array<NotificationActionType>
+        ): List<String> {
+            return entries
+                .filter { actions.contains(it.action) }
+                .map { it.code }
         }
     }
 }

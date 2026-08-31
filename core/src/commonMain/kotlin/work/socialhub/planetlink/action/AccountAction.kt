@@ -1,6 +1,7 @@
 package work.socialhub.planetlink.action
 
 import work.socialhub.planetlink.action.callback.EventCallback
+import work.socialhub.planetlink.define.NotificationActionType
 import work.socialhub.planetlink.define.emoji.EmojiType
 import work.socialhub.planetlink.define.emoji.EmojiVariationType
 import work.socialhub.planetlink.model.*
@@ -258,9 +259,16 @@ interface AccountAction {
     /**
      * Get Notifications
      * 通知一覧を取得
+     * @param actions 取得する通知の種別
+     *   (未指定時はプラットフォーム毎の既定の種別
+     *    = メンション/返信/引用を除いた従来の種別セット)
+     *   Types of the notifications to be returned.
+     *   When it is not specified, the platform default set is used,
+     *   which excludes mentions, replies and quotes as before.
      */
     suspend fun notification(
         paging: Paging,
+        actions: Array<NotificationActionType>? = null,
     ): Pageable<Notification> {
         throw NotImplementedException()
     }

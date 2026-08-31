@@ -41,6 +41,20 @@ enum class MastodonNotificationType(
             return entries.toTypedArray()
                 .firstOrNull { it.code == code }
         }
+
+        /**
+         * 指定された種別に対応する Mastodon の通知種別を取得
+         * (Mastodon の mention は返信も含む)
+         * NOTE: Mastodon (and kmastodon) has no quote notification type,
+         * so NotificationActionType.QUOTE never matches here.
+         */
+        fun codesOf(
+            actions: Array<NotificationActionType>
+        ): List<String> {
+            return entries
+                .filter { actions.contains(it.action) }
+                .map { it.code }
+        }
     }
 }
 

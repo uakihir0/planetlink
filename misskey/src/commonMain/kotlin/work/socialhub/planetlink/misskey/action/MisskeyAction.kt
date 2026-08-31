@@ -85,7 +85,9 @@ import work.socialhub.planetlink.define.action.SocialActionType
 import work.socialhub.planetlink.define.action.StreamActionType
 import work.socialhub.planetlink.define.action.TimeLineActionType
 import work.socialhub.planetlink.define.action.UsersActionType
+import work.socialhub.planetlink.define.NotificationActionType
 import work.socialhub.planetlink.misskey.define.MisskeyActionType
+import work.socialhub.planetlink.misskey.define.MisskeyNotificationType
 import work.socialhub.planetlink.misskey.define.MisskeyReactionType.Favorite
 import work.socialhub.planetlink.misskey.define.MisskeyReactionType.Renote
 import work.socialhub.planetlink.misskey.model.MisskeyPaging
@@ -1402,8 +1404,26 @@ class MisskeyAction(
      * {@inheritDoc}
      */
     override suspend fun notification(
-        paging: Paging
+        paging: Paging,
+        actions: Array<NotificationActionType>?,
     ): Pageable<Notification> {
+        // 取得する通知の種類を指定
+        // (未指定時は従来通りメンション/返信/引用を除いた種別)
+        val types = actions
+            ?.let { MisskeyNotificationType.codesOf(it) }
+            ?: listOf(
+                NotificationType.FOLLOW.code,
+                NotificationType.REACTION.code,
+                NotificationType.RENOTE.code,
+                NotificationType.POLL_ENDED.code,
+            )
+
+        // 対応する種別が存在しない場合は取得しない
+        if (types.isEmpty()) {
+            return Pageable<Notification>()
+                .also { it.paging = paging }
+        }
+
         // Fetch emojis outside proceed to avoid broken virtual suspend bridge
         val emojis = this.getEmojis()
 
@@ -1414,12 +1434,7 @@ class MisskeyAction(
             setPaging(builder, paging)
 
             builder.markAsRead = true
-            builder.includeTypes = arrayOf(
-                NotificationType.FOLLOW.code,
-                NotificationType.REACTION.code,
-                NotificationType.RENOTE.code,
-                NotificationType.POLL_ENDED.code
-            )
+            builder.includeTypes = types.toTypedArray()
 
             val response = misskey.accounts()
                 .iNotifications(builder)

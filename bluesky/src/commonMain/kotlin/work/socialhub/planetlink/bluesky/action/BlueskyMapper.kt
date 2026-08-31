@@ -570,15 +570,20 @@ object BlueskyMapper {
                 add(user(notification.author, service))
             }
 
+            // 通知の対象となった投稿を設定
+            // (いいね/リポストは対象の投稿、
+            //  メンション/返信/引用は通知自体が示す投稿)
             val union = notification.record
-            if (union is FeedLike || union is FeedRepost) {
-                val subject = notification.reasonSubject
-                val post = posts[subject]
+            val subject = when {
+                (union is FeedLike || union is FeedRepost) -> notification.reasonSubject
+                BlueskyNotificationType.isPostReason(notification.reason) -> notification.uri
+                else -> null
+            }
+            val post = subject?.let { posts[it] }
 
-                if (post != null) {
-                    comments = mutableListOf<Comment>().apply {
-                        add(simpleComment(post, service))
-                    }
+            if (post != null) {
+                comments = mutableListOf<Comment>().apply {
+                    add(simpleComment(post, service))
                 }
             }
         }
