@@ -1,5 +1,5 @@
 [versions]
-kotlin = "2.4.0"
+kotlin = "2.4.10"
 dokka = "2.2.0"
 maven-publish = "0.37.0"
 serialization = "1.11.0"
@@ -22,7 +22,7 @@ kmatrix-stream = "work.socialhub.kmatrix:stream:0.0.1-SNAPSHOT"
 kdiscord-core = "work.socialhub.kdiscord:core:0.0.1-SNAPSHOT"
 kdiscord-stream = "work.socialhub.kdiscord:stream:0.0.1-SNAPSHOT"
 kxweb-core = "work.socialhub.kxweb:core:0.1.0-SNAPSHOT"
-ktor-core = "io.ktor:ktor-client-core:3.5.1"
+ktor-core = "io.ktor:ktor-client-core:3.5.2"
 ksoup = "com.mohamedrejeb.ksoup:ksoup-html:0.6.0"
 datetime = "org.jetbrains.kotlinx:kotlinx-datetime:0.8.0"
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
