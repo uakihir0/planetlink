@@ -99,6 +99,7 @@ import work.socialhub.planetlink.mastodon.model.MastodonStream
 import work.socialhub.planetlink.mastodon.model.MastodonThread
 import work.socialhub.planetlink.model.*
 import work.socialhub.planetlink.model.error.NotSupportedException
+import work.socialhub.planetlink.define.NotificationActionType
 import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.utils.ExceptionHandler
@@ -1608,24 +1609,39 @@ class MastodonAction(
      * {@inheritDoc}
      */
     override suspend fun notification(
-        paging: Paging
+        paging: Paging,
+        actions: Array<NotificationActionType>?,
     ): Pageable<Notification> {
         return proceed {
+            // 取得する通知の種類を指定
+            // (Mastodon の mention は返信も含む。
+            //  引用の通知種別は存在しないため QUOTE 指定では何も返らない)
+            val types = actions
+                ?.let { MastodonNotificationType.codesOf(it) }
+                ?: listOf(
+                    FOLLOW.code,
+                    REBLOG.code,
+                    FAVOURITE.code,
+                    MastodonNotificationType.POLL.code,
+                )
+
+            // 対応する種別が存在しない場合は取得しない
+            if (types.isEmpty()) {
+                return@proceed Pageable<Notification>()
+                    .also { it.paging = paging }
+            }
+
             val range = range(paging)
             val notifications = auth.accessor.notifications().notifications(
                 NotificationsNotificationsRequest().also {
                     it.range = range
                     // v3.5 から取得するものを指定可能
-                    it.types = arrayOf(
-                        FOLLOW.code,
-                        REBLOG.code,
-                        FAVOURITE.code,
-                        MastodonNotificationType.POLL.code
-                    )
+                    it.types = types.toTypedArray()
                     // 互換性のために記述
-                    it.excludeTypes = arrayOf(
-                        MENTION.code
-                    )
+                    // (種別が指定された場合は types のみで絞り込む)
+                    if (actions == null) {
+                        it.excludeTypes = arrayOf(MENTION.code)
+                    }
                 }
             )
             MastodonMapper.notifications(
