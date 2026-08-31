@@ -443,8 +443,9 @@ class NostrAction(
                 .also { it.paging = paging }
         }
 
-        ensureRelayConnected()
         return proceed {
+            // リレー接続は proceed 内で行い失敗時のエラー処理を統一する
+            ensureRelayConnected()
             val np = NostrPaging.fromPaging(paging)
 
             val filter = NostrFilter(
