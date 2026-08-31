@@ -279,6 +279,13 @@ class MatrixAction(
         paging: Paging,
         actions: Array<NotificationActionType>?,
     ): Pageable<Notification> {
+        // Matrix maps only a notified `m.room.message` to a common action
+        // (MENTION), so any request without MENTION can never match.
+        // Return an empty page before hitting the API in that case.
+        if (actions != null && NotificationActionType.MENTION !in actions) {
+            return Pageable<Notification>().also { it.paging = paging }
+        }
+
         return proceed {
             val response = accessor.notifications().getNotifications(
                 NotificationsGetRequest().apply {
