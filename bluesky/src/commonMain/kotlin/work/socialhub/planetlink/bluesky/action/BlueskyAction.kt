@@ -96,7 +96,9 @@ import work.socialhub.planetlink.action.AccountActionImpl
 import work.socialhub.planetlink.action.Capabilities
 import work.socialhub.planetlink.action.RequestAction
 import work.socialhub.planetlink.bluesky.define.BlueskyActionType
+import work.socialhub.planetlink.bluesky.define.BlueskyNotificationType
 import work.socialhub.planetlink.bluesky.define.BlueskyReactionType
+import work.socialhub.planetlink.define.NotificationActionType
 import work.socialhub.planetlink.define.action.MessageActionType
 import work.socialhub.planetlink.define.action.SocialActionType
 import work.socialhub.planetlink.define.action.StreamActionType
@@ -1908,12 +1910,23 @@ class BlueskyAction(
      * {@inheritDoc}
      */
     override suspend fun notification(
-        paging: Paging
+        paging: Paging,
+        actions: Array<NotificationActionType>?,
     ): Pageable<Notification> {
         return proceed {
 
             // 取得する通知の種類を指定
-            val types = listOf("like", "repost", "follow")
+            // (未指定時は従来通りメンション/返信/引用を除いた種別)
+            val types = actions
+                ?.let { BlueskyNotificationType.codesOf(it) }
+                ?: listOf("like", "repost", "follow")
+
+            // 対応する種別が存在しない場合は取得しない
+            if (types.isEmpty()) {
+                val results = Pageable<Notification>()
+                results.paging = paging
+                return@proceed results
+            }
 
             if (paging.count == null) paging.count = 20
             paging.count = min(paging.count!!, 20)
@@ -1928,8 +1941,17 @@ class BlueskyAction(
             }
 
             // 投稿を取得
+            // (いいね/リポストは対象の投稿を、
+            //  メンション/返信/引用は通知自体が投稿を示す)
             val subjects = model.notifications!!
-                .mapNotNull { it.reasonSubject }
+                .flatMap { notification ->
+                    listOfNotNull(
+                        notification.reasonSubject,
+                        notification.uri.takeIf {
+                            BlueskyNotificationType.isPostReason(notification.reason)
+                        },
+                    )
+                }
                 .distinct()
 
             val results = Mapper.notifications(
