@@ -29,6 +29,13 @@ class NostrStream(
     private var relaysConnected = false
 
     /**
+     * Identifies one [open] call. Setting a stream up takes a following list and
+     * a profile prefetch, and a caller that gives up on that wait closes the
+     * stream while [open] is still running.
+     */
+    private var openGeneration = 0
+
+    /**
      * Reports the relay pool going from "nothing reachable" to "something
      * reachable" and back.
      *
@@ -57,6 +64,10 @@ class NostrStream(
      * caller that opens what it is given would otherwise fetch the following
      * list again, prefetch every profile again, and install a second
      * subscription whose id it never learns.
+     *
+     * A [close] that arrives before this returns wins: the subscriptions are
+     * never started, because [close] has already run its teardown and a
+     * subscription installed after it would be one nothing can stop.
      */
     override suspend fun open() {
         if (_isOpened) return
@@ -64,20 +75,25 @@ class NostrStream(
         // finish first: otherwise it would tear down what is opened below.
         stopJob?.join()
         stopJob = null
+        val generation = ++openGeneration
         _isOpened = true
         try {
             relaysConnected = accessor.nostr.relayPool().isConnected
             accessor.nostr.relayPool().addRelayStateListener(relayStateListener)
             timelineStream?.let { ts ->
                 val following = accessor.social.users().getFollowing(accessor.pubkey)
+                if (generation != openGeneration) return
                 ts.start(following.data)
             }
             notificationStream?.let { ns ->
+                if (generation != openGeneration) return
                 ns.start(accessor.pubkey)
             }
         } catch (e: Throwable) {
-            _isOpened = false
-            accessor.nostr.relayPool().removeRelayStateListener(relayStateListener)
+            if (generation == openGeneration) {
+                _isOpened = false
+                accessor.nostr.relayPool().removeRelayStateListener(relayStateListener)
+            }
             throw e
         }
     }
@@ -85,6 +101,7 @@ class NostrStream(
     override fun close() {
         if (!_isOpened) return
         _isOpened = false
+        openGeneration++
         accessor.nostr.relayPool().removeRelayStateListener(relayStateListener)
         stopJob = scope.launch {
             timelineStream?.stop()
