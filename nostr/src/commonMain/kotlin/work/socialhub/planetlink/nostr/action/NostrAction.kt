@@ -1183,6 +1183,7 @@ class NostrAction(
         val cache = social.cache()
         val stream = NostrStream(
             accessor = accessor,
+            callback = callback,
             timelineStream = TimelineStream(
                 nostr,
                 cache,
@@ -1205,6 +1206,7 @@ class NostrAction(
         val cache = social.cache()
         val stream = NostrStream(
             accessor = accessor,
+            callback = callback,
             notificationStream = NotificationStream(
                 nostr,
                 cache,
