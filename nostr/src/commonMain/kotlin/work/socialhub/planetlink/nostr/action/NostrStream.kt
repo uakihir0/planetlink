@@ -15,7 +15,6 @@ import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.action.callback.lifecycle.ConnectCallback
 import work.socialhub.planetlink.action.callback.lifecycle.DisconnectCallback
 import work.socialhub.planetlink.model.Stream
-import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
@@ -50,12 +49,17 @@ class NostrStream(
     private val lifecycleState = AtomicInt(CLOSED)
 
     /**
-     * How many [close] calls have happened. An [open] that overlapped one of
-     * them gives up, even when it only waited for a teardown. The value an open
-     * saw also identifies its session: a newer open bumps it, so the older one
-     * can no longer mistake the newer session for itself.
+     * The session generation and its reported relay state, packed as
+     * `(generation shl 1) or connected`.
+     *
+     * The generation identifies which [open] a callback belongs to. Ending a
+     * session bumps it (and clears the connected bit) in one atomic, and a
+     * listener publishes its transition with a compare-and-set on the same
+     * atomic: a callback that raced a teardown can then neither report a
+     * transition for a session that is gone nor mutate the one that replaced
+     * it.
      */
-    private val closeRequests = AtomicInt(0)
+    private val relayState = AtomicInt(0)
 
     override val isOpened: Boolean
         get() = lifecycleState.load() == OPEN
@@ -66,7 +70,6 @@ class NostrStream(
      */
     internal var scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val stopJob = AtomicReference<Job?>(null)
-    private val relaysConnected = AtomicBoolean(false)
 
     /**
      * Completed when the [open] that owns the OPENING state has settled. Opens
@@ -103,10 +106,8 @@ class NostrStream(
      */
     override suspend fun open() {
         val session = admitOpen() ?: return
-        val closes = session.closes
         try {
-            relaysConnected.store(false)
-            val listener = relayStateListener(closes)
+            val listener = relayStateListener(session)
             activeListener.store(listener)
             accessor.nostr.relayPool().addRelayStateListener(listener)
             // The listener is registered before the snapshot: a transition that
@@ -114,7 +115,7 @@ class NostrStream(
             // reflected in the snapshot, never lost between them. A close() can
             // still win here, after removing a listener that was not installed
             // yet, so the stale registration is dropped again.
-            if (!isSessionCurrent(closes)) {
+            if (!isSessionCurrent(session)) {
                 accessor.nostr.relayPool().removeRelayStateListener(listener)
                 return
             }
@@ -122,30 +123,30 @@ class NostrStream(
             // opened (a profile fetch connects it first). The listener only
             // reports the next transition, so the state it starts in has to be
             // reported here or the consumer never learns the stream connected.
-            reportRelayState(accessor.nostr.relayPool().isConnected)
+            reportRelayState(session, accessor.nostr.relayPool().isConnected)
             lifecycleMutex.withLock {
                 // A close() that arrived while this waited for the lock or for
                 // the following list wins: nothing is started below.
-                if (!isSessionCurrent(closes)) return
+                if (!isSessionCurrent(session)) return
                 timelineStream?.let { ts ->
                     val following = accessor.social.users().getFollowing(accessor.pubkey)
-                    if (!isSessionCurrent(closes)) return
+                    if (!isSessionCurrent(session)) return
                     ts.start(following.data)
                     // A close() during start() wins too: it is waiting for the
                     // lock, so returning here lets its teardown stop what
                     // start() had time to install.
-                    if (!isSessionCurrent(closes)) return
+                    if (!isSessionCurrent(session)) return
                 }
                 notificationStream?.let { ns ->
-                    if (!isSessionCurrent(closes)) return
+                    if (!isSessionCurrent(session)) return
                     ns.start(accessor.pubkey)
-                    if (!isSessionCurrent(closes)) return
+                    if (!isSessionCurrent(session)) return
                 }
             }
             // Every subscription is installed: the session is open.
             lifecycleState.compareAndSet(OPENING, OPEN)
         } catch (e: Throwable) {
-            failOpening(closes)
+            failOpening(session)
             throw e
         } finally {
             // Opens waiting behind this one can now decide what to do. The
@@ -156,11 +157,11 @@ class NostrStream(
     }
 
     /**
-     * One admitted [open] call: the [closeRequests] value it was based on and
-     * the barrier concurrent opens wait on until it settles.
+     * One admitted [open] call: the session generation it was based on and the
+     * barrier concurrent opens wait on until it settles.
      */
     private class OpenSession(
-        val closes: Int,
+        val generation: Int,
         val barrier: CompletableDeferred<Unit>,
     )
 
@@ -173,7 +174,7 @@ class NostrStream(
      */
     private suspend fun admitOpen(): OpenSession? {
         while (true) {
-            val closes = closeRequests.load()
+            val generation = relayState.load() ushr 1
             when (lifecycleState.load()) {
                 // Another open() holds a ready session; this call is a no-op.
                 OPEN -> return null
@@ -191,11 +192,16 @@ class NostrStream(
                     // claiming the session, or the teardown would stop what is
                     // opened below.
                     stopJob.load()?.join()
-                    if (closes != closeRequests.load()) return null
+                    // A close can have ended the session that the generation
+                    // was read from; then this open belongs after it.
+                    if (generation != relayState.load() ushr 1) return null
                     if (lifecycleState.compareAndSet(CLOSED, OPENING)) {
-                        val session = OpenSession(closes, CompletableDeferred())
-                        openBarrier.store(session.barrier)
-                        return session
+                        // The generation is read after the claim: an ending
+                        // session may have bumped it while this waited, and the
+                        // session must carry the current one.
+                        val open = OpenSession(relayState.load() ushr 1, CompletableDeferred())
+                        openBarrier.store(open.barrier)
+                        return open
                     }
                     // Lost the CAS to a concurrent close or open; retry.
                 }
@@ -208,9 +214,12 @@ class NostrStream(
      * teardown is published like [close] does, so a concurrent reopen waits for
      * it instead of letting it stop the reopened streams.
      */
-    private fun failOpening(closes: Int) {
-        if (closes != closeRequests.load()) return
+    private fun failOpening(session: OpenSession) {
         if (!lifecycleState.compareAndSet(OPENING, CLOSING)) return
+        // End the session before it is torn down: a retry then gets a new
+        // generation, so a callback still in flight from this failed listener
+        // cannot pass the session check while the retry installs.
+        invalidateSession()
         removeActiveListener()
         stopJob.store(scope.launch {
             lifecycleMutex.withLock {
@@ -221,11 +230,25 @@ class NostrStream(
         lifecycleState.store(CLOSED)
     }
 
-    /** Whether this session is still the one the stream is working on. */
-    private fun isSessionCurrent(closes: Int): Boolean {
-        if (closes != closeRequests.load()) return false
+    /**
+     * Whether this session is still the one the stream is working on.
+     */
+    private fun isSessionCurrent(session: OpenSession): Boolean {
+        if (session.generation != relayState.load() ushr 1) return false
         val state = lifecycleState.load()
         return state == OPENING || state == OPEN
+    }
+
+    /**
+     * End the current session identity: bump the generation and clear the
+     * reported relay state in one atomic.
+     */
+    private fun invalidateSession() {
+        while (true) {
+            val current = relayState.load()
+            val updated = ((current ushr 1) + 1) shl 1
+            if (relayState.compareAndSet(current, updated)) return
+        }
     }
 
     private fun removeActiveListener() {
@@ -243,20 +266,28 @@ class NostrStream(
      * one does, which is why this asks the pool instead of trusting the url it
      * was handed.
      */
-    private fun relayStateListener(closes: Int): (String, Boolean) -> Unit = { _, _ ->
-        // A registration can outlive its session by an instant; only the
-        // session it was made for may report anything.
-        if (isSessionCurrent(closes)) {
-            reportRelayState(accessor.nostr.relayPool().isConnected)
-        }
+    private fun relayStateListener(session: OpenSession): (String, Boolean) -> Unit = { _, _ ->
+        // A registration can outlive its session by an instant. The session
+        // check and the state update happen in one compare-and-set, so a
+        // stale callback cannot touch the session that replaced it.
+        reportRelayState(session, accessor.nostr.relayPool().isConnected)
     }
 
     /**
      * Reports a pool state the listener or [open] observed, at most once per
      * state.
+     *
+     * The session is part of the packed state: the compare-and-set only
+     * succeeds while the reporting session is still the current one.
      */
-    private fun reportRelayState(connected: Boolean) {
-        if (!relaysConnected.compareAndSet(!connected, connected)) return
+    private fun reportRelayState(session: OpenSession, connected: Boolean) {
+        while (true) {
+            val current = relayState.load()
+            if (current ushr 1 != session.generation) return
+            val updated = (session.generation shl 1) or (if (connected) 1 else 0)
+            if (updated == current) return
+            if (relayState.compareAndSet(current, updated)) break
+        }
         if (connected) {
             (callback as? ConnectCallback)?.onConnect()
         } else {
@@ -265,7 +296,10 @@ class NostrStream(
     }
 
     override fun close() {
-        closeRequests.fetchAndAdd(1)
+        // End the session before anything else: a callback from it can no
+        // longer pass the session check, even if a retry installs while this
+        // teardown is still running.
+        invalidateSession()
         while (true) {
             val state = lifecycleState.load()
             if (state != OPENING && state != OPEN) return
