@@ -241,6 +241,15 @@ class NostrStream(
                     if (phaseOf(state) != CLOSED) continue
                     if (lifecycleState.compareAndSet(state, (generationOf(state) shl 2) or OPENING)) {
                         val session = OpenSession(generationOf(state), CompletableDeferred())
+                        // A close can bump the epoch after the check above while
+                        // the state is still CLOSED, and it then returns without
+                        // tearing anything down. Recheck after claiming so that
+                        // overlapping close still wins, and take the claim down
+                        // here instead.
+                        if (closeEpoch.load() != epoch) {
+                            failOpening(session)
+                            return null
+                        }
                         // Publish the session-owned values with the same
                         // generation guard: a stale opener that resumes after a
                         // newer session was admitted cannot overwrite them.
