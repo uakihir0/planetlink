@@ -210,13 +210,15 @@ class NostrAction(
             relayConnected = false
 
             val config = nostr.config()
-            // addRelay keeps the existing connection for a url it already knows,
-            // so re-registering after a full disconnect reuses the connections
-            // that are mid-reconnect instead of duplicating their sockets.
-            for (url in config.relayUrls) {
-                nostr.relayPool().addRelay(url, config)
+            proceedUnit {
+                // addRelay keeps the existing connection for a url it already knows,
+                // so re-registering after a full disconnect reuses the connections
+                // that are mid-reconnect instead of duplicating their sockets.
+                for (url in config.relayUrls) {
+                    nostr.relayPool().addRelay(url, config)
+                }
+                nostr.relayPool().connectAll(relayScope)
             }
-            nostr.relayPool().connectAll(relayScope)
 
             repeat(CONNECT_ATTEMPTS) {
                 if (nostr.relays().getConnectedRelays().isNotEmpty()) {
@@ -224,6 +226,13 @@ class NostrAction(
                     return
                 }
                 kotlinx.coroutines.delay(CONNECT_POLL_INTERVAL_MS)
+            }
+            // The last delay can cover the moment the first relay answered, so
+            // the loop's final check is not the last word: a slow handshake
+            // that lands at the deadline must still count as connected.
+            if (nostr.relays().getConnectedRelays().isNotEmpty()) {
+                relayConnected = true
+                return
             }
             throw SocialHubException("Failed to connect to any Nostr relay within 5 seconds")
         }
