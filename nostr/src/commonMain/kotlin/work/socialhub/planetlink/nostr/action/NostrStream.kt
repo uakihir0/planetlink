@@ -5,6 +5,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import work.socialhub.knostr.social.stream.NotificationStream
 import work.socialhub.knostr.social.stream.TimelineStream
 import work.socialhub.planetlink.action.callback.EventCallback
@@ -33,6 +35,13 @@ class NostrStream(
     private var relaysConnected = false
 
     /**
+     * Serializes installing subscriptions with tearing them down, so a [close]
+     * that lands while [open] is still starting cannot let a subscription
+     * finish installing after the teardown already ran.
+     */
+    private val lifecycleMutex = Mutex()
+
+    /**
      * Identifies one [open] call. Setting a stream up takes a following list and
      * a profile prefetch, and a caller that gives up on that wait closes the
      * stream while [open] is still running.
@@ -49,14 +58,20 @@ class NostrStream(
      * was handed.
      */
     private val relayStateListener: (String, Boolean) -> Unit = { _, _ ->
-        val connected = accessor.nostr.relayPool().isConnected
-        if (connected != relaysConnected) {
-            relaysConnected = connected
-            if (connected) {
-                (callback as? ConnectCallback)?.onConnect()
-            } else {
-                (callback as? DisconnectCallback)?.onDisconnect()
-            }
+        reportRelayState(accessor.nostr.relayPool().isConnected)
+    }
+
+    /**
+     * Reports a pool state the listener or [open] observed, at most once per
+     * state.
+     */
+    private fun reportRelayState(connected: Boolean) {
+        if (connected == relaysConnected) return
+        relaysConnected = connected
+        if (connected) {
+            (callback as? ConnectCallback)?.onConnect()
+        } else {
+            (callback as? DisconnectCallback)?.onDisconnect()
         }
     }
 
@@ -86,23 +101,34 @@ class NostrStream(
         if (generation != openGeneration) return
         _isOpened = true
         try {
-            relaysConnected = accessor.nostr.relayPool().isConnected
+            // The listener is registered before the snapshot: a transition that
+            // races the two is then either reported by the listener or
+            // reflected in the snapshot, never lost between them.
+            relaysConnected = false
             accessor.nostr.relayPool().addRelayStateListener(relayStateListener)
             // The pool is usually already online by the time a stream is
             // opened (a profile fetch connects it first). The listener only
             // reports the next transition, so the state it starts in has to be
             // reported here or the consumer never learns the stream connected.
-            if (relaysConnected) {
-                (callback as? ConnectCallback)?.onConnect()
-            }
-            timelineStream?.let { ts ->
-                val following = accessor.social.users().getFollowing(accessor.pubkey)
+            reportRelayState(accessor.nostr.relayPool().isConnected)
+            lifecycleMutex.withLock {
+                // A close() that arrived while this waited for the lock or for
+                // the following list wins: nothing is started below.
                 if (generation != openGeneration) return
-                ts.start(following.data)
-            }
-            notificationStream?.let { ns ->
-                if (generation != openGeneration) return
-                ns.start(accessor.pubkey)
+                timelineStream?.let { ts ->
+                    val following = accessor.social.users().getFollowing(accessor.pubkey)
+                    if (generation != openGeneration) return
+                    ts.start(following.data)
+                    // A close() during start() wins too: it is waiting for the
+                    // lock, so returning here lets its teardown stop what
+                    // start() had time to install.
+                    if (generation != openGeneration) return
+                }
+                notificationStream?.let { ns ->
+                    if (generation != openGeneration) return
+                    ns.start(accessor.pubkey)
+                    if (generation != openGeneration) return
+                }
             }
         } catch (e: Throwable) {
             if (generation == openGeneration) {
@@ -122,8 +148,12 @@ class NostrStream(
         _isOpened = false
         accessor.nostr.relayPool().removeRelayStateListener(relayStateListener)
         stopJob = scope.launch {
-            timelineStream?.stop()
-            notificationStream?.stop()
+            // Waiting for the lock here is what serializes this teardown with
+            // a start() that is still installing.
+            lifecycleMutex.withLock {
+                timelineStream?.stop()
+                notificationStream?.stop()
+            }
         }
     }
 }
