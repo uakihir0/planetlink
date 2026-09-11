@@ -106,6 +106,13 @@ class NostrStream(
             // reflected in the snapshot, never lost between them.
             relaysConnected = false
             accessor.nostr.relayPool().addRelayStateListener(relayStateListener)
+            // A close() that won between setting _isOpened and the registration
+            // above removed a listener that was not installed yet; clean that
+            // registration up instead of leaving it behind on a closed stream.
+            if (generation != openGeneration) {
+                accessor.nostr.relayPool().removeRelayStateListener(relayStateListener)
+                return
+            }
             // The pool is usually already online by the time a stream is
             // opened (a profile fetch connects it first). The listener only
             // reports the next transition, so the state it starts in has to be
