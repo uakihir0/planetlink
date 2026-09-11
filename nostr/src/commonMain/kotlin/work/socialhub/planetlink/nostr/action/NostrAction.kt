@@ -230,7 +230,7 @@ class NostrAction(
             }
 
             var firstRelayAt: Int? = null
-            repeat(CONNECT_ATTEMPTS) { attempt ->
+            for (attempt in 0 until CONNECT_ATTEMPTS + CONNECT_GRACE_ATTEMPTS) {
                 val connected = nostr.relays().getConnectedRelays()
                 if (connected.size >= config.relayUrls.size && config.relayUrls.isNotEmpty()) {
                     relayConnected = true
@@ -238,10 +238,15 @@ class NostrAction(
                 }
                 if (connected.isNotEmpty()) {
                     if (firstRelayAt == null) firstRelayAt = attempt
+                    // The grace is counted from the first answer, so a relay
+                    // that lands late still gets the full collection window.
                     if (attempt - firstRelayAt >= CONNECT_GRACE_ATTEMPTS) {
                         relayConnected = true
                         return
                     }
+                } else if (attempt >= CONNECT_ATTEMPTS - 1) {
+                    // No relay answered within the first-connect deadline.
+                    break
                 }
                 kotlinx.coroutines.delay(CONNECT_POLL_INTERVAL_MS)
             }

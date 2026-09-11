@@ -377,16 +377,17 @@ class NostrStream(
      * succeeds while the reporting session is still the current one.
      */
     private fun reportRelayState(session: OpenSession, connected: Boolean) {
+        val published = (session.generation shl 1) or (if (connected) 1 else 0)
         while (true) {
             val current = relayState.load()
             if (current ushr 1 != session.generation) return
-            val updated = (session.generation shl 1) or (if (connected) 1 else 0)
-            if (updated == current) return
-            if (relayState.compareAndSet(current, updated)) break
+            if (current == published) return
+            if (relayState.compareAndSet(current, published)) break
         }
-        // The session can end between the state publish above and the callback
-        // below; recheck so a callback that lost the lifecycle race is dropped.
-        if (!isSessionCurrent(session)) return
+        // The session can end, or a later transition can supersede this one,
+        // while the callback is about to run; only the state that is still
+        // current may be reported.
+        if (!isSessionCurrent(session) || relayState.load() != published) return
         if (connected) {
             (callback as? ConnectCallback)?.onConnect()
         } else {
