@@ -7,13 +7,17 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.yield
 import work.socialhub.knostr.social.stream.NotificationStream
 import work.socialhub.knostr.social.stream.TimelineStream
 import work.socialhub.planetlink.action.callback.EventCallback
 import work.socialhub.planetlink.action.callback.lifecycle.ConnectCallback
 import work.socialhub.planetlink.action.callback.lifecycle.DisconnectCallback
 import work.socialhub.planetlink.model.Stream
+import kotlin.concurrent.atomics.AtomicInt
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
+@OptIn(ExperimentalAtomicApi::class)
 class NostrStream(
     private val accessor: NostrAuth.NostrAccessor,
     private val callback: EventCallback? = null,
@@ -21,10 +25,32 @@ class NostrStream(
     private var notificationStream: NotificationStream? = null,
 ) : Stream {
 
-    private var _isOpened = false
+    private companion object {
+        /** No session is active. */
+        const val CLOSED = 0
+
+        /** A session is active. */
+        const val OPEN = 1
+
+        /** A close is taking the session down and publishing its teardown. */
+        const val CLOSING = 2
+    }
+
+    /**
+     * The stream's lifecycle state. A state and not a boolean, because a close
+     * in progress has to keep a concurrent open from starting a session whose
+     * teardown job is not published yet.
+     */
+    private val lifecycleState = AtomicInt(CLOSED)
+
+    /**
+     * How many [close] calls have happened. An [open] that overlapped one of
+     * them gives up, even when it only waited for a teardown.
+     */
+    private val closeRequests = AtomicInt(0)
 
     override val isOpened: Boolean
-        get() = _isOpened
+        get() = lifecycleState.load() == OPEN
 
     /**
      * Scope the teardown of [close] runs in. It is a var so a test can hold the
@@ -40,13 +66,6 @@ class NostrStream(
      * finish installing after the teardown already ran.
      */
     private val lifecycleMutex = Mutex()
-
-    /**
-     * Identifies one [open] call. Setting a stream up takes a following list and
-     * a profile prefetch, and a caller that gives up on that wait closes the
-     * stream while [open] is still running.
-     */
-    private var openGeneration = 0
 
     /**
      * Reports the relay pool going from "nothing reachable" to "something
@@ -89,27 +108,16 @@ class NostrStream(
      * subscription installed after it would be one nothing can stop.
      */
     override suspend fun open() {
-        if (_isOpened) return
-        // The generation is claimed before the wait: a close() that lands while
-        // this waits for the previous teardown has to win, or this call would
-        // resume and start subscriptions the caller already closed.
-        val generation = ++openGeneration
-        // A close() that is still stopping the previous subscriptions has to
-        // finish first: otherwise it would tear down what is opened below.
-        stopJob?.join()
-        stopJob = null
-        if (generation != openGeneration) return
-        _isOpened = true
+        if (!admitOpen()) return
         try {
-            // The listener is registered before the snapshot: a transition that
-            // races the two is then either reported by the listener or
-            // reflected in the snapshot, never lost between them.
             relaysConnected = false
             accessor.nostr.relayPool().addRelayStateListener(relayStateListener)
-            // A close() that won between setting _isOpened and the registration
-            // above removed a listener that was not installed yet; clean that
-            // registration up instead of leaving it behind on a closed stream.
-            if (generation != openGeneration) {
+            // The listener is registered before the snapshot: a transition that
+            // races the two is then either reported by the listener or
+            // reflected in the snapshot, never lost between them. A close() can
+            // still win here, after removing a listener that was not installed
+            // yet, so the stale registration is dropped again.
+            if (lifecycleState.load() != OPEN) {
                 accessor.nostr.relayPool().removeRelayStateListener(relayStateListener)
                 return
             }
@@ -121,41 +129,64 @@ class NostrStream(
             lifecycleMutex.withLock {
                 // A close() that arrived while this waited for the lock or for
                 // the following list wins: nothing is started below.
-                if (generation != openGeneration) return
+                if (lifecycleState.load() != OPEN) return
                 timelineStream?.let { ts ->
                     val following = accessor.social.users().getFollowing(accessor.pubkey)
-                    if (generation != openGeneration) return
+                    if (lifecycleState.load() != OPEN) return
                     ts.start(following.data)
                     // A close() during start() wins too: it is waiting for the
                     // lock, so returning here lets its teardown stop what
                     // start() had time to install.
-                    if (generation != openGeneration) return
+                    if (lifecycleState.load() != OPEN) return
                 }
                 notificationStream?.let { ns ->
-                    if (generation != openGeneration) return
+                    if (lifecycleState.load() != OPEN) return
                     ns.start(accessor.pubkey)
-                    if (generation != openGeneration) return
+                    if (lifecycleState.load() != OPEN) return
                 }
             }
         } catch (e: Throwable) {
-            if (generation == openGeneration) {
-                _isOpened = false
+            if (lifecycleState.compareAndSet(OPEN, CLOSED)) {
                 accessor.nostr.relayPool().removeRelayStateListener(relayStateListener)
             }
             throw e
         }
     }
 
+    /**
+     * Wait out any teardown and claim the open state.
+     *
+     * Returns false when another open already holds the session or when a
+     * close overlapped this call; the caller then leaves the stream alone.
+     */
+    private suspend fun admitOpen(): Boolean {
+        while (true) {
+            val closes = closeRequests.load()
+            // A close that is still stopping the previous subscriptions has to
+            // finish first: otherwise it would tear down what is opened below.
+            stopJob?.join()
+            stopJob = null
+            if (closes != closeRequests.load()) return false
+            when (lifecycleState.load()) {
+                // Another open() holds the session; this call is a no-op.
+                OPEN -> return false
+                // A close is publishing its teardown; wait for it and retry.
+                CLOSING -> yield()
+                else -> if (lifecycleState.compareAndSet(CLOSED, OPEN)) return true
+            }
+        }
+    }
+
     override fun close() {
-        // Invalidate an open() that is waiting for the previous teardown even
-        // when this looks like a no-op: otherwise it would resume and install
-        // subscriptions after the caller closed the stream.
-        openGeneration++
-        if (!_isOpened) return
+        closeRequests.fetchAndAdd(1)
+        // Only one close may take a session down. A second closer publishing a
+        // teardown would overwrite the job a reopen has to wait for.
+        if (!lifecycleState.compareAndSet(OPEN, CLOSING)) return
         accessor.nostr.relayPool().removeRelayStateListener(relayStateListener)
-        // The teardown is published before _isOpened turns false: a reopen then
-        // cannot observe the closed state without also seeing the job it has to
-        // wait for, and start while this teardown is still stopping the streams.
+        // The teardown is published before the state turns CLOSED: a reopen
+        // then cannot observe the closed state without also seeing the job it
+        // has to wait for, and start while this teardown is still stopping the
+        // streams.
         stopJob = scope.launch {
             // Waiting for the lock here is what serializes this teardown with
             // a start() that is still installing.
@@ -164,6 +195,6 @@ class NostrStream(
                 notificationStream?.stop()
             }
         }
-        _isOpened = false
+        lifecycleState.store(CLOSED)
     }
 }
