@@ -64,6 +64,14 @@ class NostrStream(
      */
     private val relayState = AtomicInt(0)
 
+    /**
+     * How many [close] calls have happened. An [open] reads it when it starts
+     * waiting and gives up if it changed before the open was admitted, so a
+     * close that overlaps the wait wins even when the lifecycle generation has
+     * already moved on without it.
+     */
+    private val closeEpoch = AtomicInt(0)
+
     override val isOpened: Boolean
         get() = phaseOf(lifecycleState.load()) == OPEN
 
@@ -195,9 +203,9 @@ class NostrStream(
      * leaves the stream alone.
      */
     private suspend fun admitOpen(): OpenSession? {
+        val epoch = closeEpoch.load()
         while (true) {
             val snapshot = lifecycleState.load()
-            val generationAtStart = generationOf(snapshot)
             when (phaseOf(snapshot)) {
                 // Another open() holds a ready session; this call is a no-op.
                 OPEN -> return null
@@ -206,17 +214,19 @@ class NostrStream(
                 // (its success is a no-op, its failure is retried).
                 OPENING -> {
                     val holder = openBarrier.load()
-                    val state = lifecycleState.load()
-                    if (holder != null && holder.generation == generationOf(state)) {
+                    if (holder != null && holder.generation == generationOf(snapshot)) {
                         holder.deferred.join()
                     } else {
                         // The barrier of this session is not published yet.
                         yield()
                     }
+                    if (closeEpoch.load() != epoch) return null
                 }
                 // A close is publishing its teardown; wait for it and retry.
                 CLOSING -> {
                     stopJob.load()?.join()
+                    // A close that overlapped the wait must win over this open.
+                    if (closeEpoch.load() != epoch) return null
                     yield()
                 }
                 else -> {
@@ -225,13 +235,12 @@ class NostrStream(
                     // claiming the session, or the teardown would stop what is
                     // opened below.
                     stopJob.load()?.join()
+                    // A close that overlapped the wait must win over this open.
+                    if (closeEpoch.load() != epoch) return null
                     val state = lifecycleState.load()
-                    // A close or fail that ended a session while this waited
-                    // must win over this open.
-                    if (generationOf(state) != generationAtStart) return null
                     if (phaseOf(state) != CLOSED) continue
-                    if (lifecycleState.compareAndSet(state, (generationAtStart shl 2) or OPENING)) {
-                        val session = OpenSession(generationAtStart, CompletableDeferred())
+                    if (lifecycleState.compareAndSet(state, (generationOf(state) shl 2) or OPENING)) {
+                        val session = OpenSession(generationOf(state), CompletableDeferred())
                         // Publish the session-owned values with the same
                         // generation guard: a stale opener that resumes after a
                         // newer session was admitted cannot overwrite them.
@@ -256,43 +265,30 @@ class NostrStream(
         // Only the session that is still OPENING may be torn down here: a
         // close or a newer open has already taken over otherwise.
         if (!lifecycleState.compareAndSet(opening, closing)) return
-        endSession()
+        endSession(session.generation + 1)
     }
 
     /**
      * Take the session in CLOSING down: invalidate its relay state, remove its
      * listener, publish its teardown, and only then expose CLOSED.
-     *
-     * A concurrent close may advance the CLOSING generation while this runs;
-     * the loop then retries with that generation so the bump is not lost by
-     * the CLOSED store.
      */
-    private fun endSession() {
-        var teardownPublished = false
-        while (true) {
-            val state = lifecycleState.load()
-            if (phaseOf(state) != CLOSING) return
-            val generation = generationOf(state)
-            // End the session before tearing it down: a retry then gets a new
-            // generation, so a callback still in flight from the old listener
-            // cannot pass the session check while the retry installs.
-            relayState.store(generation shl 1)
-            if (!teardownPublished) {
-                // Publish the teardown once. The retry below is only for the
-                // generation a concurrent close bumped; a second job here
-                // could finish before the first and let a reopen start into a
-                // teardown that is still on its way.
-                removeActiveListener()
-                stopJob.store(scope.launch {
-                    lifecycleMutex.withLock {
-                        timelineStream?.stop()
-                        notificationStream?.stop()
-                    }
-                })
-                teardownPublished = true
+    private fun endSession(generation: Int) {
+        // End the session before tearing it down: a retry then gets a new
+        // generation, so a callback still in flight from the old listener
+        // cannot pass the session check while the retry installs.
+        relayState.store(generation shl 1)
+        removeActiveListener()
+        // Publish the teardown before the state turns CLOSED: a reopen then
+        // cannot observe the closed state without also seeing the job it has
+        // to wait for, and start while this teardown is still stopping the
+        // streams.
+        stopJob.store(scope.launch {
+            lifecycleMutex.withLock {
+                timelineStream?.stop()
+                notificationStream?.stop()
             }
-            if (lifecycleState.compareAndSet(state, (generation shl 2) or CLOSED)) return
-        }
+        })
+        lifecycleState.store((generation shl 2) or CLOSED)
     }
 
     /**
@@ -390,24 +386,19 @@ class NostrStream(
     }
 
     override fun close() {
+        // Every close invalidates a pending open, even when there is no
+        // session to tear down.
+        closeEpoch.fetchAndAdd(1)
         while (true) {
             val state = lifecycleState.load()
             val phase = phaseOf(state)
+            if (phase != OPENING && phase != OPEN) return
             val generation = generationOf(state)
-            if (phase != OPENING && phase != OPEN) {
-                // No session to tear down, but an open that is waiting for a
-                // teardown still has to lose: bump the generation to
-                // invalidate it. While CLOSING, the closer that owns the
-                // teardown keeps that phase, and its loop picks the bump up.
-                val bumped = ((generation + 1) shl 2) or phase
-                if (lifecycleState.compareAndSet(state, bumped)) return
-                continue
-            }
             val closing = ((generation + 1) shl 2) or CLOSING
             // Only one close may take a session down, and the bump ends the
             // session generation in the same transition that starts CLOSING.
             if (!lifecycleState.compareAndSet(state, closing)) continue
-            endSession()
+            endSession(generation + 1)
             return
         }
     }

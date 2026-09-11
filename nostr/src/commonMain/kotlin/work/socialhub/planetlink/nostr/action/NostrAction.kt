@@ -121,6 +121,14 @@ class NostrAction(
         private const val CONNECT_POLL_INTERVAL_MS = 200L
 
         /**
+         * How long it keeps collecting additional relays after the first one
+         * answered, before the first request goes out: a one-shot query only
+         * reaches the relays that are already connected, so leaving with one
+         * relay can miss data a relay that joins moments later holds.
+         */
+        private const val CONNECT_GRACE_ATTEMPTS = 10
+
+        /**
          * 通知が対象としている投稿のイベント ID を取得
          *
          * メンション (kind:1) は通知イベント自身が対象の投稿となる.
@@ -190,13 +198,14 @@ class NostrAction(
     }
 
     /**
-     * Make sure at least one relay is reachable before talking to the network.
+     * Make sure enough relays are reachable before talking to the network.
      *
-     * A request goes to every connected relay and its result is whatever they
-     * return, so waiting for all of them buys nothing but latency: one
-     * unreachable relay in the configured set delayed *every* first call by the
-     * full grace period. The first relay to answer is enough to proceed, and the
-     * rest join the subscriptions as they connect (see RelayPool).
+     * Waiting for every configured relay buys nothing: one unreachable relay
+     * delayed *every* first call by the full grace period. The first relay to
+     * answer is enough to start with, but a one-shot request only reaches the
+     * relays connected when it goes out, so the rest are given a short grace
+     * period to join before it does. Subscriptions keep picking relays up as
+     * they connect (see RelayPool).
      *
      * The cached flag is rechecked against the pool because relays drop. Without
      * that, a pool where every socket had died still counted as connected, and
@@ -220,10 +229,19 @@ class NostrAction(
                 nostr.relayPool().connectAll(relayScope)
             }
 
-            repeat(CONNECT_ATTEMPTS) {
-                if (nostr.relays().getConnectedRelays().isNotEmpty()) {
+            var firstRelayAt: Int? = null
+            repeat(CONNECT_ATTEMPTS) { attempt ->
+                val connected = nostr.relays().getConnectedRelays()
+                if (connected.size >= config.relayUrls.size && config.relayUrls.isNotEmpty()) {
                     relayConnected = true
                     return
+                }
+                if (connected.isNotEmpty()) {
+                    if (firstRelayAt == null) firstRelayAt = attempt
+                    if (attempt - firstRelayAt >= CONNECT_GRACE_ATTEMPTS) {
+                        relayConnected = true
+                        return
+                    }
                 }
                 kotlinx.coroutines.delay(CONNECT_POLL_INTERVAL_MS)
             }
