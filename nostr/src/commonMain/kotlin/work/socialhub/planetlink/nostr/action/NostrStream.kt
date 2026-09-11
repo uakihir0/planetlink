@@ -215,6 +215,10 @@ class NostrStream(
      * it instead of letting it stop the reopened streams.
      */
     private fun failOpening(session: OpenSession) {
+        // A close or a newer open may have replaced this session while the
+        // failed open was unwinding; only the session that is still current
+        // may be torn down here.
+        if (session.generation != relayState.load() ushr 1) return
         if (!lifecycleState.compareAndSet(OPENING, CLOSING)) return
         // End the session before it is torn down: a retry then gets a new
         // generation, so a callback still in flight from this failed listener
@@ -288,6 +292,9 @@ class NostrStream(
             if (updated == current) return
             if (relayState.compareAndSet(current, updated)) break
         }
+        // The session can end between the state publish above and the callback
+        // below; recheck so a callback that lost the lifecycle race is dropped.
+        if (!isSessionCurrent(session)) return
         if (connected) {
             (callback as? ConnectCallback)?.onConnect()
         } else {
