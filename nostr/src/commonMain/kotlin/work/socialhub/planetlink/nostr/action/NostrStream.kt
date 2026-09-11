@@ -75,11 +75,11 @@ class NostrStream(
     private val stopJob = AtomicReference<Job?>(null)
 
     /**
-     * Completed when the [open] that owns the OPENING state has settled. Opens
-     * that arrive while it is installing wait here instead of returning before
-     * the stream is ready.
+     * The barrier of the session that most recently admitted an [open], with
+     * the generation so a waiter only trusts the barrier of the OPENING
+     * session it is actually waiting for.
      */
-    private val openBarrier = AtomicReference<CompletableDeferred<Unit>?>(null)
+    private val openBarrier = AtomicReference<OpenBarrier?>(null)
 
     /**
      * The listener registration of the session that currently exists, so a
@@ -97,6 +97,11 @@ class NostrStream(
     private class ActiveListener(
         val generation: Int,
         val listener: (String, Boolean) -> Unit,
+    )
+
+    private class OpenBarrier(
+        val generation: Int,
+        val deferred: CompletableDeferred<Unit>,
     )
 
     /**
@@ -196,9 +201,19 @@ class NostrStream(
             when (phaseOf(snapshot)) {
                 // Another open() holds a ready session; this call is a no-op.
                 OPEN -> return null
-                // Another open() is installing; wait for it to settle, then
-                // decide again (its success is a no-op, its failure is retried).
-                OPENING -> openBarrier.load()?.join() ?: yield()
+                // Another open() is installing; wait for the barrier of the
+                // OPENING session that is currently claimed, then decide again
+                // (its success is a no-op, its failure is retried).
+                OPENING -> {
+                    val holder = openBarrier.load()
+                    val state = lifecycleState.load()
+                    if (holder != null && holder.generation == generationOf(state)) {
+                        holder.deferred.join()
+                    } else {
+                        // The barrier of this session is not published yet.
+                        yield()
+                    }
+                }
                 // A close is publishing its teardown; wait for it and retry.
                 CLOSING -> {
                     stopJob.load()?.join()
@@ -216,11 +231,12 @@ class NostrStream(
                     if (generationOf(state) != generationAtStart) return null
                     if (phaseOf(state) != CLOSED) continue
                     if (lifecycleState.compareAndSet(state, (generationAtStart shl 2) or OPENING)) {
-                        // The relay state may have been invalidated by a close
-                        // that bumped the generation while this waited.
-                        relayState.store(generationAtStart shl 1)
                         val session = OpenSession(generationAtStart, CompletableDeferred())
-                        openBarrier.store(session.barrier)
+                        // Publish the session-owned values with the same
+                        // generation guard: a stale opener that resumes after a
+                        // newer session was admitted cannot overwrite them.
+                        initializeRelayState(session)
+                        publishBarrier(session)
                         return session
                     }
                     // Lost the CAS to a concurrent close or open; retry.
@@ -252,6 +268,7 @@ class NostrStream(
      * the CLOSED store.
      */
     private fun endSession() {
+        var teardownPublished = false
         while (true) {
             val state = lifecycleState.load()
             if (phaseOf(state) != CLOSING) return
@@ -260,13 +277,20 @@ class NostrStream(
             // generation, so a callback still in flight from the old listener
             // cannot pass the session check while the retry installs.
             relayState.store(generation shl 1)
-            removeActiveListener()
-            stopJob.store(scope.launch {
-                lifecycleMutex.withLock {
-                    timelineStream?.stop()
-                    notificationStream?.stop()
-                }
-            })
+            if (!teardownPublished) {
+                // Publish the teardown once. The retry below is only for the
+                // generation a concurrent close bumped; a second job here
+                // could finish before the first and let a reopen start into a
+                // teardown that is still on its way.
+                removeActiveListener()
+                stopJob.store(scope.launch {
+                    lifecycleMutex.withLock {
+                        timelineStream?.stop()
+                        notificationStream?.stop()
+                    }
+                })
+                teardownPublished = true
+            }
             if (lifecycleState.compareAndSet(state, (generation shl 2) or CLOSED)) return
         }
     }
@@ -279,6 +303,31 @@ class NostrStream(
         if (generationOf(state) != session.generation) return false
         val phase = phaseOf(state)
         return phase == OPENING || phase == OPEN
+    }
+
+    /**
+     * Initialize the relay state for the admitting session, unless a newer
+     * session has already claimed it.
+     */
+    private fun initializeRelayState(session: OpenSession) {
+        while (true) {
+            val current = relayState.load()
+            val generation = current ushr 1
+            if (generation >= session.generation) return
+            if (relayState.compareAndSet(current, session.generation shl 1)) return
+        }
+    }
+
+    /**
+     * Publish the session's barrier without letting a stale opener overwrite
+     * the barrier a newer session already installed.
+     */
+    private fun publishBarrier(session: OpenSession) {
+        while (true) {
+            val current = openBarrier.load()
+            if (current != null && current.generation > session.generation) return
+            if (openBarrier.compareAndSet(current, OpenBarrier(session.generation, session.barrier))) return
+        }
     }
 
     /**
