@@ -152,8 +152,10 @@ class NostrStream(
         // subscriptions after the caller closed the stream.
         openGeneration++
         if (!_isOpened) return
-        _isOpened = false
         accessor.nostr.relayPool().removeRelayStateListener(relayStateListener)
+        // The teardown is published before _isOpened turns false: a reopen then
+        // cannot observe the closed state without also seeing the job it has to
+        // wait for, and start while this teardown is still stopping the streams.
         stopJob = scope.launch {
             // Waiting for the lock here is what serializes this teardown with
             // a start() that is still installing.
@@ -162,5 +164,6 @@ class NostrStream(
                 notificationStream?.stop()
             }
         }
+        _isOpened = false
     }
 }
