@@ -24,7 +24,11 @@ class NostrStream(
     override val isOpened: Boolean
         get() = _isOpened
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    /**
+     * Scope the teardown of [close] runs in. It is a var so a test can hold the
+     * teardown at a known point; production code never reassigns it.
+     */
+    internal var scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var stopJob: Job? = null
     private var relaysConnected = false
 
@@ -71,15 +75,26 @@ class NostrStream(
      */
     override suspend fun open() {
         if (_isOpened) return
+        // The generation is claimed before the wait: a close() that lands while
+        // this waits for the previous teardown has to win, or this call would
+        // resume and start subscriptions the caller already closed.
+        val generation = ++openGeneration
         // A close() that is still stopping the previous subscriptions has to
         // finish first: otherwise it would tear down what is opened below.
         stopJob?.join()
         stopJob = null
-        val generation = ++openGeneration
+        if (generation != openGeneration) return
         _isOpened = true
         try {
             relaysConnected = accessor.nostr.relayPool().isConnected
             accessor.nostr.relayPool().addRelayStateListener(relayStateListener)
+            // The pool is usually already online by the time a stream is
+            // opened (a profile fetch connects it first). The listener only
+            // reports the next transition, so the state it starts in has to be
+            // reported here or the consumer never learns the stream connected.
+            if (relaysConnected) {
+                (callback as? ConnectCallback)?.onConnect()
+            }
             timelineStream?.let { ts ->
                 val following = accessor.social.users().getFollowing(accessor.pubkey)
                 if (generation != openGeneration) return
@@ -99,9 +114,12 @@ class NostrStream(
     }
 
     override fun close() {
+        // Invalidate an open() that is waiting for the previous teardown even
+        // when this looks like a no-op: otherwise it would resume and install
+        // subscriptions after the caller closed the stream.
+        openGeneration++
         if (!_isOpened) return
         _isOpened = false
-        openGeneration++
         accessor.nostr.relayPool().removeRelayStateListener(relayStateListener)
         stopJob = scope.launch {
             timelineStream?.stop()
