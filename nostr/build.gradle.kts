@@ -54,6 +54,10 @@ kotlin {
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.coroutines.test)
+            // knostr already pulls this in at runtime. The stream lifecycle test
+            // needs it on the compile classpath to invoke the socket listeners a
+            // relay connection installs, which is what flips its open state.
+            implementation(libs.khttpclient)
         }
 
         jvmTest.dependencies {

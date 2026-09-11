@@ -361,7 +361,7 @@ class TumblrAction(
                 UserDashboardRequest().also {
                     it.limit = limit(paging)
                     it.offset = offset(paging)
-                    it.sinceId = sinceId(paging)?.toInt() // FIXME
+                    it.sinceId = sinceId(paging)
                     it.reblogInfo = true
                     it.notesInfo = true
                 }).data.response?.posts
@@ -572,7 +572,7 @@ class TumblrAction(
                 auth.accessor.blog().blogPosts(
                     BlogPostsRequest().also {
                         it.blogName = id.subId?.value<String>()
-                        it.id = id.id?.value<String>()?.toInt() // FIXME
+                        it.id = id.id?.value<String>()
                         it.limit = 1
                     }).data.response?.posts
             }
@@ -604,7 +604,7 @@ class TumblrAction(
             auth.accessor.blog().blogPosts(
                 BlogPostsRequest().also {
                     it.blogName = blogName
-                    it.id = postId.toInt() // FIXME
+                    it.id = postId
                     it.limit = 1
                 }).data.response?.posts
         }
@@ -780,7 +780,7 @@ class TumblrAction(
                 auth.accessor.blog().blogPosts(
                     BlogPostsRequest().also {
                         it.blogName = id.subId?.value<String>()
-                        it.id = id.id?.value<String>()?.toInt() // FIXME
+                        it.id = id.id?.value<String>()
                         it.limit = 1
                     }).data.response?.posts
             }
@@ -800,7 +800,7 @@ class TumblrAction(
                                 auth.accessor.blog().blogPosts(
                                     BlogPostsRequest().also {
                                         it.blogName = parentBlog
-                                        it.id = parentId.toInt() // FIXME
+                                        it.id = parentId
                                         it.limit = 1
                                     }).data.response?.posts
                             }

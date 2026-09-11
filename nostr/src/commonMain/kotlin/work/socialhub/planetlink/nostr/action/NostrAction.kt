@@ -116,6 +116,18 @@ class NostrAction(
         /** 通知の対象投稿をリレーから取得する際の同時リクエスト数 */
         private const val TARGET_COMMENT_FETCH_CHUNK_SIZE = 8
 
+        /** How long ensureRelayConnected waits for the first relay: 25 * 200ms. */
+        private const val CONNECT_ATTEMPTS = 25
+        private const val CONNECT_POLL_INTERVAL_MS = 200L
+
+        /**
+         * How long it keeps collecting additional relays after the first one
+         * answered, before the first request goes out: a one-shot query only
+         * reaches the relays that are already connected, so leaving with one
+         * relay can miss data a relay that joins moments later holds.
+         */
+        private const val CONNECT_GRACE_ATTEMPTS = 10
+
         /**
          * 通知が対象としている投稿のイベント ID を取得
          *
@@ -171,36 +183,76 @@ class NostrAction(
     private val pubkey get() = accessor.pubkey
     private var relayConnected = false
     private val relayMutex = kotlinx.coroutines.sync.Mutex()
+
+    /**
+     * Scope the relay sockets and their reconnect timers live in. It outlives a
+     * single call, so it is created once per action rather than per connect
+     * attempt: a scope per attempt left one abandoned SupervisorJob behind every
+     * time the pool had to be rebuilt.
+     */
+    private val relayScope = kotlinx.coroutines.CoroutineScope(
+        kotlinx.coroutines.Dispatchers.Default + kotlinx.coroutines.SupervisorJob()
+    )
     private val enrichmentDispatcher by lazy {
         NostrEnrichmentDispatcher(social.enrichment())
     }
 
+    /**
+     * Make sure enough relays are reachable before talking to the network.
+     *
+     * Waiting for every configured relay buys nothing: one unreachable relay
+     * delayed *every* first call by the full grace period. The first relay to
+     * answer is enough to start with, but a one-shot request only reaches the
+     * relays connected when it goes out, so the rest are given a short grace
+     * period to join before it does. Subscriptions keep picking relays up as
+     * they connect (see RelayPool).
+     *
+     * The cached flag is rechecked against the pool because relays drop. Without
+     * that, a pool where every socket had died still counted as connected, and
+     * each request then went to no relay at all and burnt its whole query
+     * timeout waiting for an EOSE that nobody could send.
+     */
     private suspend fun ensureRelayConnected() {
-        if (relayConnected) return
+        if (relayConnected && nostr.relayPool().isConnected) return
         relayMutex.withLock {
-            if (relayConnected) return
-            val scope = kotlinx.coroutines.CoroutineScope(
-                kotlinx.coroutines.Dispatchers.Default + kotlinx.coroutines.SupervisorJob()
-            )
-            val config = nostr.config()
-            for (url in config.relayUrls) {
-                nostr.relayPool().addRelay(url, config)
-            }
-            nostr.relayPool().connectAll(scope)
+            if (relayConnected && nostr.relayPool().isConnected) return
+            relayConnected = false
 
-            val totalRelays = config.relayUrls.size
-            repeat(25) {
-                val connected = nostr.relays().getConnectedRelays().size
-                if (connected >= totalRelays) {
-                    relayConnected = true
-                    return
+            val config = nostr.config()
+            proceedUnit {
+                // addRelay keeps the existing connection for a url it already knows,
+                // so re-registering after a full disconnect reuses the connections
+                // that are mid-reconnect instead of duplicating their sockets.
+                for (url in config.relayUrls) {
+                    nostr.relayPool().addRelay(url, config)
                 }
-                if (connected > 0 && it >= 10) {
-                    relayConnected = true
-                    return
-                }
-                kotlinx.coroutines.delay(200)
+                nostr.relayPool().connectAll(relayScope)
             }
+
+            var firstRelayAt: Int? = null
+            for (attempt in 0 until CONNECT_ATTEMPTS + CONNECT_GRACE_ATTEMPTS) {
+                val connected = nostr.relays().getConnectedRelays()
+                if (connected.size >= config.relayUrls.size && config.relayUrls.isNotEmpty()) {
+                    relayConnected = true
+                    return
+                }
+                if (connected.isNotEmpty()) {
+                    if (firstRelayAt == null) firstRelayAt = attempt
+                    // The grace is counted from the first answer, so a relay
+                    // that lands late still gets the full collection window.
+                    if (attempt - firstRelayAt >= CONNECT_GRACE_ATTEMPTS) {
+                        relayConnected = true
+                        return
+                    }
+                } else if (attempt >= CONNECT_ATTEMPTS - 1) {
+                    // No relay answered within the first-connect deadline.
+                    break
+                }
+                kotlinx.coroutines.delay(CONNECT_POLL_INTERVAL_MS)
+            }
+            // The last delay can cover the moment the first relay answered, so
+            // the loop's final check is not the last word: a slow handshake
+            // that lands at the deadline must still count as connected.
             if (nostr.relays().getConnectedRelays().isNotEmpty()) {
                 relayConnected = true
                 return
@@ -1163,6 +1215,7 @@ class NostrAction(
         val cache = social.cache()
         val stream = NostrStream(
             accessor = accessor,
+            callback = callback,
             timelineStream = TimelineStream(
                 nostr,
                 cache,
@@ -1185,6 +1238,7 @@ class NostrAction(
         val cache = social.cache()
         val stream = NostrStream(
             accessor = accessor,
+            callback = callback,
             notificationStream = NotificationStream(
                 nostr,
                 cache,
