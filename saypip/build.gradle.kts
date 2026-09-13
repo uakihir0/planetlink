@@ -53,8 +53,10 @@ kotlin {
             implementation(project(":core"))
             implementation(libs.ksaypip.core)
             implementation(libs.ksaypip.auth)
+            implementation(libs.ksaypip.stream)
             implementation(libs.ktor.core)
             implementation(libs.datetime)
+            implementation(libs.coroutines.core)
         }
 
         commonTest.dependencies {
