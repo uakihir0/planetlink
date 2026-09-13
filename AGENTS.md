@@ -316,7 +316,7 @@ Zero output = no reachable unwired bridges. Then build an action with a fake tok
 
 - JS target only (JVM / Native use a different coroutine implementation)
 - No compile-time error — runtime only, and often only on a specific path (cache-miss, a particular URL overload, a reaction code branch)
-- All known call sites fixed in: core (`userMeWithCache`/`userMe` via per-adapter overrides), bluesky, misskey, mastodon, tumblr, matrix, slack, nostr. Verified: 0 reachable unwired bridges remain across all adapter `.mjs`.
+- All known call sites fixed in: core (`userMeWithCache`/`userMe` via per-adapter overrides), bluesky, misskey, mastodon, tumblr, matrix, slack, nostr, saypip. Verified: 0 reachable unwired bridges remain across all adapter `.mjs`.
 
 #### Why it surfaced only in Slack first
 
