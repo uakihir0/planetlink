@@ -439,6 +439,9 @@ class SaypipAction(
 
     /**
      * {@inheritDoc}
+     *
+     * Saypip marks every reaction line read and offers no boundary short of one: a non-null
+     * [upToId] has nothing to bound and is ignored.
      */
     override suspend fun markNotificationsRead(upToId: Identify?) {
         proceedUnit {
