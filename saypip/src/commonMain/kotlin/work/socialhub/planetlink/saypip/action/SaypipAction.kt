@@ -2,6 +2,7 @@ package work.socialhub.planetlink.saypip.action
 
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.js.JsExport
+import kotlinx.coroutines.launch
 import work.socialhub.ksaypip.SaypipException
 import work.socialhub.ksaypip.api.request.blocks.BlocksBlockRequest
 import work.socialhub.ksaypip.api.request.conversations.ConversationsConversationRequest
@@ -25,14 +26,25 @@ import work.socialhub.ksaypip.api.request.posts.PostsUnreactRequest
 import work.socialhub.ksaypip.api.request.reports.ReportsReportRequest
 import work.socialhub.ksaypip.api.request.users.UsersUserRequest
 import work.socialhub.ksaypip.domain.MuteDuration
+import work.socialhub.ksaypip.domain.RealtimeEventType
 import work.socialhub.ksaypip.domain.ReportTargetType
+import work.socialhub.ksaypip.entity.RealtimeEvent
+import work.socialhub.ksaypip.stream.SaypipEx.stream
+import work.socialhub.ksaypip.stream.listener.LifeCycleListener
+import work.socialhub.ksaypip.stream.listener.RoomStreamListener
 import work.socialhub.planetlink.action.AccountActionImpl
 import work.socialhub.planetlink.action.Capabilities
 import work.socialhub.planetlink.action.callback.EventCallback
+import work.socialhub.planetlink.action.callback.comment.DeleteCommentCallback
+import work.socialhub.planetlink.action.callback.comment.UpdateCommentCallback
+import work.socialhub.planetlink.action.callback.lifecycle.ConnectCallback
+import work.socialhub.planetlink.action.callback.lifecycle.DisconnectCallback
+import work.socialhub.planetlink.action.callback.lifecycle.ErrorCallback
 import work.socialhub.planetlink.define.NotificationActionType
 import work.socialhub.planetlink.define.ServiceType
 import work.socialhub.planetlink.define.action.MessageActionType
 import work.socialhub.planetlink.define.action.SocialActionType
+import work.socialhub.planetlink.define.action.StreamActionType
 import work.socialhub.planetlink.define.action.TimeLineActionType
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Comment
@@ -54,8 +66,11 @@ import work.socialhub.planetlink.model.request.ProfileForm
 import work.socialhub.planetlink.saypip.define.SaypipReactionType
 import work.socialhub.planetlink.saypip.model.SaypipComment
 import work.socialhub.planetlink.saypip.model.SaypipPaging
+import work.socialhub.planetlink.saypip.model.SaypipStream
 import work.socialhub.planetlink.saypip.model.SaypipUser
 import work.socialhub.planetlink.utils.ExceptionHandler
+import net.socialhub.planetlink.model.event.CommentEvent
+import work.socialhub.planetlink.model.event.IdentifyEvent
 
 /**
  * Saypip adapter.
@@ -109,6 +124,8 @@ class SaypipAction(
                 MessageActionType.GetMessageThread,
                 MessageActionType.GetMessageTimeLine,
                 MessageActionType.PostMessage,
+
+                StreamActionType.HomeTimeLineStream,
             )
         )
     }
@@ -756,17 +773,44 @@ class SaypipAction(
     /**
      * {@inheritDoc}
      *
-     * The realtime Global Room is cookie-only: a bearer token reaches none of it, so an
-     * application reads the room by polling the feed.
+     * The Global Room, as the socket the browser sits in: a frame says a post exists, and the
+     * post itself is read back through the API before the listener sees it. There is no resume
+     * and no replay, so a reconnect is answered by the feed's own refetch.
      */
     override suspend fun setHomeTimeLineStream(callback: EventCallback): Stream {
-        throw NotSupportedException()
+        return openRoomStream(callback)
     }
 
+    // Free-standing impl so the override doesn't route through the unwired JS virtual suspend
+    // bridge. See AGENTS.md "Kotlin/JS yield* Bug".
+    private suspend fun openRoomStream(callback: EventCallback): Stream {
+        val room = auth.accessor.stream().roomStream()
+        val stream = SaypipStream(room)
+
+        room.register(
+            SaypipRoomListener(callback, this, stream.scope),
+            SaypipConnectionListener(callback),
+        )
+
+        return stream
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * A reaction or a reply reaches the room as nothing: the socket carries post IDs, and a
+     * notification is about something that happened to a post rather than a posted one.
+     */
     override suspend fun setNotificationStream(callback: EventCallback): Stream {
         throw NotSupportedException()
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * The room reports a post arriving or leaving, not the reactions and conversations around
+     * it, so a comment already held has nothing here to update it.
+     */
     override suspend fun setCommentUpdateStream(
         comments: List<Comment>,
         callback: EventCallback,
@@ -875,5 +919,78 @@ class SaypipAction(
             statusCode = (e as? SaypipException)?.status,
             responseBody = (e as? SaypipException)?.body,
         )
+    }
+
+    // ============================================================== //
+    // Stream listeners
+    // ============================================================== //
+    // A frame is a post ID: the post is read back before the callback, and a read that the
+    // visibility rules do not answer with (taken down since the frame, or from an account no
+    // read path serves) is dropped rather than drawn.
+    internal class SaypipRoomListener(
+        private val listener: EventCallback,
+        private val action: SaypipAction,
+        private val scope: kotlinx.coroutines.CoroutineScope,
+    ) : RoomStreamListener {
+
+        override fun onEvent(event: RealtimeEvent) {
+            when (event.type) {
+                RealtimeEventType.POST_CREATED -> onPostCreated(event.postId)
+                RealtimeEventType.POST_DELETED -> onPostDeleted(event.postId)
+            }
+        }
+
+        private fun onPostCreated(postId: String) {
+            if (listener !is UpdateCommentCallback) return
+
+            scope.launch {
+                try {
+                    val comment = action.comment(
+                        Identify(action.account.service, ID(postId)),
+                    )
+                    listener.onUpdate(CommentEvent(comment))
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // The read did not answer with the post; it leaves rather than being drawn.
+                }
+            }
+        }
+
+        private fun onPostDeleted(postId: String) {
+            if (listener is DeleteCommentCallback) {
+                listener.onDelete(IdentifyEvent(postId))
+            }
+        }
+    }
+
+    internal class SaypipConnectionListener(
+        private val listener: EventCallback,
+    ) : LifeCycleListener {
+
+        override fun onConnect() {
+            if (listener is ConnectCallback) {
+                listener.onConnect()
+            }
+        }
+
+        override fun onDisconnect() {
+            if (listener is DisconnectCallback) {
+                listener.onDisconnect()
+            }
+        }
+
+        override fun onError(e: Exception) {
+            if (listener is ErrorCallback) {
+                val classified = if (e is SocialHubException) e
+                else ExceptionHandler.classify(
+                    e = e,
+                    serviceType = ServiceType.Saypip,
+                    statusCode = (e as? SaypipException)?.status,
+                    responseBody = (e as? SaypipException)?.body,
+                )
+                listener.onError(classified)
+            }
+        }
     }
 }
