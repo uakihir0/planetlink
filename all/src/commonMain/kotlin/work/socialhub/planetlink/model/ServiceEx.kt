@@ -34,4 +34,9 @@ object ServiceEx {
     @JsExport.Ignore
     val Service.isMatrix: Boolean
         get() = ("matrix" == type.lowercase())
+
+    /** Is Saypip Account ?  */
+    @JsExport.Ignore
+    val Service.isSaypip: Boolean
+        get() = ("saypip" == type.lowercase())
 }
