@@ -882,6 +882,7 @@ class SaypipAction(
         return when (name?.substringAfterLast('.', "")?.lowercase()) {
             "jpg", "jpeg" -> "image/jpeg"
             "webp" -> "image/webp"
+            "gif" -> "image/gif"
             else -> "image/png"
         }
     }
