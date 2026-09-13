@@ -47,8 +47,7 @@ Saypip is a semi-anonymous SNS: everyone browses and posts anonymously, and real
 revealed only between mutual friends. The adapter models what the product actually has, and the
 things it deliberately does not: a person is a viewer-scoped identity token with no stable ID, a
 friendship is mutual (there is no one-directional follow), there is no user search or social
-graph, no re-sharing, bookmarks, polls or editing, and the realtime socket is cookie-only so an
-application polls the feed.
+graph, no re-sharing, bookmarks, polls or editing.
 
 The API is reached through Saypip's OAuth 2.1 authorization server with PKCE:
 
@@ -65,6 +64,21 @@ val account = auth.accountWithVerifier("myapp://callback", code)
 ```
 
 An application that already holds a token comes in through `accountWithAccessToken`.
+
+The Global Room is available as a stream: a frame carries a post ID, and the adapter reads the
+post back before calling the listener, so a `UpdateCommentCallback` sees a whole comment.
+
+```kotlin
+import net.socialhub.planetlink.model.event.CommentEvent
+import work.socialhub.planetlink.action.callback.comment.UpdateCommentCallback
+
+val stream = account.action.setHomeTimeLineStream(object : UpdateCommentCallback {
+    override fun onUpdate(event: CommentEvent?) {
+        println(event?.comment?.text?.displayText)
+    }
+})
+stream.open()   // suspend; receives frames until close()
+```
 
 ### X / Twitter
 
