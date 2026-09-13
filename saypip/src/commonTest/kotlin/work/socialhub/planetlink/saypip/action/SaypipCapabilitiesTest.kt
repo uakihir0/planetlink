@@ -37,6 +37,13 @@ class SaypipCapabilitiesTest {
         assertTrue(capabilities.isSupported(MessageActionType.GetMessageThread))
         assertTrue(capabilities.isSupported(MessageActionType.GetMessageTimeLine))
         assertTrue(capabilities.isSupported(MessageActionType.PostMessage))
+
+        // The room is a socket, not a poll: a token with `read` may open it.
+        assertTrue(
+            capabilities.isSupported(
+                work.socialhub.planetlink.define.action.StreamActionType.HomeTimeLineStream
+            )
+        )
     }
 
     @Test
@@ -57,10 +64,11 @@ class SaypipCapabilitiesTest {
         assertFalse(capabilities.isSupported(SocialActionType.VotePoll))
         assertFalse(capabilities.isSupported(SocialActionType.EditComment))
 
-        // The realtime socket is cookie-only, so an application polls instead.
+        // The socket carries post IDs, not reactions; a notification stream is not a thing it
+        // can answer.
         assertFalse(
             capabilities.isSupported(
-                work.socialhub.planetlink.define.action.StreamActionType.HomeTimeLineStream
+                work.socialhub.planetlink.define.action.StreamActionType.NotificationStream
             )
         )
     }
