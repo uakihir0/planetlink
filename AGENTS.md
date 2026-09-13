@@ -17,6 +17,7 @@ This is a Kotlin Multiplatform port of [SocialHub](https://github.com/uakihir0/S
 | Slack | [kslack](https://github.com/uakihir0/kslack) | `slack/` |
 | Matrix | [kmatrix](https://github.com/uakihir0/kmatrix) | `matrix/` |
 | Tumblr | [ktumblr](https://github.com/uakihir0/ktumblr) | `tumblr/` |
+| Saypip | [ksaypip](https://github.com/uakihir0/ksaypip) | `saypip/` |
 
 ### Kotlin Multiplatform Targets
 
@@ -44,6 +45,7 @@ PlanetLink Core (core/)
   ├── Slack Adapter (slack/) → kslack SDK
   ├── Matrix Adapter (matrix/) → kmatrix SDK
   └── Tumblr Adapter (tumblr/) → ktumblr SDK
+  └── Saypip Adapter (saypip/) → ksaypip SDK
 ```
 
 Each adapter module provides three key classes:
@@ -92,6 +94,11 @@ Each adapter module provides three key classes:
   - `define/` - `TumblrReactionType`, `TumblrIconSize`
   - `model/` - `TumblrUser`, `TumblrComment`, `TumblrPaging`
   - `expand/` - `PlanetLinkEx`, `ServiceEx`, `AttributedStringEx`
+- **`saypip/`**: Saypip adapter (ksaypip)
+  - `action/` - `SaypipAuth`, `SaypipAction`, `SaypipMapper`
+  - `define/` - `SaypipReactionType`
+  - `model/` - `SaypipUser`, `SaypipComment`, `SaypipPaging`, `SaypipThread`
+  - `expand/` - `PlanetLinkEx`
 - **`all/`**: Aggregation module (CocoaPods, XCFramework, JS, Swift Package)
 - **`plugins/`**: Gradle build plugins (module.publications, root.publications)
 - **`docs/`**: Documentation
@@ -151,6 +158,15 @@ If authentication credentials are required for testing, create `secrets.json` (r
   ],
   "tumblr": [
     {
+      "clientId": "YOUR_CLIENT_ID",
+      "clientSecret": "YOUR_CLIENT_SECRET",
+      "accessToken": "YOUR_ACCESS_TOKEN",
+      "refreshToken": "YOUR_REFRESH_TOKEN"
+    }
+  ],
+  "saypip": [
+    {
+      "host": "https://saypip.app",
       "clientId": "YOUR_CLIENT_ID",
       "clientSecret": "YOUR_CLIENT_SECRET",
       "accessToken": "YOUR_ACCESS_TOKEN",
@@ -300,7 +316,7 @@ Zero output = no reachable unwired bridges. Then build an action with a fake tok
 
 - JS target only (JVM / Native use a different coroutine implementation)
 - No compile-time error — runtime only, and often only on a specific path (cache-miss, a particular URL overload, a reaction code branch)
-- All known call sites fixed in: core (`userMeWithCache`/`userMe` via per-adapter overrides), bluesky, misskey, mastodon, tumblr, matrix, slack, nostr. Verified: 0 reachable unwired bridges remain across all adapter `.mjs`.
+- All known call sites fixed in: core (`userMeWithCache`/`userMe` via per-adapter overrides), bluesky, misskey, mastodon, tumblr, matrix, slack, nostr, saypip. Verified: 0 reachable unwired bridges remain across all adapter `.mjs`.
 
 #### Why it surfaced only in Slack first
 
@@ -343,6 +359,7 @@ Each adapter statically declares which `ActionType` entries it supports via a `C
 | Slack action | `slack/src/commonMain/kotlin/work/socialhub/planetlink/slack/action/SlackAction.kt` |
 | Matrix action | `matrix/src/commonMain/kotlin/work/socialhub/planetlink/matrix/action/MatrixAction.kt` |
 | Tumblr action | `tumblr/src/commonMain/kotlin/work/socialhub/planetlink/tumblr/action/TumblrAction.kt` |
+| Saypip action | `saypip/src/commonMain/kotlin/work/socialhub/planetlink/saypip/action/SaypipAction.kt` |
 | Integration tests | `all/src/jvmTest/kotlin/work/socialhub/planetlink/` |
 | Test configuration | `all/src/jvmTest/kotlin/work/socialhub/planetlink/AbstractTest.kt` |
 

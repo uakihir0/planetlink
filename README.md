@@ -23,6 +23,7 @@ This is a Kotlin Multiplatform port of [SocialHub](https://github.com/uakihir0/S
 - Slack (library: [kslack](https://github.com/uakihir0/kslack))
 - Matrix (library: [kmatrix](https://github.com/uakihir0/kmatrix))
 - Tumblr (library: [ktumblr](https://github.com/uakihir0/ktumblr))
+- Saypip (library: [ksaypip](https://github.com/uakihir0/ksaypip))
 - X / Twitter (read-only, library: [kxweb](https://github.com/uakihir0/kxweb))
 
 ## Usage
@@ -38,6 +39,45 @@ repositories {
 dependencies {
 +   implementation("work.socialhub.planetlink:all:0.0.1-SNAPSHOT")
 }
+```
+
+### Saypip
+
+Saypip is a semi-anonymous SNS: everyone browses and posts anonymously, and real profiles are
+revealed only between mutual friends. The adapter models what the product actually has, and the
+things it deliberately does not: a person is a viewer-scoped identity token with no stable ID, a
+friendship is mutual (there is no one-directional follow), there is no user search or social
+graph, no re-sharing, bookmarks, polls or editing.
+
+The API is reached through Saypip's OAuth 2.1 authorization server with PKCE:
+
+```kotlin
+import work.socialhub.planetlink.PlanetLink
+import work.socialhub.planetlink.saypip.expand.PlanetLinkEx.saypip
+
+val auth = PlanetLink.saypip("https://saypip.app")
+    .setConsumerInfo(clientId = "saypip_app_...")
+
+// Open the URL in a browser; the callback carries `code` and `state`.
+val url = auth.authorizationURL(redirectUri = "myapp://callback")
+val account = auth.accountWithVerifier("myapp://callback", code)
+```
+
+An application that already holds a token comes in through `accountWithAccessToken`.
+
+The Global Room is available as a stream: a frame carries a post ID, and the adapter reads the
+post back before calling the listener, so a `UpdateCommentCallback` sees a whole comment.
+
+```kotlin
+import net.socialhub.planetlink.model.event.CommentEvent
+import work.socialhub.planetlink.action.callback.comment.UpdateCommentCallback
+
+val stream = account.action.setHomeTimeLineStream(object : UpdateCommentCallback {
+    override fun onUpdate(event: CommentEvent?) {
+        println(event?.comment?.text?.displayText)
+    }
+})
+stream.open()   // suspend; receives frames until close()
 ```
 
 ### X / Twitter

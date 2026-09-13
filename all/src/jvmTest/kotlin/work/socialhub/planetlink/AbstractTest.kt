@@ -12,6 +12,7 @@ import work.socialhub.planetlink.matrix.expand.PlanetLinkEx.matrix
 import work.socialhub.planetlink.nostr.expand.PlanetLinkEx.nostr
 import work.socialhub.planetlink.slack.expand.PlanetLinkEx.slack
 import work.socialhub.planetlink.tumblr.expand.PlanetLinkEx.tumblr
+import work.socialhub.planetlink.saypip.expand.PlanetLinkEx.saypip
 import work.socialhub.planetlink.x.expand.PlanetLinkEx.x
 import java.io.File
 import kotlin.test.BeforeTest
@@ -151,6 +152,29 @@ open class AbstractTest {
             checkNotNull(c["X_AUTH_TOKEN"]),
             checkNotNull(c["X_CSRF_TOKEN"]),
         )
+    }
+
+    fun saypip(): Account {
+        val c = checkNotNull(config)
+        return PlanetLink.saypip(
+            checkNotNull(c["SAYPIP_HOST"] ?: c["SAYPIP_SERVER"]) {
+                "Set SAYPIP_HOST in secrets.json."
+            },
+        )
+            .setConsumerInfo(
+                c["SAYPIP_CLIENT_ID"] ?: "",
+                c["SAYPIP_CLIENT_SECRET"],
+            )
+            .setTokenRefreshCallback {
+                println(">> Token Refreshed <<")
+                it.accessToken?.let { token -> c["SAYPIP_ACCESS_TOKEN"] = token }
+                it.refreshToken?.let { token -> c["SAYPIP_REFRESH_TOKEN"] = token }
+                writeProps()
+            }
+            .accountWithAccessToken(
+                checkNotNull(c["SAYPIP_ACCESS_TOKEN"]),
+                c["SAYPIP_REFRESH_TOKEN"],
+            )
     }
 
     fun icon(): ByteArray {
