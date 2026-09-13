@@ -893,7 +893,15 @@ class SaypipAction(
             throw e
         } catch (e: Exception) {
             if ((e as? SaypipException)?.status == 401 && auth.canRefresh()) {
-                auth.refreshAccessToken()
+                // The refusal may be the request's or the refresh's; both are classified the
+                // same way rather than leaking a raw client exception.
+                try {
+                    auth.refreshAccessToken()
+                } catch (e2: CancellationException) {
+                    throw e2
+                } catch (e2: Exception) {
+                    throw classify(e2)
+                }
                 return try {
                     runner()
                 } catch (e2: CancellationException) {

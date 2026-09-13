@@ -8,6 +8,8 @@ import kotlinx.coroutines.withTimeout
 import net.socialhub.planetlink.model.event.CommentEvent
 import org.junit.jupiter.api.Nested
 import work.socialhub.planetlink.AbstractTest
+import work.socialhub.planetlink.PlanetLink
+import work.socialhub.planetlink.saypip.expand.PlanetLinkEx.saypip
 import work.socialhub.planetlink.PrintClass.dump
 import work.socialhub.planetlink.action.callback.comment.UpdateCommentCallback
 import work.socialhub.planetlink.action.callback.lifecycle.ConnectCallback
@@ -16,6 +18,10 @@ import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
 import work.socialhub.planetlink.model.request.CommentForm
+import work.socialhub.planetlink.define.ServiceType
+import work.socialhub.planetlink.model.error.SocialHubException
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.Test
 import kotlin.test.assertNotNull
 
@@ -51,6 +57,33 @@ class SaypipTest {
             val page = saypip().action.notification(Paging(10))
             println("Notification count: ${page.entities.size}")
             page.entities.forEach { println(it.type) }
+        }
+    }
+
+    /**
+     * A refusal that cannot be refreshed is still the adapter's own exception, not a raw client
+     * one: the refresh is classified like the request that led to it.
+     */
+    @Nested
+    inner class RefreshFailure : AbstractTest() {
+        @Test
+        fun testSaypip(): Unit = runBlocking {
+            val c = checkNotNull(config)
+            if (c["SAYPIP_HOST"]?.isEmpty() != false && c["SAYPIP_SERVER"]?.isEmpty() != false) {
+                return@runBlocking
+            }
+
+            val account = PlanetLink.saypip(
+                checkNotNull(c["SAYPIP_HOST"] ?: c["SAYPIP_SERVER"]),
+            )
+                .setConsumerInfo(c["SAYPIP_CLIENT_ID"] ?: "", c["SAYPIP_CLIENT_SECRET"])
+                .accountWithAccessToken("an-expired-token", "a-revoked-refresh-token")
+
+            val exception = assertFailsWith<SocialHubException> {
+                account.action.userMe()
+            }
+            println("REFRESH-FAIL service=${exception.serviceType} type=${exception.error}")
+            assertEquals(ServiceType.Saypip, exception.serviceType)
         }
     }
 
