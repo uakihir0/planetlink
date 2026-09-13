@@ -1,11 +1,23 @@
 package work.socialhub.planetlink.action
 
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
+import net.socialhub.planetlink.model.event.CommentEvent
 import org.junit.jupiter.api.Nested
 import work.socialhub.planetlink.AbstractTest
 import work.socialhub.planetlink.PrintClass.dump
+import work.socialhub.planetlink.action.callback.comment.UpdateCommentCallback
+import work.socialhub.planetlink.action.callback.lifecycle.ConnectCallback
+import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.ID
+import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
+import work.socialhub.planetlink.model.request.CommentForm
 import kotlin.test.Test
+import kotlin.test.assertNotNull
 
 /**
  * Integration tests for the Saypip adapter. They need a `secrets.json` whose `planetlink` block
@@ -39,6 +51,61 @@ class SaypipTest {
             val page = saypip().action.notification(Paging(10))
             println("Notification count: ${page.entities.size}")
             page.entities.forEach { println(it.type) }
+        }
+    }
+
+    /**
+     * The room, through the adapter: a post is written while the socket is open, the frame is
+     * read back as a whole comment, and the post is taken down again.
+     */
+    @Nested
+    inner class Stream : AbstractTest() {
+        @Test
+        fun testSaypip(): Unit = runBlocking {
+            val account = saypip()
+            val action = account.action
+            val body = "planetlink saypip stream test ${System.currentTimeMillis()}"
+
+            val connected = CompletableDeferred<Unit>()
+            val received = CompletableDeferred<Comment>()
+
+            val stream = action.setHomeTimeLineStream(
+                object :
+                    UpdateCommentCallback,
+                    ConnectCallback {
+                    override fun onUpdate(event: CommentEvent?) {
+                        val comment = event?.comment ?: return
+                        if (comment.text?.displayText == body) {
+                            received.complete(comment)
+                        }
+                    }
+
+                    override fun onConnect() {
+                        connected.complete(Unit)
+                    }
+                },
+            )
+
+            val opening = launch { stream.open() }
+            try {
+                withTimeout(15_000) { connected.await() }
+                println("STREAM connected")
+
+                action.postComment(CommentForm().also { it.text = body })
+
+                val comment = withTimeout(20_000) { received.await() }
+                assertNotNull(comment.id)
+                println("STREAM comment=${comment.id<String>()} author=${comment.user?.name}")
+
+                // Clean up: the post is taken down, and it uses the id the frame gave us.
+                action.deleteComment(
+                    Identify(account.service, ID(comment.id<String>())),
+                )
+                println("STREAM cleaned up")
+            } finally {
+                stream.close()
+                opening.cancel()
+            }
         }
     }
 }
