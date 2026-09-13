@@ -157,7 +157,9 @@ open class AbstractTest {
     fun saypip(): Account {
         val c = checkNotNull(config)
         return PlanetLink.saypip(
-            c["SAYPIP_HOST"]?.takeIf { it.isNotEmpty() } ?: "https://saypip.app",
+            checkNotNull(c["SAYPIP_HOST"] ?: c["SAYPIP_SERVER"]) {
+                "Set SAYPIP_HOST in secrets.json."
+            },
         )
             .setConsumerInfo(
                 c["SAYPIP_CLIENT_ID"] ?: "",
