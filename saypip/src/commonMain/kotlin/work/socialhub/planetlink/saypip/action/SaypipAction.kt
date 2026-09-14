@@ -150,12 +150,15 @@ class SaypipAction(
     /**
      * {@inheritDoc}
      *
-     * Saypip's own reaction shortlist rather than the core catalogue: the server takes any single
-     * emoji by shape, so the catalogue is not wrong about what can be posted, but it offers
-     * pictures the product never draws beside a post.
+     * Saypip's own reaction shortlist rather than the core catalogue, in the order Saypip's
+     * picker draws it: the server takes any single emoji by shape, so the catalogue is not wrong
+     * about what can be posted, but it offers pictures the product never draws beside a post —
+     * and its frequency ordering is not Saypip's (agreeing first, the rare answers last). The
+     * pictures keep the catalogue's metadata and lose the catalogue's order.
      */
     override fun emojis(): List<Emoji> {
-        return super.emojis().filter { it.emoji in REACTION_EMOJIS }
+        val catalogue = super.emojis().associateBy { it.emoji }
+        return REACTION_EMOJIS.mapNotNull { catalogue[it] }
     }
 
     // ============================================================== //

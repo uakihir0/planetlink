@@ -26,4 +26,11 @@ class SaypipEmojisTest {
         assertFalse("👎" in emojis)
         assertFalse("🍜" in emojis)
     }
+
+    @Test
+    fun keepsTheShortlistsOwnOrder() {
+        // The core catalogue sorts by frequency (😂, ❤️, 🙏, …); Saypip's
+        // picker opens on 👍 and moves through its own list.
+        assertEquals(listOf("👍", "❤️", "🎉", "😂"), emojis().take(4))
+    }
 }
