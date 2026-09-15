@@ -49,6 +49,7 @@ import work.socialhub.planetlink.define.action.TimeLineActionType
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.Context
+import work.socialhub.planetlink.model.Emoji
 import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Notification
@@ -95,6 +96,20 @@ class SaypipAction(
         /** The picture this adapter puts where a heart would go. */
         private const val LIKE_REACTION = "❤️"
 
+        /**
+         * The pictures a Saypip reaction offers.
+         *
+         * The server checks an emoji by shape and takes any single one, but the product's own
+         * picker leads with this shortlist (saypip apps/web/src/lib/emoji.ts § REACTION_EMOJI,
+         * deliberately without a thumb down), and the unified catalogue would list thousands it
+         * never draws. Keep in step with Saypip's client and with this app's picker
+         * (socialhub-web packages/web/src/lib/saypip-native.ts).
+         */
+        private val REACTION_EMOJIS = listOf(
+            "👍", "❤️", "🎉", "😂", "🥰", "😮", "🥺", "👏", "🙌", "✨", "🔥", "💯",
+            "🌸", "☕", "🍰", "📚", "🎧", "🐢", "🐱", "🌈", "🌙", "🙏", "💪", "👀",
+        )
+
         val CAPABILITIES = Capabilities(
             setOf(
                 SocialActionType.GetUserMe,
@@ -131,6 +146,20 @@ class SaypipAction(
     }
 
     override fun capabilities(): Capabilities = CAPABILITIES
+
+    /**
+     * {@inheritDoc}
+     *
+     * Saypip's own reaction shortlist rather than the core catalogue, in the order Saypip's
+     * picker draws it: the server takes any single emoji by shape, so the catalogue is not wrong
+     * about what can be posted, but it offers pictures the product never draws beside a post —
+     * and its frequency ordering is not Saypip's (agreeing first, the rare answers last). The
+     * pictures keep the catalogue's metadata and lose the catalogue's order.
+     */
+    override fun emojis(): List<Emoji> {
+        val catalogue = super.emojis().associateBy { it.emoji }
+        return REACTION_EMOJIS.mapNotNull { catalogue[it] }
+    }
 
     // ============================================================== //
     // Account
