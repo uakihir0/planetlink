@@ -18,10 +18,12 @@ import work.socialhub.ksaypip.api.request.mutes.MutesMuteRequest
 import work.socialhub.ksaypip.api.request.mutes.MutesUnmuteRequest
 import work.socialhub.ksaypip.api.request.notifications.NotificationsListRequest
 import work.socialhub.ksaypip.api.request.notifications.NotificationsReadRequest
+import work.socialhub.ksaypip.api.request.posts.PostsConversationsRequest
 import work.socialhub.ksaypip.api.request.posts.PostsCreateRequest
 import work.socialhub.ksaypip.api.request.posts.PostsDeleteRequest
 import work.socialhub.ksaypip.api.request.posts.PostsPostRequest
 import work.socialhub.ksaypip.api.request.posts.PostsReactRequest
+import work.socialhub.ksaypip.api.request.posts.PostsStartConversationRequest
 import work.socialhub.ksaypip.api.request.posts.PostsUnreactRequest
 import work.socialhub.ksaypip.api.request.reports.ReportsReportRequest
 import work.socialhub.ksaypip.api.request.users.UsersUserRequest
@@ -60,6 +62,7 @@ import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.Stream
 import work.socialhub.planetlink.model.Thread
 import work.socialhub.planetlink.model.User
+import work.socialhub.planetlink.model.error.ClientException
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.model.request.CommentForm
@@ -483,6 +486,10 @@ class SaypipAction(
     // ============================================================== //
     /**
      * {@inheritDoc}
+     *
+     * A reply to somebody else's post is a 1:1 conversation rather than a public reply, which
+     * Saypip does not have; a reply to the reader's own post is the self-reply the post form
+     * writes. Which one the reply target names is read from the post itself.
      */
     override suspend fun postComment(req: CommentForm) {
         doPostComment(req)
@@ -491,17 +498,93 @@ class SaypipAction(
     // Free-standing impl so same-class callers (postMessage) don't route through the unwired JS
     // virtual suspend bridge. See AGENTS.md "Kotlin/JS yield* Bug".
     private suspend fun doPostComment(req: CommentForm) {
+        val replyToPostId = req.replyId?.value<String>()
+
+        // A post may be continued only by its own author: for anybody else Saypip's reply is a 1:1
+        // conversation started with this message (saypip docs/api-design.md § POST /posts), and
+        // the write is words only. Which of the two this is comes from the post itself, because
+        // the form cannot know whose post it names.
+        if (replyToPostId != null && !isOwnPost(replyToPostId)) {
+            if (req.images.isNotEmpty()) {
+                throw NotSupportedException(
+                    "A reply to somebody else's post is a message in a conversation, and a conversation carries words only."
+                )
+            }
+            startConversationOnPost(replyToPostId, req.text ?: "")
+            return
+        }
+
         val mediaIds = req.images.map { uploadMedia(it.data, it.name) }
 
         val request = PostsCreateRequest().also {
             it.body = req.text ?: ""
             it.mediaIds = mediaIds.toTypedArray().takeIf { ids -> ids.isNotEmpty() }
             it.wantsTalk = req.params["wantsTalk"] as? Boolean
-            it.replyToPostId = req.replyId?.value<String>()
+            it.replyToPostId = replyToPostId
         }
 
         proceedUnit {
             auth.accessor.posts().create(request)
+        }
+    }
+
+    /** Whether the post is the authenticated account's own, which is what a reply may continue. */
+    private suspend fun isOwnPost(postId: String): Boolean {
+        return proceed {
+            auth.accessor.posts().post(
+                PostsPostRequest().also {
+                    it.postId = postId
+                },
+            ).data.isMine
+        }
+    }
+
+    /**
+     * A reply to somebody else's post: the conversation this reader already has on it, or a new
+     * one with this message as its first. One live conversation per person per post, and a second
+     * is refused by name — which is an answer rather than an error, because the message belongs in
+     * the one that is there. The author's ask is answered by the write either way, so
+     * [CommentForm.params] carries nothing into a conversation.
+     */
+    private suspend fun startConversationOnPost(postId: String, body: String) {
+        try {
+            proceed {
+                auth.accessor.posts().startConversation(
+                    PostsStartConversationRequest().also {
+                        it.postId = postId
+                        it.body = body
+                    },
+                )
+            }
+        } catch (e: ClientException) {
+            val refusal = e.cause as? SaypipException
+            if (refusal?.status != 409 || refusal.reason != "conversation_already_started") throw e
+            val conversationId = myConversationIdOnPost(postId) ?: throw e
+            replyInConversation(conversationId, body)
+        }
+    }
+
+    /** The viewer's own conversation on a post, as the post's public list addresses it. */
+    private suspend fun myConversationIdOnPost(postId: String): String? {
+        val list = proceed {
+            auth.accessor.posts().conversations(
+                PostsConversationsRequest().also {
+                    it.postId = postId
+                },
+            ).data
+        }
+        return list.items.firstOrNull { it.isMine }?.id
+    }
+
+    /** One message into a conversation this reader is one of the two participants in. */
+    private suspend fun replyInConversation(conversationId: String, body: String) {
+        proceedUnit {
+            auth.accessor.conversations().reply(
+                ConversationsReplyRequest().also {
+                    it.conversationId = conversationId
+                    it.body = body
+                },
+            )
         }
     }
 
