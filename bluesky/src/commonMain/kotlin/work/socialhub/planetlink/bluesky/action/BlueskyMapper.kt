@@ -252,7 +252,8 @@ object BlueskyMapper {
             id = ID(post.uri!!)
             cid = post.cid
             user = user(post.author!!, service)
-            createAt = Instant.parse(post.indexedAt!!)
+            createAt = (post.record as? FeedPost)?.createdAt?.let(Instant::parse)
+                ?: Instant.parse(post.indexedAt!!)
 
             // TODO: Labels
             possiblySensitive = false
@@ -355,7 +356,8 @@ object BlueskyMapper {
             id = ID(post.uri!!)
             cid = post.cid
             user = user(post.author!!, service)
-            createAt = Instant.parse(post.indexedAt!!)
+            createAt = (post.value as? FeedPost)?.createdAt?.let(Instant::parse)
+                ?: Instant.parse(post.indexedAt!!)
 
             liked = false
             shared = false

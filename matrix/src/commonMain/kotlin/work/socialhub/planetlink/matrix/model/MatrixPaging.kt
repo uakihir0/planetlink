@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.matrix.model
 
+import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Paging
 import kotlin.js.JsExport
 
@@ -9,6 +10,50 @@ class MatrixPaging : Paging() {
     var from: String? = null
     var to: String? = null
     var direction: String? = null
+
+    override fun <T : Identify> newPage(entities: List<T>): Paging {
+        return copy().also {
+            if (entities.isNotEmpty()) {
+                // `from` is the token at the newest edge of the current
+                // response. Use it with forward pagination to fetch newer
+                // events.
+                it.from = from
+                it.to = null
+                it.direction = "f"
+            }
+        }
+    }
+
+    override fun <T : Identify> pastPage(entities: List<T>): Paging {
+        return copy().also {
+            if (entities.isNotEmpty()) {
+                // Matrix returns `end` as the token for the next chunk in the
+                // requested direction. With backward pagination this is the
+                // next older page.
+                it.from = to
+                it.to = null
+                it.direction = "b"
+            }
+        }
+    }
+
+    override fun setMarkPagingEnd(entities: List<*>) {
+        if (entities.isEmpty()) {
+            when (direction) {
+                "f" -> isHasNew = false
+                "b" -> isHasPast = false
+                else -> {
+                    isHasNew = false
+                    isHasPast = false
+                }
+            }
+        } else if (to == null) {
+            when (direction) {
+                "f" -> isHasNew = false
+                "b" -> isHasPast = false
+            }
+        }
+    }
 
     override fun copy(): MatrixPaging {
         val p = MatrixPaging()

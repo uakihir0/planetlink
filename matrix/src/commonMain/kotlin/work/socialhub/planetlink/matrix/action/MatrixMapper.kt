@@ -15,6 +15,7 @@ import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.define.NotificationActionType
 import work.socialhub.planetlink.model.Channel
 import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.CommentOrder
 import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Media
 import work.socialhub.planetlink.model.Notification
@@ -239,7 +240,7 @@ object MatrixMapper {
             comment(event, service, userMe, members)
         }
         applyTimelineReactions(comments, events, (userMe as? MatrixUser)?.userId)
-        model.entities = comments.sortedByDescending { it.createAt }
+        model.entities = CommentOrder.newestFirst(comments)
         model.paging = MatrixPaging.fromPaging(paging)
         return model
     }

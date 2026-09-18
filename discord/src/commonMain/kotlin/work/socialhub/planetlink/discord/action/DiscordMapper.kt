@@ -18,6 +18,7 @@ import work.socialhub.planetlink.discord.model.DiscordUser
 import work.socialhub.planetlink.discord.model.DiscordUserPrimaryGuild
 import work.socialhub.planetlink.model.Channel
 import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.CommentOrder
 import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Media
 import work.socialhub.planetlink.model.Pageable
@@ -242,7 +243,7 @@ object DiscordMapper {
         val model = Pageable<Comment>()
         model.entities = messages
             .map { comment(it, userMe, service) }
-            .sortedByDescending { it.createAt }
+            .let(CommentOrder::newestFirst)
         model.paging = DiscordPaging.fromPaging(paging)
         return model
     }

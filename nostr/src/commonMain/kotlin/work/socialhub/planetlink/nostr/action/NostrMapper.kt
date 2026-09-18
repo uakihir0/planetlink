@@ -13,6 +13,7 @@ import work.socialhub.knostr.util.Nip21
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.Channel
 import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.CommentOrder
 import work.socialhub.planetlink.model.Context
 import work.socialhub.planetlink.model.Emoji
 import work.socialhub.planetlink.model.ID
@@ -291,7 +292,6 @@ object NostrMapper {
     ): Pageable<Comment> {
         return Pageable<Comment>().apply {
             entities = messages
-                .sortedByDescending { it.createdAt }
                 .map { message ->
                     NostrComment(service).apply {
                         id = ID(message.event.id)
@@ -305,6 +305,7 @@ object NostrMapper {
                         }
                     }
                 }
+                .let(CommentOrder::newestFirst)
             this.paging = NostrPaging.fromPaging(paging)
         }
     }
@@ -317,9 +318,8 @@ object NostrMapper {
         userMe: User? = null,
     ): Pageable<Comment> {
         val model = Pageable<Comment>()
-        model.entities = notes.map { note ->
-            comment(note, service, userMe)
-        }
+        model.entities = notes.map { note -> comment(note, service, userMe) }
+            .let(CommentOrder::newestFirst)
 
         model.paging = NostrPaging.fromPaging(paging)
         return model

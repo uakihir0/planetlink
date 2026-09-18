@@ -827,6 +827,7 @@ class TumblrAction(
             }
         }
 
+        context.sort()
         return context
     }
 

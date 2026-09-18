@@ -332,7 +332,7 @@ object MastodonMapper {
         return Pageable<Comment>().also { p ->
             p.entities = statuses
                 .map { comment(it, service) }
-                .sortedByDescending { it.createAt }
+                .let(CommentOrder::newestFirst)
 
             val mpg = MastodonPaging.fromPaging(paging)
             p.paging = withLink(mpg, link)

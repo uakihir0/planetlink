@@ -27,8 +27,8 @@ class NostrContextMapperTest {
         val ancestorIds = context.ancestors.orEmpty().map { it.id?.value<String>() }
         val descendantIds = context.descendants.orEmpty().map { it.id?.value<String>() }
 
-        assertEquals(listOf("parent", "root"), ancestorIds)
-        assertEquals(listOf("nested-reply", "reply"), descendantIds)
+        assertEquals(listOf("root", "parent"), ancestorIds)
+        assertEquals(listOf("reply", "nested-reply"), descendantIds)
         assertFalse("selected" in ancestorIds)
         assertFalse("selected" in descendantIds)
     }

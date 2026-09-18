@@ -242,7 +242,7 @@ object SlackMapper {
                 userMap[msg.user]
             }
             comment(msg, user, userMe, emojis, channel, service, token)
-        }.sortedByDescending { it.createAt }
+        }.let(CommentOrder::newestFirst)
 
         model.paging = DatePaging.fromPaging(paging)
         return model

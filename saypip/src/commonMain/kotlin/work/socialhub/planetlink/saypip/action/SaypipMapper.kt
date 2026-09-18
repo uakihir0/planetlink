@@ -4,6 +4,7 @@ import kotlin.time.Instant
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.define.NotificationActionType
 import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.CommentOrder
 import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Media
 import work.socialhub.planetlink.model.Notification
@@ -200,7 +201,7 @@ object SaypipMapper {
         return Pageable<Comment>().also { p ->
             p.entities = feed.items
                 .map { comment(it, service) }
-                .sortedByDescending { it.createAt }
+                .let(CommentOrder::newestFirst)
 
             val mpg = SaypipPaging.fromPaging(paging)
             mpg.nextCursor = feed.nextCursor
@@ -219,7 +220,7 @@ object SaypipMapper {
         return Pageable<Comment>().also { p ->
             p.entities = conversation.replies
                 .map { reply(it, conversation, service) }
-                .sortedByDescending { it.createAt }
+                .let(CommentOrder::newestFirst)
 
             val mpg = SaypipPaging.fromPaging(paging)
             mpg.nextCursor = conversation.olderRepliesCursor

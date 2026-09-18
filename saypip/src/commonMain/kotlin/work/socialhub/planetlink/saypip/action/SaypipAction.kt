@@ -784,6 +784,7 @@ class SaypipAction(
                 post.replyTo?.let { SaypipMapper.quotedComment(it, service()) }
             )
             context.descendants = listOf()
+            context.sort()
         }
     }
 

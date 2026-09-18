@@ -578,6 +578,10 @@ interface AccountAction {
     /**
      * Get Message Thread Comments
      * メッセージスレッドの内容を取得
+     *
+     * The returned messages are ordered from newest to oldest. Calling
+     * [Paging.pastPage] must request messages older than the current oldest
+     * message and must not repeat the current page boundary.
      */
     suspend fun messageTimeLine(
         id: Identify,

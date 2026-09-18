@@ -1482,16 +1482,13 @@ class MastodonAction(
                 comments.add(id.lastComment!!)
             }
 
-            comments.sortBy { it.createAt }
-            comments.reversed()
-
             service().rateLimit.addInfo(
                 SocialActionType.GetContext,
                 MastodonMapper.rateLimit(response)
             )
 
             Pageable<Comment>().also { pg ->
-                pg.entities = comments.reversed()
+                pg.entities = CommentOrder.newestFirst(comments)
                 pg.paging = Paging(0).also {
                     it.isHasNew = false
                     it.isHasPast = false

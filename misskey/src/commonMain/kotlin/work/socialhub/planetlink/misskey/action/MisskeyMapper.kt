@@ -399,8 +399,7 @@ object MisskeyMapper {
         return Pageable<Comment>().also { pg ->
             pg.entities = notes
                 .map { comment(it, host, service) }
-                .sortedBy { it.createAt }
-                .reversed()
+                .let(CommentOrder::newestFirst)
             pg.paging = MisskeyPaging.fromPaging(paging)
         }
     }
@@ -434,8 +433,7 @@ object MisskeyMapper {
     ): Pageable<Comment> {
         return Pageable<Comment>().also { pg ->
             pg.entities = notifications.map { mention(it, host, service) }
-                .sortedBy { it.createAt }
-                .reversed()
+                .let(CommentOrder::newestFirst)
             pg.paging = MisskeyPaging.fromPaging(paging)
         }
     }

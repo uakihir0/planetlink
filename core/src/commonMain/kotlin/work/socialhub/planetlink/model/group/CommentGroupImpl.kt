@@ -5,6 +5,7 @@ import work.socialhub.planetlink.action.group.CommentGroupAction
 import work.socialhub.planetlink.action.group.CommentGroupActionImpl
 import work.socialhub.planetlink.action.request.CommentsRequest
 import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.CommentOrder
 import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Paging
 import kotlin.js.JsExport
@@ -49,9 +50,7 @@ class CommentGroupImpl(
             }
         }
 
-        stream = stream
-            .sortedBy { it.createAt!!.toEpochMilliseconds() }
-            .reversed()
+        stream = CommentOrder.newestFirst(stream)
 
         return Pageable<Comment>().also {
             it.paging = Paging(size)
@@ -81,9 +80,7 @@ class CommentGroupImpl(
                         .filter { it.createAt!!.toEpochMilliseconds() > sinceDate!!.toEpochMilliseconds() }
                 )
 
-                page.entities = comments
-                    .sortedBy { it.createAt!!.toEpochMilliseconds() }
-                    .reversed()
+                page.entities = CommentOrder.newestFirst(comments)
             }
         }
     }
@@ -110,9 +107,7 @@ class CommentGroupImpl(
                         .filter { it.createAt!!.toEpochMilliseconds() <= maxDate!!.toEpochMilliseconds() }
                 )
 
-                page.entities = comments
-                    .sortedBy { it.createAt!!.toEpochMilliseconds() }
-                    .reversed()
+                page.entities = CommentOrder.newestFirst(comments)
             }
         }
     }

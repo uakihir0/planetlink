@@ -767,6 +767,7 @@ class MatrixAction(
             pageable.paging = (pageable.paging as? MatrixPaging)?.apply {
                 from = response.start
                 to = response.end
+                direction = direction ?: "b"
             } ?: pageable.paging
             pageable
         }

@@ -13,6 +13,7 @@ import work.socialhub.ktumblr.entity.trail.Trail
 import work.socialhub.ktumblr.entity.user.FollowerUser
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.CommentOrder
 import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Media
 import work.socialhub.planetlink.model.Pageable
@@ -347,7 +348,7 @@ object TumblrMapper {
         return Pageable<Comment>().also { pg ->
             pg.entities = posts
                 .map { comment(it, trails, service) }
-                .sortedByDescending { it.createAt }
+                .let(CommentOrder::newestFirst)
             pg.paging = TumblrPaging.fromPaging(paging)
         }
     }

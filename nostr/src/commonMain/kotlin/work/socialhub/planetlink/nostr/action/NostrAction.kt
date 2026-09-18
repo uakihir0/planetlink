@@ -1138,36 +1138,52 @@ class NostrAction(
             val pubkey = id.id!!.value<String>()
             val response = social.messages().getConversation(pubkey)
             val userMe = userMeWithCache()
+            val np = NostrPaging.fromPaging(paging)
 
-            val comments = response.data.map { dm ->
-                NostrComment(service()).apply {
-                    this.id = ID(dm.id)
-                    this.eventId = dm.id
-                    createAt = Instant.fromEpochSeconds(dm.createdAt, 0)
-                    text = work.socialhub.planetlink.model.common.AttributedString.plain(dm.content)
-                    directMessage = true
+            val comments = response.data
+                .filter { dm ->
+                    (np.since == null || dm.createdAt >= np.since!!) &&
+                        (np.until == null || dm.createdAt <= np.until!!)
+                }
+                .map { dm ->
+                    NostrComment(service()).apply {
+                        this.id = ID(dm.id)
+                        this.eventId = dm.id
+                        createAt = Instant.fromEpochSeconds(dm.createdAt, 0)
+                        text = work.socialhub.planetlink.model.common.AttributedString.plain(dm.content)
+                        directMessage = true
 
-                    val authorPubkey = dm.senderPubkey
-                    if (authorPubkey == this@NostrAction.pubkey) {
-                        this.user = userMe
-                    } else {
-                        try {
-                            val profile = social.users().getProfile(authorPubkey)
-                            this.user = NostrMapper.user(profile.data, service())
-                        } catch (e: Exception) {
-                            // Failed to load profile for $authorPubkey, use fallback
-                            this.user = NostrUser(service()).apply {
-                                this.id = ID(authorPubkey)
-                                name = authorPubkey.take(8)
+                        val authorPubkey = dm.senderPubkey
+                        if (authorPubkey == this@NostrAction.pubkey) {
+                            this.user = userMe
+                        } else {
+                            try {
+                                val profile = social.users().getProfile(authorPubkey)
+                                this.user = NostrMapper.user(profile.data, service())
+                            } catch (e: Exception) {
+                                // Failed to load profile for $authorPubkey, use fallback
+                                this.user = NostrUser(service()).apply {
+                                    this.id = ID(authorPubkey)
+                                    name = authorPubkey.take(8)
+                                }
                             }
                         }
                     }
                 }
+                .let(CommentOrder::newestFirst)
+
+            val pageSize = paging.count?.takeIf { it > 0 }
+            val page = pageSize?.let(comments::take) ?: comments
+            val pagePaging = np.apply {
+                // getConversation currently returns the conversation in one
+                // response, so paginate the sorted result locally while
+                // keeping the common newest-to-oldest contract.
+                isHasPast = paging.isHasPast && page.size < comments.size
             }
 
             Pageable<Comment>().also {
-                it.entities = comments
-                it.paging = paging
+                it.entities = page
+                it.paging = pagePaging
             }
         }
     }

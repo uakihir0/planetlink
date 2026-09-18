@@ -36,6 +36,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 class BlueskyMapperTest {
 
@@ -282,6 +283,31 @@ class BlueskyMapperTest {
         val comment = BlueskyMapper.simpleComment(post, service)
 
         assertEquals("xenobladerx98.bsky.social", comment.user!!.name)
+    }
+
+    @Test
+    fun simpleComment_usesAuthoredCreatedAtInsteadOfIndexedAt() {
+        val post = FeedDefsPostView().apply {
+            uri = "at://did:plc:test123/app.bsky.feed.post/created-at"
+            cid = "bafy-created-at"
+            author = ActorDefsProfileViewBasic(
+                did = "did:plc:test123",
+                handle = "xenobladerx98.bsky.social",
+            )
+            // AppView indexedAt is later than the time the post was authored.
+            indexedAt = "2025-01-01T00:05:00.000Z"
+            record = FeedPost(
+                text = "hello",
+                createdAt = "2025-01-01T00:01:00.000Z",
+            )
+        }
+
+        val comment = BlueskyMapper.simpleComment(post, service)
+
+        assertEquals(
+            Instant.parse("2025-01-01T00:01:00.000Z"),
+            comment.createAt,
+        )
     }
 
     // ============================================================== //

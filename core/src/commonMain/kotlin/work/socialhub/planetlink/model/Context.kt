@@ -21,11 +21,7 @@ class Context {
     var descendants: List<Comment>? = null
 
     fun sort() {
-        descendants = descendants!!.sortedBy {
-            it.createAt!!.toEpochMilliseconds()
-        }.reversed()
-        ancestors = ancestors!!.sortedBy {
-            it.createAt!!.toEpochMilliseconds()
-        }.reversed()
+        ancestors = ancestors?.let(CommentOrder::oldestFirst)
+        descendants = descendants?.let(CommentOrder::oldestFirst)
     }
 }

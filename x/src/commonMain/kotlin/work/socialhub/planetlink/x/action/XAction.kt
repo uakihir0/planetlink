@@ -324,10 +324,11 @@ class XAction(
                         focalTime != null &&
                         it.createAt != null &&
                         it.createAt!! < focalTime
-                }.sortedByDescending { it.createAt }
+                }
                 context.descendants = comments.filter {
                     it.id<String>() != id && it !in context.ancestors.orEmpty()
-                }.sortedByDescending { it.createAt }
+                }
+                context.sort()
             }
         }
     }
