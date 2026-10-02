@@ -19,11 +19,20 @@ class SaypipComment(
     /** Whether the author is asking to be talked to. */
     var wantsTalk: Boolean = false
 
+    /** The reply id when this comment is a message in a conversation, or null on a post. */
+    var replyId: String? = null
+
     /** When this viewer stops being able to read the post, or null when they do not. */
     var readableUntil: String? = null
 
-    /** The colour this row draws for an author it does not name. */
-    var authorColor: String? = null
+    /** The gradient's two ends for an author the row does not name, or null. */
+    var authorColors: List<String>? = null
+
+    /** Whether the post was written in the identified mode, under the account's public persona. */
+    var identified: Boolean = false
+
+    /** Whether the post is listed in the Everyone timeline, or only where its subjects reach. */
+    var everyone: Boolean = true
 
     /** Live conversations rooted at this post. */
     var conversationCount: Int = 0
