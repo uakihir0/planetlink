@@ -1,0 +1,441 @@
+package work.socialhub.planetlink.saypip.action
+
+import com.sun.net.httpserver.HttpServer
+import java.net.InetSocketAddress
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
+import work.socialhub.planetlink.model.Account
+import work.socialhub.planetlink.model.ID
+import work.socialhub.planetlink.model.Identify
+import work.socialhub.planetlink.model.Service
+import work.socialhub.planetlink.model.error.NotSupportedException
+import work.socialhub.planetlink.model.request.CommentForm
+import work.socialhub.planetlink.saypip.model.SaypipComment
+import work.socialhub.planetlink.saypip.model.SaypipPaging
+import work.socialhub.planetlink.saypip.model.SaypipUser
+
+/**
+ * The new contract's wires, against a local server rather than the deployment: a picture on a
+ * reply takes the reply's address, a post keeps the post's, the identified mode travels as an
+ * optional body, and an identified persona is read through its public page.
+ */
+class SaypipContractTest {
+
+    /** A viewer-scoped identity token's shape: `vi_tok_` plus 32 Crockford characters. */
+    private val VIEWER_TOKEN = "vi_tok_8F3K5M2N7Q4R9T6V1W0X3Y5Z7A2B4C6D"
+
+    private data class Recorded(
+        val method: String,
+        val path: String,
+        val query: String,
+        val body: String,
+    )
+
+    private lateinit var server: HttpServer
+    private val requests = mutableListOf<Recorded>()
+    private var responder: (Recorded) -> Pair<Int, String> =
+        { 404 to """{"error":{"code":"not_found"}}""" }
+
+    private val action get() = SaypipAuth().also {
+        it.host = "http://127.0.0.1:${server.address.port}"
+    }.accountWithAccessToken("test-token", null).action
+
+    private fun service(): Service {
+        return Service("saypip", Account()).also {
+            it.host = "https://saypip.app"
+        }
+    }
+
+    private fun comment(id: String, replyId: String? = null): SaypipComment {
+        return SaypipComment(service()).also {
+            it.id = ID(id)
+            it.replyId = replyId
+            it.directMessage = replyId != null
+        }
+    }
+
+    @BeforeTest
+    fun setUp() {
+        server = HttpServer.create(InetSocketAddress(0), 0)
+        server.createContext("/") { exchange ->
+            val recorded = Recorded(
+                method = exchange.requestMethod,
+                path = exchange.requestURI.rawPath,
+                query = exchange.requestURI.rawQuery ?: "",
+                body = exchange.requestBody.readBytes().decodeToString(),
+            )
+            requests += recorded
+            val (status, body) = responder(recorded)
+            val bytes = body.encodeToByteArray()
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(status, bytes.size.toLong())
+            exchange.responseBody.write(bytes)
+            exchange.close()
+        }
+        requests.clear()
+        server.start()
+    }
+
+    @AfterTest
+    fun tearDown() {
+        server.stop(0)
+    }
+
+    @Test
+    fun testReactionOnAReplyTakesTheReplyAddress() = runBlocking {
+        responder = { _ -> 200 to """{"reactions":[{"emoji":"🎉","count":1,"mine":true}]}""" }
+
+        action.reactionComment(comment("r_1", replyId = "r_1"), "🎉")
+
+        val write = requests.last()
+        assertEquals("PUT", write.method)
+        assertEquals("/api/replies/r_1/reactions/%F0%9F%8E%89", write.path)
+        assertTrue(requests.none { it.path.startsWith("/api/posts/") })
+    }
+
+    @Test
+    fun testUnreactionOnAReplyTakesTheReplyAddress() = runBlocking {
+        responder = { _ -> 200 to """{"reactions":[]}""" }
+
+        action.unreactionComment(comment("r_1", replyId = "r_1"), "🎉")
+
+        val write = requests.last()
+        assertEquals("DELETE", write.method)
+        assertEquals("/api/replies/r_1/reactions/%F0%9F%8E%89", write.path)
+    }
+
+    @Test
+    fun testLikeOnAReplyStillTakesTheReplyAddress() = runBlocking {
+        responder = { _ -> 200 to """{"reactions":[]}""" }
+
+        action.likeComment(comment("r_1", replyId = "r_1"))
+
+        val write = requests.last()
+        assertEquals("PUT", write.method)
+        assertEquals("/api/replies/r_1/reactions/%E2%9D%A4%EF%B8%8F", write.path)
+    }
+
+    @Test
+    fun testReactionOnAPostKeepsThePostAddress() = runBlocking {
+        responder = { _ -> 200 to """{"reactions":[]}""" }
+
+        action.reactionComment(comment("p_1"), "🎉")
+
+        val write = requests.last()
+        assertEquals("PUT", write.method)
+        assertEquals("/api/posts/p_1/reactions/%F0%9F%8E%89", write.path)
+        assertTrue(requests.none { it.path.startsWith("/api/replies/") })
+    }
+
+    @Test
+    fun testPostCarriesTheEveryoneAndIdentifiedModes() = runBlocking {
+        responder = { request ->
+            when (request.path) {
+                "/api/posts/p_own" -> 200 to """{"id":"p_own","isMine":true}"""
+                else -> 201 to """{"id":"p_new"}"""
+            }
+        }
+
+        action.postComment(
+            CommentForm().also {
+                it.text = "quiet"
+                it.replyId = ID("p_own")
+                it.addParam("everyone", false)
+                it.addParam("identified", true)
+            },
+        )
+
+        val write = requests.last()
+        assertEquals("POST", write.method)
+        assertEquals("/api/posts", write.path)
+        assertTrue(write.body.contains("\"everyone\":false"))
+        assertTrue(write.body.contains("\"identified\":true"))
+    }
+
+    @Test
+    fun testConversationStartCarriesTheIdentifiedMode() = runBlocking {
+        responder = { request ->
+            when (request.path) {
+                "/api/posts/p_other" -> 200 to """{"id":"p_other","isMine":false}"""
+                else -> 201 to """{"id":"cv_1"}"""
+            }
+        }
+
+        action.postComment(
+            CommentForm().also {
+                it.text = "hello"
+                it.replyId = ID("p_other")
+                it.addParam("identified", true)
+            },
+        )
+
+        val write = requests.last()
+        assertEquals("POST", write.method)
+        assertEquals("/api/posts/p_other/conversations", write.path)
+        assertEquals("""{"body":"hello","identified":true}""", write.body)
+    }
+
+    @Test
+    fun testMessageCarriesTheIdentifiedMode() = runBlocking {
+        responder = { _ -> 201 to """{"id":"r_1"}""" }
+
+        action.postMessage(
+            CommentForm().also {
+                it.text = "hi"
+                it.replyId = ID("cv_1")
+                it.addParam("identified", true)
+            },
+        )
+
+        val write = requests.last()
+        assertEquals("POST", write.method)
+        assertEquals("/api/conversations/cv_1/replies", write.path)
+        assertEquals("""{"body":"hi","identified":true}""", write.body)
+    }
+
+    @Test
+    fun testIdentifiedUrlReadsThePublicPage() = runBlocking {
+        responder = { _ ->
+            200 to """
+                {
+                  "handle": "foo",
+                  "operator": false,
+                  "profile": {"displayName": "Foo"},
+                  "posts": []
+                }
+            """.trimIndent()
+        }
+
+        val user = action.user("https://saypip.app/identified/foo") as SaypipUser
+
+        assertEquals("/api/identified/foo", requests.last().path)
+        assertEquals("foo", user.identifiedHandle)
+        assertEquals("Foo", user.name)
+        assertTrue(user.verified)
+    }
+
+    @Test
+    fun testIdentifiedTimelineReadsThePersonasPosts() = runBlocking {
+        responder = { _ ->
+            200 to """
+                {
+                  "handle": "foo",
+                  "profile": {"displayName": "Foo"},
+                  "posts": [
+                    {"id": "p_1", "body": "hello", "createdAt": "2026-08-19T09:00:00.000Z", "isMine": false}
+                  ],
+                  "postsNextCursor": "next"
+                }
+            """.trimIndent()
+        }
+
+        val user = SaypipUser(service()).also {
+            it.id = ID("foo")
+            it.identifiedHandle = "foo"
+        }
+        val page = action.userCommentTimeLine(user, SaypipPaging(10))
+
+        assertEquals("/api/identified/foo", requests.last().path)
+        assertEquals(1, page.entities.size)
+        assertEquals("hello", page.entities[0].text?.displayText)
+        assertEquals("next", (page.paging as SaypipPaging).nextCursor)
+    }
+
+    @Test
+    fun testTheIdentifiedTimelineSendsTheCursorAndLimit() = runBlocking {
+        responder = { _ ->
+            200 to """{"handle":"foo","profile":{},"posts":[]}"""
+        }
+
+        val user = SaypipUser(service()).also {
+            it.id = ID("foo")
+            it.identifiedHandle = "foo"
+        }
+        action.userCommentTimeLine(user, SaypipPaging(10).also { it.cursor = "c0" })
+
+        val read = requests.last()
+        assertEquals("/api/identified/foo", read.path)
+        assertEquals("cursor=c0&limit=10", read.query)
+    }
+
+    @Test
+    fun testIdentifiedUserIsReadThroughItsHandle() = runBlocking {
+        responder = { _ ->
+            200 to """{"handle":"foo","profile":{"displayName":"Foo"},"posts":[]}"""
+        }
+
+        val user = SaypipUser(service()).also {
+            it.id = ID("foo")
+            it.identifiedHandle = "foo"
+        }
+        val fetched = action.user(user) as SaypipUser
+
+        assertEquals("/api/identified/foo", requests.last().path)
+        assertEquals("foo", fetched.identifiedHandle)
+    }
+
+    @Test
+    fun testATokenUrlIsNotMistakenForAPersona() = runBlocking {
+        responder = { _ ->
+            200 to """{"person":{"identity":"$VIEWER_TOKEN"},"posts":[]}"""
+        }
+
+        action.user("https://saypip.app/users/$VIEWER_TOKEN?next=/identified/foo")
+
+        assertEquals("/api/users/$VIEWER_TOKEN", requests.last().path)
+    }
+
+    @Test
+    fun testAPlainIdentifiedHandleReadsThePublicPage() = runBlocking {
+        responder = { _ ->
+            200 to """{"handle":"foo","profile":{"displayName":"Foo"},"posts":[]}"""
+        }
+
+        val fetched = action.user(Identify(service(), ID("foo"))) as SaypipUser
+
+        assertEquals("/api/identified/foo", requests.last().path)
+        assertEquals("foo", fetched.identifiedHandle)
+    }
+
+    @Test
+    fun testAPlainIdentifiedHandleReadsThePersonasPosts() = runBlocking {
+        responder = { _ ->
+            200 to """
+                {
+                  "handle": "foo",
+                  "profile": {},
+                  "posts": [
+                    {"id": "p_1", "body": "hello", "createdAt": "2026-08-19T09:00:00.000Z"}
+                  ]
+                }
+            """.trimIndent()
+        }
+
+        val page = action.userCommentTimeLine(Identify(service(), ID("foo")), SaypipPaging(10))
+
+        assertEquals("/api/identified/foo", requests.last().path)
+        assertEquals(1, page.entities.size)
+    }
+
+    @Test
+    fun testAConversationQuoteIsNotAReactionTarget() = runBlocking {
+        val quote = SaypipComment(service()).also {
+            it.id = ID("cv_1")
+            it.directMessage = true
+        }
+
+        assertFailsWith<NotSupportedException> {
+            action.reactionComment(quote, "🎉")
+        }
+        assertTrue(requests.isEmpty())
+    }
+
+    @Test
+    fun testAConversationQuoteIsNotReportable() = runBlocking {
+        val quote = SaypipComment(service()).also {
+            it.id = ID("cv_1")
+            it.directMessage = true
+        }
+
+        assertFailsWith<NotSupportedException> {
+            action.reportComment(quote, null)
+        }
+        assertTrue(requests.isEmpty())
+    }
+
+    @Test
+    fun testAReplyHasNoPostWrites() = runBlocking {
+        val reply = comment("r_1", replyId = "r_1")
+
+        assertFailsWith<NotSupportedException> { action.deleteComment(reply) }
+        assertFailsWith<NotSupportedException> { action.commentContexts(reply) }
+        assertTrue(requests.isEmpty())
+    }
+
+    @Test
+    fun testReportOnAReplyTakesTheReplyTarget() = runBlocking {
+        responder = { _ -> 201 to """{"id":"rpt_1"}""" }
+
+        action.reportComment(comment("r_1", replyId = "r_1"), "a reason")
+
+        val write = requests.last()
+        assertEquals("POST", write.method)
+        assertEquals("/api/reports", write.path)
+        assertEquals(
+            """{"targetType":"reply","targetId":"r_1","reason":"a reason"}""",
+            write.body,
+        )
+    }
+
+    @Test
+    fun testAPlainHandleIsNotASubjectToMute() = runBlocking {
+        assertFailsWith<NotSupportedException> {
+            action.muteUser(Identify(service(), ID("foo")))
+        }
+        assertTrue(requests.isEmpty())
+    }
+
+    @Test
+    fun testAnIdentifiedPersonaHasNoRelationship() = runBlocking {
+        responder = { _ ->
+            200 to """{"handle":"foo","profile":{"displayName":"Foo"},"posts":[]}"""
+        }
+
+        val persona = SaypipUser(service()).also {
+            it.id = ID("foo")
+            it.identifiedHandle = "foo"
+        }
+
+        assertFailsWith<NotSupportedException> {
+            action.relationship(persona)
+        }
+        assertEquals("/api/identified/foo", requests.last().path)
+    }
+
+    @Test
+    fun testAViewerScopedTokenStillTakesTheUserPage() = runBlocking {
+        responder = { _ ->
+            200 to """{"person":{"identity":"$VIEWER_TOKEN"},"posts":[]}"""
+        }
+
+        action.user(Identify(service(), ID(VIEWER_TOKEN)))
+
+        assertEquals("/api/users/$VIEWER_TOKEN", requests.last().path)
+    }
+
+    @Test
+    fun testTheSyntheticMeIdReadsTheAccountsPosts() = runBlocking {
+        responder = { _ -> 200 to """{"items":[]}""" }
+
+        action.userCommentTimeLine(
+            Identify(service(), ID(SaypipMapper.MY_IDENTITY)),
+            SaypipPaging(10),
+        )
+
+        assertEquals("/api/me/posts", requests.last().path)
+    }
+
+    @Test
+    fun testPostOmitsTheModesWhenTheyAreNotGiven() = runBlocking {
+        responder = { request ->
+            when (request.path) {
+                "/api/posts/p_own" -> 200 to """{"id":"p_own","isMine":true}"""
+                else -> 201 to """{"id":"p_new"}"""
+            }
+        }
+
+        action.postComment(
+            CommentForm().also {
+                it.text = "plain"
+                it.replyId = ID("p_own")
+            },
+        )
+
+        assertEquals("""{"body":"plain","replyToPostId":"p_own"}""", requests.last().body)
+    }
+}

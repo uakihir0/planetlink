@@ -97,7 +97,7 @@ Each adapter module provides three key classes:
 - **`saypip/`**: Saypip adapter (ksaypip)
   - `action/` - `SaypipAuth`, `SaypipAction`, `SaypipMapper`
   - `define/` - `SaypipReactionType`
-  - `model/` - `SaypipUser`, `SaypipComment`, `SaypipPaging`, `SaypipThread`
+  - `model/` - `SaypipUser`, `SaypipMe`, `SaypipComment`, `SaypipPaging`, `SaypipThread`
   - `expand/` - `PlanetLinkEx`
 - **`all/`**: Aggregation module (CocoaPods, XCFramework, JS, Swift Package)
 - **`plugins/`**: Gradle build plugins (module.publications, root.publications)

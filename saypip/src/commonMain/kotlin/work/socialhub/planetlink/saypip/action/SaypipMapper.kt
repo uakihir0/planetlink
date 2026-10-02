@@ -1,6 +1,7 @@
 package work.socialhub.planetlink.saypip.action
 
 import kotlin.time.Instant
+import work.socialhub.ksaypip.domain.NotificationKind
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.define.NotificationActionType
 import work.socialhub.planetlink.model.Comment
@@ -15,14 +16,17 @@ import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.saypip.model.SaypipComment
+import work.socialhub.planetlink.saypip.model.SaypipMe
 import work.socialhub.planetlink.saypip.model.SaypipPaging
 import work.socialhub.planetlink.saypip.model.SaypipThread
 import work.socialhub.planetlink.saypip.model.SaypipUser
 import work.socialhub.ksaypip.entity.Conversation as SaypipConversation
 import work.socialhub.ksaypip.entity.ConversationDigest as SaypipConversationDigest
 import work.socialhub.ksaypip.entity.Feed as SaypipFeed
+import work.socialhub.ksaypip.entity.IdentifiedPage as SaypipIdentifiedPage
+import work.socialhub.ksaypip.entity.IdentifiedPerson as SaypipIdentifiedPerson
 import work.socialhub.ksaypip.entity.Media as SaypipMedia
-import work.socialhub.ksaypip.entity.Me as SaypipMe
+import work.socialhub.ksaypip.entity.Me as SaypipMeState
 import work.socialhub.ksaypip.entity.Notification as SaypipNotification
 import work.socialhub.ksaypip.entity.NotificationList as SaypipNotificationList
 import work.socialhub.ksaypip.entity.Person as SaypipPerson
@@ -43,21 +47,70 @@ object SaypipMapper {
     // ============================================================== //
     /**
      * ユーザーマッピング
+     *
+     * An identified persona has no viewer-scoped token — it is the same person for every reader —
+     * so it is carried by its public handle, name and badge instead.
      */
     fun user(
         person: SaypipPerson,
         service: Service,
     ): SaypipUser {
+        val identified = person.identified
         return SaypipUser(service).also { u ->
-            u.id = ID(person.identity)
-            u.identityToken = person.identity
-            u.name = person.label ?: person.profile?.displayName ?: ""
+            u.id = ID(person.identity ?: identified?.handle ?: "")
+            u.identityToken = person.identity ?: ""
+            u.identifiedHandle = identified?.handle
+            u.verified = identified?.verified == true
+            u.operator = identified?.operator == true
+            u.name = identified?.displayName ?: person.label ?: person.profile?.displayName ?: ""
             u.markEmoji = person.mark.emoji
-            u.markColor = person.mark.color
+            u.markColors = person.mark.colors?.toList()
             u.description = AttributedString.plain(person.profile?.bio ?: "")
-            u.iconImageUrl = person.profile?.avatarUrl
+            u.iconImageUrl = identified?.avatarUrl ?: person.profile?.avatarUrl
             u.coverImageUrl = person.profile?.bannerUrl
-            u.webUrl = "${service.host}/users/${person.identity}"
+            u.webUrl = identified?.let { "${service.host}/identified/${it.handle}" }
+                ?: "${service.host}/users/${person.identity}"
+        }
+    }
+
+    /**
+     * 公開ペルソナのマッピング
+     */
+    fun user(
+        person: SaypipIdentifiedPerson,
+        service: Service,
+    ): SaypipUser {
+        return SaypipUser(service).also { u ->
+            u.id = ID(person.handle)
+            u.identityToken = ""
+            u.identifiedHandle = person.handle
+            u.verified = person.verified
+            u.operator = person.operator
+            u.name = person.displayName ?: ""
+            u.iconImageUrl = person.avatarUrl
+            u.webUrl = "${service.host}/identified/${person.handle}"
+        }
+    }
+
+    /**
+     * 公開ペルソナのページのマッピング (投稿は comment で別に読む)
+     */
+    fun user(
+        page: SaypipIdentifiedPage,
+        service: Service,
+    ): SaypipUser {
+        return SaypipUser(service).also { u ->
+            u.id = ID(page.handle)
+            u.identityToken = ""
+            u.identifiedHandle = page.handle
+            u.verified = true
+            u.operator = page.operator
+            u.name = page.profile.displayName ?: ""
+            u.description = AttributedString.plain(page.profile.bio ?: "")
+            u.iconImageUrl = page.profile.avatarUrl
+            u.coverImageUrl = page.profile.bannerUrl
+            u.watching = page.watching
+            u.webUrl = "${service.host}/identified/${page.handle}"
         }
     }
 
@@ -71,6 +124,8 @@ object SaypipMapper {
         return user(page.person, service).also { u ->
             u.friendSince = page.relationship?.friendSince
             u.relationship = relationship(page.relationship)
+            u.watching = page.watching
+            u.note = page.note
         }
     }
 
@@ -81,10 +136,10 @@ object SaypipMapper {
      * own view — so [MY_IDENTITY] stands in for it.
      */
     fun me(
-        me: SaypipMe,
+        me: SaypipMeState,
         service: Service,
-    ): SaypipUser {
-        return SaypipUser(service).also { u ->
+    ): SaypipMe {
+        return SaypipMe(service).also { u ->
             u.id = ID(MY_IDENTITY)
             u.identityToken = ""
             u.name = me.profile?.displayName ?: ""
@@ -92,6 +147,17 @@ object SaypipMapper {
             u.iconImageUrl = me.profile?.avatarUrl
             u.coverImageUrl = me.profile?.bannerUrl
             u.webUrl = "${service.host}/me"
+
+            u.unreadNotifications = me.unreadNotifications
+            u.unreadConversations = me.unreadConversations
+            u.incomingFriendRequests = me.incomingFriendRequests
+            u.hasFriends = me.hasFriends
+            u.hasWatches = me.hasWatches
+            u.canPostIdentified = me.canPostIdentified
+            u.wantsTalkPostId = me.wantsTalkPostId
+            u.pinnedSubjects = me.pinnedSubjects.toList()
+            u.isAdmin = me.isAdmin
+            u.canSendFeedback = me.canSendFeedback
         }
     }
 
@@ -129,7 +195,9 @@ object SaypipMapper {
             c.medias = post.media.map { media(it) }
             c.wantsTalk = post.wantsTalk
             c.readableUntil = post.readableUntil
-            c.authorColor = post.authorColor
+            c.authorColors = post.authorColors?.toList()
+            c.identified = post.identified
+            c.everyone = post.everyone
             c.reactions = post.reactions.map { reaction(it) }
             c.conversationCount = post.conversations.count
             c.conversationMine = post.conversations.mine
@@ -229,6 +297,9 @@ object SaypipMapper {
 
     /**
      * 通知マッピング
+     *
+     * A reaction kind quotes the reader's own writing — a post for `post.reaction`, a reply for
+     * `reply.reaction` — and a conversation kind leads to the conversation the line belongs to.
      */
     fun notification(
         notification: SaypipNotification,
@@ -237,17 +308,23 @@ object SaypipMapper {
         return Notification(service).also { n ->
             n.id = ID(
                 "${notification.kind}:" +
-                    (notification.postId ?: notification.conversationId ?: notification.arrivedAt)
+                    (notification.postId
+                        ?: notification.replyId
+                        ?: notification.conversationId
+                        ?: notification.arrivedAt)
             )
             n.type = notification.kind
             n.action = when (notification.kind) {
-                "post.reaction" -> NotificationActionType.REACTION.code
+                NotificationKind.POST_REACTION,
+                NotificationKind.REPLY_REACTION,
+                -> NotificationActionType.REACTION.code
+
                 else -> NotificationActionType.MENTION.code
             }
             n.createAt = instant(notification.arrivedAt)
             n.users = listOfNotNull(notification.person?.let { user(it, service) })
 
-            // A reaction line quotes the reader's own post; a reply line leads to the
+            // A reaction line quotes the reader's own writing; a reply line leads to the
             // conversation rather than to any post.
             notification.postId?.let { postId ->
                 n.comments = listOf(
@@ -260,12 +337,18 @@ object SaypipMapper {
                     },
                 )
             } ?: notification.conversationId?.let { conversationId ->
+                val body = if (notification.kind == NotificationKind.REPLY_REACTION) {
+                    notification.replyBody
+                } else {
+                    notification.body
+                }
                 n.comments = listOf(
                     SaypipComment(service).also { c ->
                         c.id = ID(conversationId)
-                        c.text = AttributedString.plain(notification.body ?: "")
+                        c.text = AttributedString.plain(body ?: "")
                         c.createAt = instant(notification.arrivedAt)
                         c.directMessage = true
+                        c.replyId = notification.replyId
                     },
                 )
             }
@@ -328,6 +411,9 @@ object SaypipMapper {
 
     /**
      * 会話の発言 (返信) マッピング
+     *
+     * A reply's author is said by its seat against the conversation, except when the line was
+     * written in the identified mode: then the public persona travels with the line itself.
      */
     fun reply(
         reply: SaypipReply,
@@ -340,10 +426,15 @@ object SaypipMapper {
 
         return SaypipComment(service).also { c ->
             c.id = ID(reply.id)
+            c.replyId = reply.id
             c.text = AttributedString.plain(reply.body)
             c.createAt = instant(reply.createdAt)
-            c.user = person?.let { user(it, service) }
+            c.user = reply.identifiedAuthor
+                ?.let { user(it, service) }
+                ?: person?.let { user(it, service) }
             c.directMessage = true
+            c.identified = reply.identified
+            c.reactions = reply.reactions.map { reaction(it) }
         }
     }
 
