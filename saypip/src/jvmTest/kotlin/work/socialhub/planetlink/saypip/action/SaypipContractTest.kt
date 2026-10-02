@@ -340,9 +340,71 @@ class SaypipContractTest {
         val reply = comment("r_1", replyId = "r_1")
 
         assertFailsWith<NotSupportedException> { action.deleteComment(reply) }
-        assertFailsWith<NotSupportedException> { action.reportComment(reply, null) }
         assertFailsWith<NotSupportedException> { action.commentContexts(reply) }
         assertTrue(requests.isEmpty())
+    }
+
+    @Test
+    fun testReportOnAReplyTakesTheReplyTarget() = runBlocking {
+        responder = { _ -> 201 to """{"id":"rpt_1"}""" }
+
+        action.reportComment(comment("r_1", replyId = "r_1"), "a reason")
+
+        val write = requests.last()
+        assertEquals("POST", write.method)
+        assertEquals("/api/reports", write.path)
+        assertEquals(
+            """{"targetType":"reply","targetId":"r_1","reason":"a reason"}""",
+            write.body,
+        )
+    }
+
+    @Test
+    fun testAPlainHandleIsNotASubjectToMute() = runBlocking {
+        assertFailsWith<NotSupportedException> {
+            action.muteUser(Identify(service(), ID("foo")))
+        }
+        assertTrue(requests.isEmpty())
+    }
+
+    @Test
+    fun testAnIdentifiedPersonaHasNoRelationship() = runBlocking {
+        responder = { _ ->
+            200 to """{"handle":"foo","profile":{"displayName":"Foo"},"posts":[]}"""
+        }
+
+        val persona = SaypipUser(service()).also {
+            it.id = ID("foo")
+            it.identifiedHandle = "foo"
+        }
+
+        assertFailsWith<NotSupportedException> {
+            action.relationship(persona)
+        }
+        assertEquals("/api/identified/foo", requests.last().path)
+    }
+
+    @Test
+    fun testAViewerScopedTokenStillTakesTheUserPage() = runBlocking {
+        responder = { _ ->
+            200 to """{"person":{"identity":"$VIEWER_TOKEN"},"posts":[]}"""
+        }
+
+        action.user(Identify(service(), ID(VIEWER_TOKEN)))
+
+        assertEquals("/api/users/$VIEWER_TOKEN", requests.last().path)
+    }
+
+    @Test
+    fun testTheSyntheticMeIdReadsTheAccountsPosts() = runBlocking {
+        responder = { _ -> 200 to """{"items":[]}""" }
+
+        action.userCommentTimeLine(
+            Identify(service(), ID(SaypipMapper.MY_IDENTITY)),
+            SaypipPaging(10),
+        )
+
+        assertEquals("/api/me/posts", requests.last().path)
     }
 
     @Test

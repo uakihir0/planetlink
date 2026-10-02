@@ -836,9 +836,23 @@ class SaypipAction(
      * {@inheritDoc}
      */
     override suspend fun reportComment(id: Identify, comment: String?) {
+        val replyId = (id as? SaypipComment)?.replyId
+        if (replyId != null) {
+            proceedUnit {
+                auth.accessor.reports().report(
+                    ReportsReportRequest().also {
+                        it.targetType = ReportTargetType.REPLY
+                        it.targetId = replyId
+                        it.reason = comment ?: ""
+                    },
+                )
+            }
+            return
+        }
+
         requirePost(
             id,
-            "A conversation reply cannot be reported here; a post or an account can.",
+            "A conversation line that names no reply is not reportable.",
         )
         proceedUnit {
             auth.accessor.reports().report(
@@ -1132,6 +1146,11 @@ class SaypipAction(
     }
 
     private fun isIdentifiedHandleShape(value: String): Boolean {
+        // A `vi_tok_`-prefixed string is a token attempt even when truncated, so a corrupted
+        // token 404s rather than resolving to a persona that happens to hold that name.
+        if (value.startsWith("vi_tok")) {
+            return false
+        }
         return value.length in 3..30 &&
             value.first() in 'a'..'z' &&
             value.all { it in 'a'..'z' || it in '0'..'9' || it == '_' }
