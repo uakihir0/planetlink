@@ -49,6 +49,12 @@ things it deliberately does not: a person is a viewer-scoped identity token with
 friendship is mutual (there is no one-directional follow), there is no user search or social
 graph, no re-sharing, bookmarks, polls or editing.
 
+An identified persona is the one public face: it carries a handle and a badge rather than a
+viewer-scoped token, and `user()` and `userCommentTimeLine()` read it through its public page. A
+mark is a two-colour gradient (`markColors`, `authorColors`), and a reaction may go on a post or
+on a conversation reply — the adapter addresses each write by the comment's own kind. A write in
+the identified mode is opted into with `params["identified"]`.
+
 The API is reached through Saypip's OAuth 2.1 authorization server with PKCE:
 
 ```kotlin

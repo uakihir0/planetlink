@@ -10,6 +10,7 @@ import work.socialhub.ksaypip.api.request.conversations.ConversationsListRequest
 import work.socialhub.ksaypip.api.request.conversations.ConversationsReplyRequest
 import work.socialhub.ksaypip.api.request.feed.FeedFeedRequest
 import work.socialhub.ksaypip.api.request.feed.FeedSearchRequest
+import work.socialhub.ksaypip.api.request.identified.IdentifiedPageRequest
 import work.socialhub.ksaypip.api.request.media.MediaUploadRequest
 import work.socialhub.ksaypip.api.request.me.MeMeRequest
 import work.socialhub.ksaypip.api.request.me.MePostsRequest
@@ -25,6 +26,8 @@ import work.socialhub.ksaypip.api.request.posts.PostsPostRequest
 import work.socialhub.ksaypip.api.request.posts.PostsReactRequest
 import work.socialhub.ksaypip.api.request.posts.PostsStartConversationRequest
 import work.socialhub.ksaypip.api.request.posts.PostsUnreactRequest
+import work.socialhub.ksaypip.api.request.replies.RepliesReactRequest
+import work.socialhub.ksaypip.api.request.replies.RepliesUnreactRequest
 import work.socialhub.ksaypip.api.request.reports.ReportsReportRequest
 import work.socialhub.ksaypip.api.request.users.UsersUserRequest
 import work.socialhub.ksaypip.domain.MuteDuration
@@ -80,14 +83,16 @@ import work.socialhub.planetlink.model.event.IdentifyEvent
  * Saypip adapter.
  *
  * What Saypip has, this action maps as it is: the room as the home timeline, a post as a
- * comment, a conversation as a thread, an emoji as a reaction, a friend request's outcome as a
- * relationship. What it deliberately does not have — follows, a social graph, search of people,
- * re-sharing, bookmarks, polls, editing, a realtime socket an application may hold — is not
- * advertised and answers [NotSupportedException], because the honest answer to "can you" is the
- * one a caller can plan around.
+ * comment, a conversation as a thread, a conversation reply as a comment too (a reaction knows
+ * both addresses), an emoji as a reaction, a friend request's outcome as a relationship, and an
+ * identified persona as the public user its page describes. What it deliberately does not have —
+ * follows, a social graph, search of people, re-sharing, bookmarks, polls, editing, a realtime
+ * socket an application may hold — is not advertised and answers [NotSupportedException], because
+ * the honest answer to "can you" is the one a caller can plan around.
  *
  * A person is addressed by the viewer-scoped identity token the viewer holds for them, and the
- * authenticated account itself has no token; [SaypipMapper.MY_IDENTITY] stands in for it.
+ * authenticated account itself has no token; [SaypipMapper.MY_IDENTITY] stands in for it. An
+ * identified persona is addressed by its public handle instead.
  */
 @JsExport
 class SaypipAction(
@@ -195,13 +200,20 @@ class SaypipAction(
 
     /**
      * {@inheritDoc}
-     * (id は相手を表す identity token)
+     * (id は相手を表す identity token、または公開ペルソナの handle)
      */
     override suspend fun user(id: Identify): User {
         return fetchUser(id)
     }
 
     private suspend fun fetchUser(id: Identify): User {
+        if (id is SaypipUser) {
+            val handle = id.identifiedHandle
+            if (handle != null) {
+                return fetchIdentifiedUser(handle)
+            }
+        }
+
         val page = proceed {
             auth.accessor.users().user(
                 UsersUserRequest().also {
@@ -213,11 +225,28 @@ class SaypipAction(
         return SaypipMapper.user(page, service())
     }
 
+    private suspend fun fetchIdentifiedUser(handle: String): SaypipUser {
+        val page = proceed {
+            auth.accessor.identified().page(
+                IdentifiedPageRequest().also {
+                    it.handle = handle
+                },
+            ).data
+        }
+
+        return SaypipMapper.user(page, service())
+    }
+
     /**
      * {@inheritDoc}
      * https://saypip.app/users/vi_tok_...
+     * https://saypip.app/identified/...
      */
     override suspend fun user(url: String): User {
+        val handle = handleFromIdentifiedUrl(url)
+        if (handle != null) {
+            return fetchIdentifiedUser(handle)
+        }
         return fetchUser(Identify(service(), ID(tokenFromUrl(url))))
     }
 
@@ -371,8 +400,18 @@ class SaypipAction(
 
     /**
      * {@inheritDoc}
+     *
+     * An identified persona's page carries its posts at any age, so it is the user timeline a
+     * persona has; a viewer-scoped person's page carries the same, bounded by the reading window.
      */
     override suspend fun userCommentTimeLine(id: Identify, paging: Paging): Pageable<Comment> {
+        if (id is SaypipUser) {
+            val handle = id.identifiedHandle
+            if (handle != null) {
+                return fetchIdentifiedTimeLine(handle, paging)
+            }
+        }
+
         if (isMe(id)) {
             val feed = proceed {
                 auth.accessor.me().posts(
@@ -389,6 +428,30 @@ class SaypipAction(
             auth.accessor.users().user(
                 UsersUserRequest().also {
                     it.identityToken = identityOf(id)
+                    it.cursor = cursor(paging)
+                    it.limit = paging.count
+                },
+            ).data
+        }
+
+        val pagingModel = SaypipPaging.fromPaging(paging)
+        pagingModel.nextCursor = page.postsNextCursor
+
+        return Pageable<Comment>().also { p ->
+            p.entities = page.posts.map { SaypipMapper.comment(it, service()) }
+            p.paging = pagingModel
+        }
+    }
+
+    /** One page of an identified persona's posts, which the persona's public page answers. */
+    private suspend fun fetchIdentifiedTimeLine(
+        handle: String,
+        paging: Paging,
+    ): Pageable<Comment> {
+        val page = proceed {
+            auth.accessor.identified().page(
+                IdentifiedPageRequest().also {
+                    it.handle = handle
                     it.cursor = cursor(paging)
                     it.limit = paging.count
                 },
@@ -510,7 +573,7 @@ class SaypipAction(
                     "A reply to somebody else's post is a message in a conversation, and a conversation carries words only."
                 )
             }
-            startConversationOnPost(replyToPostId, req.text ?: "")
+            startConversationOnPost(replyToPostId, req.text ?: "", req)
             return
         }
 
@@ -520,6 +583,8 @@ class SaypipAction(
             it.body = req.text ?: ""
             it.mediaIds = mediaIds.toTypedArray().takeIf { ids -> ids.isNotEmpty() }
             it.wantsTalk = req.params["wantsTalk"] as? Boolean
+            it.everyone = req.params["everyone"] as? Boolean
+            it.identified = req.params["identified"] as? Boolean
             it.replyToPostId = replyToPostId
         }
 
@@ -544,15 +609,21 @@ class SaypipAction(
      * one with this message as its first. One live conversation per person per post, and a second
      * is refused by name — which is an answer rather than an error, because the message belongs in
      * the one that is there. The author's ask is answered by the write either way, so
-     * [CommentForm.params] carries nothing into a conversation.
+     * [CommentForm.params] carries nothing into a conversation but the identified mode.
      */
-    private suspend fun startConversationOnPost(postId: String, body: String) {
+    private suspend fun startConversationOnPost(
+        postId: String,
+        body: String,
+        req: CommentForm,
+    ) {
+        val identified = req.params["identified"] as? Boolean
         try {
             proceed {
                 auth.accessor.posts().startConversation(
                     PostsStartConversationRequest().also {
                         it.postId = postId
                         it.body = body
+                        it.identified = identified
                     },
                 )
             }
@@ -560,7 +631,7 @@ class SaypipAction(
             val refusal = e.cause as? SaypipException
             if (refusal?.status != 409 || refusal.reason != "conversation_already_started") throw e
             val conversationId = myConversationIdOnPost(postId) ?: throw e
-            replyInConversation(conversationId, body)
+            replyInConversation(conversationId, body, identified)
         }
     }
 
@@ -577,12 +648,17 @@ class SaypipAction(
     }
 
     /** One message into a conversation this reader is one of the two participants in. */
-    private suspend fun replyInConversation(conversationId: String, body: String) {
+    private suspend fun replyInConversation(
+        conversationId: String,
+        body: String,
+        identified: Boolean?,
+    ) {
         proceedUnit {
             auth.accessor.conversations().reply(
                 ConversationsReplyRequest().also {
                     it.conversationId = conversationId
                     it.body = body
+                    it.identified = identified
                 },
             )
         }
@@ -637,7 +713,25 @@ class SaypipAction(
 
     // Free-standing impls so same-class callers (reactionComment) don't route through the
     // unwired JS virtual suspend bridge. See AGENTS.md "Kotlin/JS yield* Bug".
+
+    /**
+     * A picture goes on a post or on a conversation reply, and the comment's own kind decides the
+     * address: [SaypipComment.replyId] names a reply, and anything else is a post.
+     */
     private suspend fun doReaction(id: Identify, reaction: String) {
+        val replyId = (id as? SaypipComment)?.replyId
+        if (replyId != null) {
+            proceedUnit {
+                auth.accessor.replies().react(
+                    RepliesReactRequest().also {
+                        it.replyId = replyId
+                        it.emoji = reaction
+                    },
+                )
+            }
+            return
+        }
+
         proceedUnit {
             auth.accessor.posts().react(
                 PostsReactRequest().also {
@@ -648,7 +742,23 @@ class SaypipAction(
         }
     }
 
+    /**
+     * The reply and post addresses differ, and the comment says which one it is. See [doReaction].
+     */
     private suspend fun doUnreaction(id: Identify, reaction: String) {
+        val replyId = (id as? SaypipComment)?.replyId
+        if (replyId != null) {
+            proceedUnit {
+                auth.accessor.replies().unreact(
+                    RepliesUnreactRequest().also {
+                        it.replyId = replyId
+                        it.emoji = reaction
+                    },
+                )
+            }
+            return
+        }
+
         proceedUnit {
             auth.accessor.posts().unreact(
                 PostsUnreactRequest().also {
@@ -877,6 +987,7 @@ class SaypipAction(
                 ConversationsReplyRequest().also {
                     it.conversationId = conversationId
                     it.body = req.text
+                    it.identified = req.params["identified"] as? Boolean
                 },
             )
         }
@@ -942,12 +1053,18 @@ class SaypipAction(
 
     private fun isMe(id: Identify): Boolean {
         if (id is SaypipUser) {
-            return id.identityToken.isEmpty()
+            // An identified persona has no token either, but it is not the viewer.
+            return id.identityToken.isEmpty() && id.identifiedHandle == null
         }
         return id.id?.value<String>() == SaypipMapper.MY_IDENTITY
     }
 
     private fun identityOf(id: Identify): String {
+        if (id is SaypipUser && id.identifiedHandle != null) {
+            throw NotSupportedException(
+                "An identified persona is addressed by its handle, not by a viewer-scoped identity token."
+            )
+        }
         if (id is SaypipUser && id.identityToken.isNotEmpty()) {
             return id.identityToken
         }
@@ -957,6 +1074,10 @@ class SaypipAction(
             )
         }
         return id.id<String>()
+    }
+
+    private fun handleFromIdentifiedUrl(url: String): String? {
+        return if (url.contains("/identified/")) tokenFromUrl(url) else null
     }
 
     private fun cursor(paging: Paging?): String? {
