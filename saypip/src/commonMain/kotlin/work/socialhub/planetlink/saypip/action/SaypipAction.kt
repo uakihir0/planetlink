@@ -207,11 +207,9 @@ class SaypipAction(
     }
 
     private suspend fun fetchUser(id: Identify): User {
-        if (id is SaypipUser) {
-            val handle = id.identifiedHandle
-            if (handle != null) {
-                return fetchIdentifiedUser(handle)
-            }
+        val handle = identifiedHandleOf(id)
+        if (handle != null) {
+            return fetchIdentifiedUser(handle)
         }
 
         val page = proceed {
@@ -326,6 +324,11 @@ class SaypipAction(
         }
 
         val user = fetchUser(id)
+        if (user is SaypipUser && user.identifiedHandle != null) {
+            throw NotSupportedException(
+                "An identified persona has no viewer-scoped relationship."
+            )
+        }
         if (user is SaypipUser && user.relationship != null) {
             return user.relationship!!
         }
@@ -405,11 +408,9 @@ class SaypipAction(
      * persona has; a viewer-scoped person's page carries the same, bounded by the reading window.
      */
     override suspend fun userCommentTimeLine(id: Identify, paging: Paging): Pageable<Comment> {
-        if (id is SaypipUser) {
-            val handle = id.identifiedHandle
-            if (handle != null) {
-                return fetchIdentifiedTimeLine(handle, paging)
-            }
+        val handle = identifiedHandleOf(id)
+        if (handle != null) {
+            return fetchIdentifiedTimeLine(handle, paging)
         }
 
         if (isMe(id)) {
@@ -732,6 +733,10 @@ class SaypipAction(
             return
         }
 
+        requirePost(
+            id,
+            "A conversation line that names no reply is not itself a reaction target.",
+        )
         proceedUnit {
             auth.accessor.posts().react(
                 PostsReactRequest().also {
@@ -759,6 +764,10 @@ class SaypipAction(
             return
         }
 
+        requirePost(
+            id,
+            "A conversation line that names no reply is not itself a reaction target.",
+        )
         proceedUnit {
             auth.accessor.posts().unreact(
                 PostsUnreactRequest().also {
@@ -801,6 +810,10 @@ class SaypipAction(
      * {@inheritDoc}
      */
     override suspend fun deleteComment(id: Identify) {
+        requirePost(
+            id,
+            "A conversation reply has no delete address; a post is what can be taken down.",
+        )
         proceedUnit {
             auth.accessor.posts().delete(
                 PostsDeleteRequest().also {
@@ -823,6 +836,10 @@ class SaypipAction(
      * {@inheritDoc}
      */
     override suspend fun reportComment(id: Identify, comment: String?) {
+        requirePost(
+            id,
+            "A conversation reply cannot be reported here; a post or an account can.",
+        )
         proceedUnit {
             auth.accessor.reports().report(
                 ReportsReportRequest().also {
@@ -881,6 +898,10 @@ class SaypipAction(
      * screens rather than descendants of the comment.
      */
     override suspend fun commentContexts(id: Identify): Context {
+        requirePost(
+            id,
+            "A conversation reply has no public context; its thread is the conversation.",
+        )
         val post = proceed {
             auth.accessor.posts().post(
                 PostsPostRequest().also {
@@ -1053,14 +1074,22 @@ class SaypipAction(
 
     private fun isMe(id: Identify): Boolean {
         if (id is SaypipUser) {
-            // An identified persona has no token either, but it is not the viewer.
-            return id.identityToken.isEmpty() && id.identifiedHandle == null
+            // The authenticated account is the one viewer-scoped person the mapper names with an
+            // empty token; an identified persona has no token either but is not the viewer.
+            return id.identityToken.isEmpty() &&
+                id.identifiedHandle == null &&
+                id.id?.value<String>() == SaypipMapper.MY_IDENTITY
         }
         return id.id?.value<String>() == SaypipMapper.MY_IDENTITY
     }
 
     private fun identityOf(id: Identify): String {
         if (id is SaypipUser && id.identifiedHandle != null) {
+            throw NotSupportedException(
+                "An identified persona is addressed by its handle, not by a viewer-scoped identity token."
+            )
+        }
+        if (id !is SaypipUser && id.id?.value<String>()?.let { isIdentifiedHandleShape(it) } == true) {
             throw NotSupportedException(
                 "An identified persona is addressed by its handle, not by a viewer-scoped identity token."
             )
@@ -1076,8 +1105,48 @@ class SaypipAction(
         return id.id<String>()
     }
 
+    /**
+     * Refuse a conversation line where the caller named a write or read only a post has. A
+     * reply's own addresses are its reactions and its conversation.
+     */
+    private fun requirePost(id: Identify, message: String) {
+        if (id is SaypipComment && (id.replyId != null || id.directMessage)) {
+            throw NotSupportedException(message)
+        }
+    }
+
+    /**
+     * The public handle an identifier names, or null when it can only be a viewer-scoped token.
+     *
+     * The two shapes cannot overlap: a token is `vi_tok_` plus 32 Crockford characters, so 39
+     * characters long, while a handle is 3–30 lower-case `[a-z0-9_]` starting with a letter. A
+     * caller that persisted an identified user's id and passes it back as a plain [Identify] is
+     * therefore read through the persona's page rather than sent looking for a token.
+     */
+    private fun identifiedHandleOf(id: Identify): String? {
+        if (id is SaypipUser) {
+            return id.identifiedHandle
+        }
+        val value = id.id?.value<String>() ?: return null
+        return value.takeIf { isIdentifiedHandleShape(it) }
+    }
+
+    private fun isIdentifiedHandleShape(value: String): Boolean {
+        return value.length in 3..30 &&
+            value.first() in 'a'..'z' &&
+            value.all { it in 'a'..'z' || it in '0'..'9' || it == '_' }
+    }
+
     private fun handleFromIdentifiedUrl(url: String): String? {
-        return if (url.contains("/identified/")) tokenFromUrl(url) else null
+        val segments = url.substringBefore('?')
+            .substringBefore('#')
+            .trimEnd('/')
+            .split('/')
+        val index = segments.indexOfLast { it == "identified" }
+        if (index < 0) {
+            return null
+        }
+        return segments.getOrNull(index + 1)?.takeIf { it.isNotEmpty() }
     }
 
     private fun cursor(paging: Paging?): String? {

@@ -53,7 +53,7 @@ open class SaypipUser(
     override var name: String = ""
 
     override val accountIdentify: String
-        get() = identityToken
+        get() = identityToken.ifEmpty { identifiedHandle ?: "" }
 
     override var webUrl: String = ""
         get() = field.ifEmpty {

@@ -45,7 +45,7 @@ class SaypipComment(
 
     override var reactions: List<Reaction> = listOf()
         get() = field + listOfNotNull(
-            reaction("conversation", conversationCount)
+            reaction("conversation", conversationCount.takeIf { it > 0 })
         )
 
     private fun reaction(

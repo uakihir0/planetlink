@@ -433,6 +433,7 @@ object SaypipMapper {
                 ?.let { user(it, service) }
                 ?: person?.let { user(it, service) }
             c.directMessage = true
+            c.identified = reply.identified
             c.reactions = reply.reactions.map { reaction(it) }
         }
     }

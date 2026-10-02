@@ -6,11 +6,14 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.ID
+import work.socialhub.planetlink.model.Identify
 import work.socialhub.planetlink.model.Service
+import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.saypip.model.SaypipComment
 import work.socialhub.planetlink.saypip.model.SaypipPaging
@@ -22,6 +25,9 @@ import work.socialhub.planetlink.saypip.model.SaypipUser
  * optional body, and an identified persona is read through its public page.
  */
 class SaypipContractTest {
+
+    /** A viewer-scoped identity token's shape: `vi_tok_` plus 32 Crockford characters. */
+    private val VIEWER_TOKEN = "vi_tok_8F3K5M2N7Q4R9T6V1W0X3Y5Z7A2B4C6D"
 
     private data class Recorded(
         val method: String,
@@ -255,5 +261,106 @@ class SaypipContractTest {
         val read = requests.last()
         assertEquals("/api/identified/foo", read.path)
         assertEquals("cursor=c0&limit=10", read.query)
+    }
+
+    @Test
+    fun testIdentifiedUserIsReadThroughItsHandle() = runBlocking {
+        responder = { _ ->
+            200 to """{"handle":"foo","profile":{"displayName":"Foo"},"posts":[]}"""
+        }
+
+        val user = SaypipUser(service()).also {
+            it.id = ID("foo")
+            it.identifiedHandle = "foo"
+        }
+        val fetched = action.user(user) as SaypipUser
+
+        assertEquals("/api/identified/foo", requests.last().path)
+        assertEquals("foo", fetched.identifiedHandle)
+    }
+
+    @Test
+    fun testATokenUrlIsNotMistakenForAPersona() = runBlocking {
+        responder = { _ ->
+            200 to """{"person":{"identity":"$VIEWER_TOKEN"},"posts":[]}"""
+        }
+
+        action.user("https://saypip.app/users/$VIEWER_TOKEN?next=/identified/foo")
+
+        assertEquals("/api/users/$VIEWER_TOKEN", requests.last().path)
+    }
+
+    @Test
+    fun testAPlainIdentifiedHandleReadsThePublicPage() = runBlocking {
+        responder = { _ ->
+            200 to """{"handle":"foo","profile":{"displayName":"Foo"},"posts":[]}"""
+        }
+
+        val fetched = action.user(Identify(service(), ID("foo"))) as SaypipUser
+
+        assertEquals("/api/identified/foo", requests.last().path)
+        assertEquals("foo", fetched.identifiedHandle)
+    }
+
+    @Test
+    fun testAPlainIdentifiedHandleReadsThePersonasPosts() = runBlocking {
+        responder = { _ ->
+            200 to """
+                {
+                  "handle": "foo",
+                  "profile": {},
+                  "posts": [
+                    {"id": "p_1", "body": "hello", "createdAt": "2026-08-19T09:00:00.000Z"}
+                  ]
+                }
+            """.trimIndent()
+        }
+
+        val page = action.userCommentTimeLine(Identify(service(), ID("foo")), SaypipPaging(10))
+
+        assertEquals("/api/identified/foo", requests.last().path)
+        assertEquals(1, page.entities.size)
+    }
+
+    @Test
+    fun testAConversationQuoteIsNotAReactionTarget() = runBlocking {
+        val quote = SaypipComment(service()).also {
+            it.id = ID("cv_1")
+            it.directMessage = true
+        }
+
+        assertFailsWith<NotSupportedException> {
+            action.reactionComment(quote, "🎉")
+        }
+        assertTrue(requests.isEmpty())
+    }
+
+    @Test
+    fun testAReplyHasNoPostWrites() = runBlocking {
+        val reply = comment("r_1", replyId = "r_1")
+
+        assertFailsWith<NotSupportedException> { action.deleteComment(reply) }
+        assertFailsWith<NotSupportedException> { action.reportComment(reply, null) }
+        assertFailsWith<NotSupportedException> { action.commentContexts(reply) }
+        assertTrue(requests.isEmpty())
+    }
+
+    @Test
+    fun testPostOmitsTheModesWhenTheyAreNotGiven() = runBlocking {
+        responder = { request ->
+            when (request.path) {
+                "/api/posts/p_own" -> 200 to """{"id":"p_own","isMine":true}"""
+                else -> 201 to """{"id":"p_new"}"""
+            }
+        }
+
+        action.postComment(
+            CommentForm().also {
+                it.text = "plain"
+                it.replyId = ID("p_own")
+            },
+        )
+
+        assertEquals("""{"body":"plain","replyToPostId":"p_own"}""", requests.last().body)
     }
 }

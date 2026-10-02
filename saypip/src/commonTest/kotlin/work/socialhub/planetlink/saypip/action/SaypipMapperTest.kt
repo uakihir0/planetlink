@@ -79,6 +79,7 @@ class SaypipMapperTest {
 
         assertEquals("", user.identityToken)
         assertEquals("foo", user.identifiedHandle)
+        assertEquals("foo", user.accountIdentify)
         assertEquals("Foo", user.name)
         assertTrue(user.verified)
         assertTrue(user.operator)
@@ -275,7 +276,11 @@ class SaypipMapperTest {
         assertEquals("r_1", comment.id?.value<String>())
         assertEquals("Foo", comment.user?.name)
         assertEquals("foo", (comment.user as SaypipUser).identifiedHandle)
-        assertTrue(comment.reactions.any { it.name == "🎉" && it.count == 1 })
+        assertTrue(comment.identified)
+        // The reply's own bar, and no zero-count conversation entry from the post's getter.
+        assertEquals(1, comment.reactions.size)
+        assertEquals("🎉", comment.reactions[0].name)
+        assertEquals(1, comment.reactions[0].count)
     }
 
     @Test
