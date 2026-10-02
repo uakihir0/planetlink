@@ -336,6 +336,19 @@ class SaypipContractTest {
     }
 
     @Test
+    fun testAConversationQuoteIsNotReportable() = runBlocking {
+        val quote = SaypipComment(service()).also {
+            it.id = ID("cv_1")
+            it.directMessage = true
+        }
+
+        assertFailsWith<NotSupportedException> {
+            action.reportComment(quote, null)
+        }
+        assertTrue(requests.isEmpty())
+    }
+
+    @Test
     fun testAReplyHasNoPostWrites() = runBlocking {
         val reply = comment("r_1", replyId = "r_1")
 
