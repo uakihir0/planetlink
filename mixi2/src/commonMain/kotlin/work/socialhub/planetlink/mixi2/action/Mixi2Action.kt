@@ -120,6 +120,7 @@ class Mixi2Action(
 ) : AccountActionImpl(account) {
 
     private val personaCache = mutableMapOf<String, Mixi2User>()
+    private val profileLoadedPersonas = mutableSetOf<String>()
     private var activePersonaId: String? = null
 
     companion object {
@@ -157,6 +158,8 @@ class Mixi2Action(
                 SocialActionType.ReportComment,
                 SocialActionType.BookmarkComment,
                 SocialActionType.UnbookmarkComment,
+                SocialActionType.GetNotification,
+                SocialActionType.MarkNotificationsRead,
                 SocialActionType.GetChannels,
 
                 TimeLineActionType.HomeTimeLine,
@@ -205,14 +208,17 @@ class Mixi2Action(
 
     private suspend fun fetchUserMe(): Mixi2User {
         val session = proceed { client.session().getSession().data }
-        val managed = session.sessionManagedPersonas.firstOrNull {
-            it.profile?.persona?.personaId == session.activePersonaId
+        val managed = session.activePersonaId?.let { activeId ->
+            session.sessionManagedPersonas.firstOrNull {
+                it.profile?.persona?.personaId == activeId
+            }
         } ?: session.sessionManagedPersonas.firstOrNull { it.profile?.persona != null }
         val profile = managed?.profile
-            ?: throw NotFoundException("The mixi2 session carries no persona.", null)
+            ?: throw NotFoundException(null, "The mixi2 session carries no persona.", null)
 
         val user = Mixi2Mapper.user(profile, service())
         activePersonaId = user.personaId
+        profileLoadedPersonas.add(user.personaId)
         personaCache[user.personaId] = user
         me = user
         return user
@@ -227,10 +233,14 @@ class Mixi2Action(
     }
 
     private suspend fun fetchUser(id: Identify): Mixi2User {
-        if (id is Mixi2User && id.personaId.isNotEmpty()) {
+        if (id is Mixi2User &&
+            id.personaId.isNotEmpty() &&
+            id.personaId in profileLoadedPersonas
+        ) {
             personaCache[id.personaId]?.let { return it }
         }
         return Mixi2Mapper.user(fetchProfile(id), service()).also {
+            profileLoadedPersonas.add(it.personaId)
             personaCache[it.personaId] = it
         }
     }
@@ -239,7 +249,7 @@ class Mixi2Action(
         val personaId = resolvePersonaId(id)
         return proceed {
             client.persona().getProfile(GetProfileRequest(personaId)).data.profile
-        } ?: throw NotFoundException("The mixi2 persona was not found.", null)
+        } ?: throw NotFoundException(null, "The mixi2 persona was not found.", null)
     }
 
     /**
@@ -352,12 +362,12 @@ class Mixi2Action(
 
     private suspend fun decideFollowRequest(id: Identify, approve: Boolean) {
         val personaId = resolvePersonaId(id)
-        val requestId = proceed {
-            client.follow().getPendingFollowingRequests(GetPendingFollowingRequestsRequest())
-                .data.followingRequests
-                .firstOrNull { it.senderId == personaId }
-                ?.requestId
-        } ?: throw NotFoundException("No pending mixi2 follow request from that persona.", null)
+        val requestId = findPendingFollowRequest(personaId)
+            ?: throw NotFoundException(
+                null,
+                "No pending mixi2 follow request from that persona.",
+                null,
+            )
 
         proceedUnit {
             if (approve) {
@@ -365,6 +375,24 @@ class Mixi2Action(
             } else {
                 client.follow().rejectFollowingRequest(RejectFollowingRequestRequest(requestId))
             }
+        }
+    }
+
+    /**
+     * The pending requests are paged, so a request past the first page is still
+     * found by walking the cursor to its end.
+     */
+    private suspend fun findPendingFollowRequest(personaId: String): String? {
+        var cursor: String? = null
+        while (true) {
+            val response = proceed {
+                client.follow().getPendingFollowingRequests(
+                    GetPendingFollowingRequestsRequest().also { it.cursor = cursor }
+                ).data
+            }
+            response.followingRequests.firstOrNull { it.senderId == personaId }
+                ?.let { return it.requestId }
+            cursor = response.nextCursor?.takeIf { it.isNotBlank() } ?: return null
         }
     }
 
@@ -802,13 +830,14 @@ class Mixi2Action(
             )
         }
 
-        val mediaIds = req.images.map { uploadMedia(it) }
+        val communityId = req.params["communityId"] as? String
+        val mediaIds = req.images.map { uploadMedia(it, communityId) }
         val request = CreatePostRequest(text).also {
             it.inReplyToPostId = req.replyId?.value<String>()
             it.quotePostId = req.quoteId?.value<String>()
             it.mediaIds = mediaIds
             it.isSensitive = req.isSensitive
-            it.communityId = req.params["communityId"] as? String
+            it.communityId = communityId
         }
         proceedUnit {
             client.post().createPost(request)
@@ -827,7 +856,7 @@ class Mixi2Action(
 
         val post = proceed {
             client.post().getPost(GetPostRequest(id.id())).data.post
-        } ?: throw NotFoundException("The mixi2 post was not found.", null)
+        } ?: throw NotFoundException(null, "The mixi2 post was not found.", null)
 
         return fetchComments(listOf(post)).first()
     }
@@ -1058,9 +1087,11 @@ class Mixi2Action(
      * The participating communities are the channels the account can read.
      */
     override suspend fun channels(id: Identify, paging: Paging): Pageable<Channel> {
+        val personaId = resolvePersonaId(id)
         val response = proceed {
             client.community().getParticipatingCommunities(
                 GetParticipatingCommunitiesRequest().also {
+                    it.personaId = personaId
                     it.limit = limit(paging)
                     it.cursor = cursor(paging)
                 }
@@ -1081,6 +1112,11 @@ class Mixi2Action(
         return fetchCommunityTimeLine(id, paging)
     }
 
+    /**
+     * One page of posts: the community timeline response carries no cursor, so
+     * [Mixi2Paging] cannot page past the first response even though the request
+     * accepts a cursor.
+     */
     private suspend fun fetchCommunityTimeLine(id: Identify, paging: Paging): Pageable<Comment> {
         val posts = proceed {
             client.community().getCommunityTimeline(
@@ -1273,6 +1309,11 @@ class Mixi2Action(
         return Mixi2Mapper.timeline(posts, users, service(), paging, nextCursor)
     }
 
+    /**
+     * One page of posts for the timelines whose response carries no cursor:
+     * the request accepts an `untilCursorId`, but the service answers with the
+     * posts only, so [Mixi2Paging] cannot page past the first response.
+     */
     private suspend fun fetchPostsTimeline(
         paging: Paging,
         fetcher: suspend () -> List<Post>,
@@ -1317,7 +1358,7 @@ class Mixi2Action(
     private suspend fun fetchPersonaByName(name: String): Persona {
         return proceed {
             client.persona().getPersonaByName(GetPersonaByNameRequest(name)).data.persona
-        } ?: throw NotFoundException("The mixi2 persona was not found.", null)
+        } ?: throw NotFoundException(null, "The mixi2 persona was not found.", null)
     }
 
     /**
@@ -1347,7 +1388,10 @@ class Mixi2Action(
         }
     }
 
-    private suspend fun uploadMedia(form: MediaForm): String {
+    private suspend fun uploadMedia(
+        form: MediaForm,
+        communityId: String? = null,
+    ): String {
         val mimeType = mediaMimeType(form.name)
         val media = proceed {
             client.media().uploadMedia(
@@ -1355,6 +1399,7 @@ class Mixi2Action(
                     mimeType = mimeType,
                     data = form.data,
                     category = mediaCategory(mimeType),
+                    communityId = communityId,
                     description = form.description,
                 )
             ).data

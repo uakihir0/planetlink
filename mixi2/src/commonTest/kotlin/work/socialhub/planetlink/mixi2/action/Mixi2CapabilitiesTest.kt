@@ -26,6 +26,8 @@ class Mixi2CapabilitiesTest {
         assertTrue(capabilities.isSupported(SocialActionType.ReactionComment))
         assertTrue(capabilities.isSupported(SocialActionType.ShareComment))
         assertTrue(capabilities.isSupported(SocialActionType.BookmarkComment))
+        assertTrue(capabilities.isSupported(SocialActionType.GetNotification))
+        assertTrue(capabilities.isSupported(SocialActionType.MarkNotificationsRead))
         assertTrue(capabilities.isSupported(SocialActionType.GetChannels))
         assertTrue(capabilities.isSupported(TimeLineActionType.HomeTimeLine))
         assertTrue(capabilities.isSupported(TimeLineActionType.ChannelTimeLine))
