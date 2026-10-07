@@ -221,7 +221,7 @@ class Mixi2Action(
 
     private suspend fun fetchUserMe(): Mixi2User {
         val session = proceed { client.session().getSession().data }
-        val activeId = session.activePersonaId
+        val activeId = session.activePersonaId?.takeIf { it.isNotBlank() }
         val managed = if (activeId != null) {
             session.sessionManagedPersonas.firstOrNull {
                 it.profile?.persona?.personaId == activeId
