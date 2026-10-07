@@ -17,4 +17,5 @@ enum class ServiceType {
     Matrix,
     Discord,
     Saypip,
+    Mixi2,
 }
