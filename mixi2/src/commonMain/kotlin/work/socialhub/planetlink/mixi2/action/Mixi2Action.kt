@@ -131,6 +131,17 @@ class Mixi2Action(
             "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
         )
 
+        /**
+         * The types a default notification read returns: everything but the
+         * mentions, replies and quotes the contract leaves out.
+         */
+        private val DEFAULT_ACTIVITY_TYPES = NotificationActivityType.entries.filter {
+            it != NotificationActivityType.REPLY &&
+                it != NotificationActivityType.MENTION &&
+                it != NotificationActivityType.QUOTE &&
+                it != NotificationActivityType.UNKNOWN
+        }
+
         val CAPABILITIES = Capabilities(
             setOf(
                 SocialActionType.GetUserMe,
@@ -762,9 +773,6 @@ class Mixi2Action(
 
     /**
      * {@inheritDoc}
-     */
-    /**
-     * {@inheritDoc}
      *
      * mixi2 marks a range before a time-series id, so the bounded case marks
      * that range and then the boundary itself, keeping "up to" inclusive.
@@ -805,7 +813,7 @@ class Mixi2Action(
     private fun activityTypesOf(
         actions: Array<NotificationActionType>?,
     ): List<NotificationActivityType> {
-        if (actions == null) return emptyList()
+        if (actions == null) return DEFAULT_ACTIVITY_TYPES
         val types = mutableListOf<NotificationActivityType>()
         for (action in actions) {
             when (action) {

@@ -9,6 +9,7 @@ import kotlin.test.assertTrue
 import work.socialhub.kmixi2web.entity.ChatRoomMessage
 import work.socialhub.kmixi2web.entity.Community
 import work.socialhub.kmixi2web.entity.CommunityAccessLevel
+import work.socialhub.kmixi2web.entity.CommunitySummary
 import work.socialhub.kmixi2web.entity.LinkCard
 import work.socialhub.kmixi2web.entity.Media
 import work.socialhub.kmixi2web.entity.Notification
@@ -285,6 +286,24 @@ class Mixi2MapperTest {
         val form = comment.replyForm
         assertEquals(false, form.isMessage)
         assertEquals("post-1", form.replyId?.value<String>())
+    }
+
+    @Test
+    fun keepsCommunityOnReplyForm() {
+        val comment = Mixi2Mapper.comment(
+            Post(
+                postId = "post-1",
+                community = CommunitySummary(
+                    communityId = "community-1",
+                    name = "Kotlin",
+                ),
+            ),
+            emptyMap(),
+            service,
+        )
+
+        assertEquals("community-1", comment.communityId)
+        assertEquals("community-1", comment.replyForm.params["communityId"])
     }
 
     @Test

@@ -69,10 +69,11 @@ class Mixi2Comment(
         get() = if (isOnlyShared) checkNotNull(sharedComment) else this
 
     override val replyForm: CommentForm
-        get() = CommentForm().also {
+        get() = CommentForm().also { form ->
             val room = roomId
-            it.replyId(if (directMessage && room != null) ID(room) else id)
-            it.isMessage(directMessage)
+            form.replyId(if (directMessage && room != null) ID(room) else id)
+            form.isMessage(directMessage)
+            communityId?.let { community -> form.addParam("communityId", community) }
         }
 
     override val quoteForm: CommentForm
