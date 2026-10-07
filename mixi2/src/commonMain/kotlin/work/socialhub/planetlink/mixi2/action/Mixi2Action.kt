@@ -844,6 +844,14 @@ class Mixi2Action(
     // Free-standing impl so same-class callers don't route through the unwired
     // JS virtual suspend bridge. See AGENTS.md "Kotlin/JS yield* Bug".
     private suspend fun doPostComment(req: CommentForm) {
+        if (req.isMessage) {
+            doPostMessage(req)
+            return
+        }
+        if (req.poll != null) {
+            throw NotSupportedException("mixi2 has no polls.")
+        }
+
         val text = req.text.orEmpty()
         if (text.isBlank() &&
             req.quoteId == null &&
@@ -1138,9 +1146,9 @@ class Mixi2Action(
     }
 
     /**
-     * One page of posts: the community timeline response carries no cursor, so
-     * [Mixi2Paging] cannot page past the first response even though the request
-     * accepts a cursor.
+     * The community timeline answers with posts only, so the oldest post's
+     * time-series id is the cursor the next page asks for through
+     * `untilCursorId`.
      */
     private suspend fun fetchCommunityTimeLine(id: Identify, paging: Paging): Pageable<Comment> {
         val posts = proceed {
@@ -1151,7 +1159,7 @@ class Mixi2Action(
                 }
             ).data.posts
         }
-        return timeline(posts, paging, null)
+        return timeline(posts, paging, posts.lastOrNull()?.timeSeriesId)
     }
 
     /**
@@ -1251,7 +1259,15 @@ class Mixi2Action(
                 }
             ).data
         }
-        val users = fetchPersonas(response.messages.map { it.personaId })
+        val users = fetchPersonas(
+            response.messages.flatMap { message ->
+                listOfNotNull(
+                    message.personaId,
+                    message.post?.personaId,
+                    message.post?.referencePost?.personaId,
+                )
+            }
+        )
         val nextCursor = if (response.hasNext) {
             response.messages.lastOrNull()?.messageId
         } else {
@@ -1335,15 +1351,16 @@ class Mixi2Action(
     }
 
     /**
-     * One page of posts for the timelines whose response carries no cursor:
-     * the request accepts an `untilCursorId`, but the service answers with the
-     * posts only, so [Mixi2Paging] cannot page past the first response.
+     * The post-list timelines answer with posts only, so the oldest post's
+     * time-series id is the cursor the next page asks for through
+     * `untilCursorId`.
      */
     private suspend fun fetchPostsTimeline(
         paging: Paging,
         fetcher: suspend () -> List<Post>,
     ): Pageable<Comment> {
-        return timeline(proceed { fetcher() }, paging, null)
+        val posts = proceed { fetcher() }
+        return timeline(posts, paging, posts.lastOrNull()?.timeSeriesId)
     }
 
     private suspend fun fetchComments(posts: List<Post>): List<Mixi2Comment> {
