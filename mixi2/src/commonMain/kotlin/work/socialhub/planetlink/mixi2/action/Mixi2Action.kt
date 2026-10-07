@@ -121,7 +121,6 @@ class Mixi2Action(
 ) : AccountActionImpl(account) {
 
     private val personaCache = mutableMapOf<String, Mixi2User>()
-    private val profileLoadedPersonas = mutableSetOf<String>()
     private var activePersonaId: String? = null
 
     companion object {
@@ -232,7 +231,6 @@ class Mixi2Action(
 
         val user = Mixi2Mapper.user(profile, service())
         activePersonaId = user.personaId
-        profileLoadedPersonas.add(user.personaId)
         personaCache[user.personaId] = user
         me = user
         return user
@@ -246,15 +244,13 @@ class Mixi2Action(
         return fetchUser(id)
     }
 
+    /**
+     * An explicit user read always fetches the profile, so a refresh sees the
+     * current counts and relationship; the result also warms the batch cache
+     * used for timeline authors.
+     */
     private suspend fun fetchUser(id: Identify): Mixi2User {
-        if (id is Mixi2User &&
-            id.personaId.isNotEmpty() &&
-            id.personaId in profileLoadedPersonas
-        ) {
-            personaCache[id.personaId]?.let { return it }
-        }
         return Mixi2Mapper.user(fetchProfile(id), service()).also {
-            profileLoadedPersonas.add(it.personaId)
             personaCache[it.personaId] = it
         }
     }
@@ -282,7 +278,6 @@ class Mixi2Action(
             ?.takeIf { it.isNotEmpty() }
             ?: throw NotSupportedException("The URL is not a mixi2 persona URL.")
         return Mixi2Mapper.user(fetchProfileByName(name), service()).also {
-            profileLoadedPersonas.add(it.personaId)
             personaCache[it.personaId] = it
         }
     }
@@ -900,8 +895,6 @@ class Mixi2Action(
     }
 
     private suspend fun fetchComment(id: Identify): Mixi2Comment {
-        if (id is Mixi2Comment) return id
-
         val post = proceed {
             client.post().getPost(GetPostRequest(id.id())).data.post
         } ?: throw NotFoundException(null, "The mixi2 post was not found.", null)
@@ -1095,11 +1088,7 @@ class Mixi2Action(
             ).data.posts
         }.filter { it.postId != postId }
 
-        val replyPosts = proceed {
-            client.post().getReplies(
-                GetRepliesRequest(postId = postId, limit = DEFAULT_CONTEXT_COUNT)
-            ).data.posts
-        }.filter { it.postId != postId }
+        val replyPosts = fetchAllReplies(postId).filter { it.postId != postId }
 
         val users = fetchPersonas(
             (ancestorPosts + replyPosts).flatMap { post ->
@@ -1115,6 +1104,34 @@ class Mixi2Action(
                 .map { Mixi2Mapper.comment(it, users, service()) }
                 .sortedByDescending { it.createAt }
         }
+    }
+
+    /**
+     * The context carries no paging parameter, so the replies are read to
+     * their end; a repeated cursor ends the walk.
+     */
+    private suspend fun fetchAllReplies(postId: String): List<Post> {
+        val posts = mutableListOf<Post>()
+        var cursor: String? = null
+        while (true) {
+            val response = proceed {
+                client.post().getReplies(
+                    GetRepliesRequest(
+                        postId = postId,
+                        limit = DEFAULT_CONTEXT_COUNT,
+                        cursor = cursor,
+                    )
+                ).data
+            }
+            posts.addAll(response.posts)
+
+            val next = response.nextCursor
+                .takeIf { response.hasNext && it.isNotBlank() }
+                ?: break
+            if (next == cursor) break
+            cursor = next
+        }
+        return posts
     }
 
     // ============================================================== //
@@ -1307,6 +1324,9 @@ class Mixi2Action(
     private suspend fun doPostMessage(req: CommentForm) {
         if (req.poll != null) {
             throw NotSupportedException("mixi2 has no polls.")
+        }
+        if (req.quoteId != null) {
+            throw NotSupportedException("A mixi2 room message cannot quote a post.")
         }
         val roomId = req.replyId?.value<String>()
             ?: throw NotSupportedException("A mixi2 message needs a room id (set replyId).")
