@@ -6,6 +6,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import work.socialhub.kmixi2web.entity.ChatRoomMessage
 import work.socialhub.kmixi2web.entity.Community
 import work.socialhub.kmixi2web.entity.CommunityAccessLevel
 import work.socialhub.kmixi2web.entity.LinkCard
@@ -249,6 +250,41 @@ class Mixi2MapperTest {
         assertEquals(42, channel.memberCount)
         assertEquals(false, channel.isPublic)
         assertEquals(true, channel.isArchived)
+    }
+
+    @Test
+    fun mapsChatMessageWithItsRoom() {
+        val author = Mixi2Mapper.user(
+            Persona(personaId = "persona-1", name = "planetlink"),
+            service,
+        )
+        val comment = Mixi2Mapper.chatComment(
+            ChatRoomMessage(
+                roomId = "room-1",
+                messageId = "message-1",
+                personaId = "persona-1",
+                text = "hello",
+            ),
+            mapOf("persona-1" to author),
+            service,
+        )
+
+        assertTrue(comment.directMessage)
+        assertEquals("room-1", comment.roomId)
+        assertEquals("hello", comment.text?.displayText)
+
+        val form = comment.replyForm
+        assertTrue(form.isMessage)
+        assertEquals("room-1", form.replyId?.value<String>())
+    }
+
+    @Test
+    fun buildsPostReplyForm() {
+        val comment = Mixi2Mapper.comment(Post(postId = "post-1"), emptyMap(), service)
+
+        val form = comment.replyForm
+        assertEquals(false, form.isMessage)
+        assertEquals("post-1", form.replyId?.value<String>())
     }
 
     @Test

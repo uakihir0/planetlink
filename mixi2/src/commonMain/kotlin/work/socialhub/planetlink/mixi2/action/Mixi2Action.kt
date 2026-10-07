@@ -159,6 +159,7 @@ class Mixi2Action(
                 SocialActionType.ReportComment,
                 SocialActionType.BookmarkComment,
                 SocialActionType.UnbookmarkComment,
+                SocialActionType.GetUserBookmarks,
                 SocialActionType.GetNotification,
                 SocialActionType.MarkNotificationsRead,
                 SocialActionType.GetChannels,
@@ -794,6 +795,11 @@ class Mixi2Action(
                 MarkNotificationsAsReadBeforeTimeRequest(newest.timeSeriesId)
             )
         }
+        proceedUnit {
+            client.notification().markNotificationAsRead(
+                MarkNotificationAsReadRequest(newest.timeSeriesId)
+            )
+        }
     }
 
     private fun activityTypesOf(
@@ -844,12 +850,12 @@ class Mixi2Action(
     // Free-standing impl so same-class callers don't route through the unwired
     // JS virtual suspend bridge. See AGENTS.md "Kotlin/JS yield* Bug".
     private suspend fun doPostComment(req: CommentForm) {
+        if (req.poll != null) {
+            throw NotSupportedException("mixi2 has no polls.")
+        }
         if (req.isMessage) {
             doPostMessage(req)
             return
-        }
-        if (req.poll != null) {
-            throw NotSupportedException("mixi2 has no polls.")
         }
 
         val text = req.text.orEmpty()
@@ -1146,9 +1152,9 @@ class Mixi2Action(
     }
 
     /**
-     * The community timeline answers with posts only, so the oldest post's
-     * time-series id is the cursor the next page asks for through
-     * `untilCursorId`.
+     * The community timeline answers with posts only. Its cursor names a post
+     * (returning the older ones, exclusive), so the oldest post's id is the
+     * cursor the next page asks for.
      */
     private suspend fun fetchCommunityTimeLine(id: Identify, paging: Paging): Pageable<Comment> {
         val posts = proceed {
@@ -1159,7 +1165,7 @@ class Mixi2Action(
                 }
             ).data.posts
         }
-        return timeline(posts, paging, posts.lastOrNull()?.timeSeriesId)
+        return timeline(posts, paging, posts.lastOrNull()?.postId?.nextCursor(paging))
     }
 
     /**
@@ -1353,14 +1359,19 @@ class Mixi2Action(
     /**
      * The post-list timelines answer with posts only, so the oldest post's
      * time-series id is the cursor the next page asks for through
-     * `untilCursorId`.
+     * `untilCursorId`. A blank or repeated cursor would page forever, so it is
+     * dropped.
      */
     private suspend fun fetchPostsTimeline(
         paging: Paging,
         fetcher: suspend () -> List<Post>,
     ): Pageable<Comment> {
         val posts = proceed { fetcher() }
-        return timeline(posts, paging, posts.lastOrNull()?.timeSeriesId)
+        return timeline(posts, paging, posts.lastOrNull()?.timeSeriesId?.nextCursor(paging))
+    }
+
+    private fun String.nextCursor(paging: Paging): String? {
+        return takeIf { it.isNotBlank() && it != cursor(paging) }
     }
 
     private suspend fun fetchComments(posts: List<Post>): List<Mixi2Comment> {

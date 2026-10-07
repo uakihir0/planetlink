@@ -3,6 +3,7 @@ package work.socialhub.planetlink.mixi2.model
 import kotlin.js.JsExport
 import work.socialhub.planetlink.micro.MicroBlogComment
 import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Reaction
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.request.CommentForm
@@ -33,6 +34,9 @@ class Mixi2Comment(
 
     /** Name of the community the post was written to, if any. */
     var communityName: String? = null
+
+    /** Chat room the message belongs to, or null on a public post. */
+    var roomId: String? = null
 
     private var storedReactions: List<Reaction> = listOf()
 
@@ -66,7 +70,9 @@ class Mixi2Comment(
 
     override val replyForm: CommentForm
         get() = CommentForm().also {
-            it.replyId(id)
+            val room = roomId
+            it.replyId(if (directMessage && room != null) ID(room) else id)
+            it.isMessage(directMessage)
         }
 
     override val quoteForm: CommentForm

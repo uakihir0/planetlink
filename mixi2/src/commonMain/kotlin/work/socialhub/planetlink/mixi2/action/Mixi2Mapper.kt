@@ -299,6 +299,7 @@ object Mixi2Mapper {
     ): Mixi2Comment {
         return Mixi2Comment(service).also { c ->
             c.id = ID(message.messageId)
+            c.roomId = message.roomId
             c.text = message.text?.let { text -> AttributedString.plain(text) }
             c.createAt = instant(message.createdAt)
             c.user = users[message.personaId]
