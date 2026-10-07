@@ -1191,9 +1191,9 @@ class Mixi2Action(
         }
 
         val users = fetchPersonas(
-            response.members.mapNotNull {
-                it.persona?.personaId ?: it.personaId.ifBlank { null }
-            }
+            response.members
+                .filter { it.persona == null }
+                .mapNotNull { it.personaId.ifBlank { null } }
         )
         return Pageable<User>().also { p ->
             p.entities = response.members.mapNotNull { member ->

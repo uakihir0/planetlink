@@ -103,6 +103,25 @@ class Mixi2MapperTest {
     }
 
     @Test
+    fun fallsBackToPersonaFollowState() {
+        val user = Mixi2Mapper.user(
+            Profile(
+                persona = Persona(
+                    personaId = "persona-1",
+                    name = "planetlink",
+                    following = true,
+                    followed = true,
+                ),
+            ),
+            service,
+        )
+
+        val relationship = assertNotNull(user.relationship)
+        assertTrue(relationship.following)
+        assertTrue(relationship.followed)
+    }
+
+    @Test
     fun mapsPostWithStampsAndSharedReference() {
         val author = Mixi2Mapper.user(
             Persona(

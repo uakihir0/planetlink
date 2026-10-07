@@ -110,11 +110,17 @@ object Mixi2Mapper {
 
     /**
      * 関係のマッピング
+     *
+     * A profile read may leave the connectivity unset while the wrapped
+     * persona still carries the follow state, so the persona is the fallback.
      */
     fun relationship(profile: Profile): Relationship {
+        val persona = profile.persona
         return Relationship().also { r ->
-            r.following = profile.personaConnectivity?.following == true
-            r.followed = profile.personaConnectivity?.followed == true
+            r.following = profile.personaConnectivity?.following
+                ?: (persona?.following == true)
+            r.followed = profile.personaConnectivity?.followed
+                ?: (persona?.followed == true)
             r.blocking = profile.isBlocking
             r.muting = profile.isMuted
         }
