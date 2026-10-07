@@ -87,6 +87,7 @@ val feed = account.action.homeTimeLine(Mixi2Paging(20))
 いいねはいいねとして、カスタムスタンプはリアクション (スタンプ ID で指定)
 として扱われ、コミュニティはチャンネル、チャットルームはメッセージスレッド
 に対応します。リポストは元のポストを `sharedComment` として持ちます。
+コミュニティへの投稿は `CommentForm` の `params["communityId"]` で指定します。
 mixi2 に存在しない編集・投票・メンションタイムライン・ストリームは
 サポート対象として公開されません。
 

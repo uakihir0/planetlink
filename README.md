@@ -134,8 +134,9 @@ val feed = account.action.homeTimeLine(Mixi2Paging(20))
 
 A like is a like and a custom stamp is a reaction (addressed by its stamp id),
 a community is a channel, a chat room is a message thread, and a repost carries
-the original post as `sharedComment`. What mixi2 does not have — editing,
-polls, a mention timeline, a stream socket — is not advertised.
+the original post as `sharedComment`. A post goes to a community by setting
+`params["communityId"]` on the `CommentForm`. What mixi2 does not have —
+editing, polls, a mention timeline, a stream socket — is not advertised.
 
 ## License
 
