@@ -70,7 +70,6 @@ object Mixi2Mapper {
             u.isFrozen = persona.isPersonaFrozen
             u.isBlocking = persona.isBlocking
             u.followingStatus = persona.followingStatus
-            u.webUrl = "${service.host ?: HOST}/@${persona.name}"
 
             val following = connectivity?.following ?: persona.following
             val followed = connectivity?.followed ?: persona.followed

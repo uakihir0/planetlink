@@ -359,6 +359,7 @@ class Mixi2MapperTest {
     fun mapsUserType() {
         val user: Mixi2User = Mixi2Mapper.user(Persona(personaId = "p1"), service)
         assertEquals("p1", user.accountIdentify)
+        assertEquals("https://mixi.social/@p1", user.webUrl)
         assertFalse(user.verified)
     }
 }

@@ -221,11 +221,14 @@ class Mixi2Action(
 
     private suspend fun fetchUserMe(): Mixi2User {
         val session = proceed { client.session().getSession().data }
-        val managed = session.activePersonaId?.let { activeId ->
+        val activeId = session.activePersonaId
+        val managed = if (activeId != null) {
             session.sessionManagedPersonas.firstOrNull {
                 it.profile?.persona?.personaId == activeId
             }
-        } ?: session.sessionManagedPersonas.firstOrNull { it.profile?.persona != null }
+        } else {
+            session.sessionManagedPersonas.firstOrNull { it.profile?.persona != null }
+        }
         val profile = managed?.profile
             ?: throw NotFoundException(null, "The mixi2 session carries no persona.", null)
 
@@ -894,7 +897,14 @@ class Mixi2Action(
         return fetchComment(id)
     }
 
+    /**
+     * A chat message is addressed by its message id, which `GetPost` does not
+     * serve, so it is not refreshable; every public post is re-read.
+     */
     private suspend fun fetchComment(id: Identify): Mixi2Comment {
+        if (id is Mixi2Comment && id.directMessage) {
+            return id
+        }
         val post = proceed {
             client.post().getPost(GetPostRequest(id.id())).data.post
         } ?: throw NotFoundException(null, "The mixi2 post was not found.", null)
