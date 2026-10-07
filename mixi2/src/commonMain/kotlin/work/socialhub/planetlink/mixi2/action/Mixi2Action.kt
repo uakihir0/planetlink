@@ -182,6 +182,7 @@ class Mixi2Action(
                 TimeLineActionType.SearchTimeLine,
                 TimeLineActionType.UserBookmarkTimeLine,
                 TimeLineActionType.ChannelTimeLine,
+                TimeLineActionType.MessageTimeLine,
 
                 UsersActionType.GetFollowingUsers,
                 UsersActionType.GetFollowerUsers,

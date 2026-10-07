@@ -32,6 +32,7 @@ class Mixi2CapabilitiesTest {
         assertTrue(capabilities.isSupported(SocialActionType.GetChannels))
         assertTrue(capabilities.isSupported(TimeLineActionType.HomeTimeLine))
         assertTrue(capabilities.isSupported(TimeLineActionType.ChannelTimeLine))
+        assertTrue(capabilities.isSupported(TimeLineActionType.MessageTimeLine))
         assertTrue(capabilities.isSupported(TimeLineActionType.UserBookmarkTimeLine))
         assertTrue(capabilities.isSupported(UsersActionType.GetFollowingUsers))
         assertTrue(capabilities.isSupported(UsersActionType.ChannelUsers))

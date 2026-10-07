@@ -39,6 +39,12 @@ class Mixi2Comment(
     /** Chat room the message belongs to, or null on a public post. */
     var roomId: String? = null
 
+    /** Chat message kind (a message or a system event), or null on a post. */
+    var messageType: String? = null
+
+    /** The persona a chat system event is about, or null. */
+    var messageTargetId: String? = null
+
     private var storedReactions: List<Reaction> = listOf()
 
     override var reactions: List<Reaction>

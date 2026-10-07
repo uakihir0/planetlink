@@ -294,6 +294,8 @@ class Mixi2MapperTest {
 
         assertTrue(comment.directMessage)
         assertEquals("room-1", comment.roomId)
+        assertEquals("message", comment.messageType)
+        assertNull(comment.messageTargetId)
         assertEquals("hello", comment.text?.displayText)
         assertEquals("", comment.webUrl)
 
