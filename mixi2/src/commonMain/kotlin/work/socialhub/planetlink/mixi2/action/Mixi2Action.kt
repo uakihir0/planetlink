@@ -1304,6 +1304,9 @@ class Mixi2Action(
     }
 
     private suspend fun doPostMessage(req: CommentForm) {
+        if (req.poll != null) {
+            throw NotSupportedException("mixi2 has no polls.")
+        }
         val roomId = req.replyId?.value<String>()
             ?: throw NotSupportedException("A mixi2 message needs a room id (set replyId).")
         val mediaIds = req.images.map { uploadMedia(it) }

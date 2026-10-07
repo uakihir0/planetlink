@@ -82,14 +82,17 @@ class Mixi2Comment(
         }
 
     override var webUrl: String = ""
-        get() = field.ifEmpty {
-            val host = service.host ?: "https://mixi.social"
-            val value = id<String>()
-            val handle = (user as? Mixi2User)?.handle
-            if (handle.isNullOrBlank()) {
-                "$host/posts/$value"
-            } else {
-                "$host/@$handle/posts/$value"
-            }.also { field = it }
+        get() {
+            if (directMessage) return ""
+            return field.ifEmpty {
+                val host = service.host ?: "https://mixi.social"
+                val value = id<String>()
+                val handle = (user as? Mixi2User)?.handle
+                if (handle.isNullOrBlank()) {
+                    "$host/posts/$value"
+                } else {
+                    "$host/@$handle/posts/$value"
+                }.also { field = it }
+            }
         }
 }

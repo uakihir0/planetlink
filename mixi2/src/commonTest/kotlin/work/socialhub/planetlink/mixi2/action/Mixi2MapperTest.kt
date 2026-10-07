@@ -273,6 +273,7 @@ class Mixi2MapperTest {
         assertTrue(comment.directMessage)
         assertEquals("room-1", comment.roomId)
         assertEquals("hello", comment.text?.displayText)
+        assertEquals("", comment.webUrl)
 
         val form = comment.replyForm
         assertTrue(form.isMessage)
