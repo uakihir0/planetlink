@@ -55,7 +55,6 @@ kotlin {
         commonMain.dependencies {
             implementation(project(":core"))
             implementation(libs.kmixi2web.core)
-            implementation(libs.serialization.json)
         }
 
         commonTest.dependencies {
