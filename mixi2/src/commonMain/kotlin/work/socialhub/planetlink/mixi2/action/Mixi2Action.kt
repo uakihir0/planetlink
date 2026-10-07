@@ -29,6 +29,7 @@ import work.socialhub.kmixi2web.api.request.GetPersonaByNameRequest
 import work.socialhub.kmixi2web.api.request.GetPersonalTimelineRequest
 import work.socialhub.kmixi2web.api.request.GetPersonasRequest
 import work.socialhub.kmixi2web.api.request.GetPostRequest
+import work.socialhub.kmixi2web.api.request.GetProfileByNameRequest
 import work.socialhub.kmixi2web.api.request.GetProfileRequest
 import work.socialhub.kmixi2web.api.request.GetReactionPostsRequest
 import work.socialhub.kmixi2web.api.request.GetRecommendedTimelineRequest
@@ -252,6 +253,12 @@ class Mixi2Action(
         } ?: throw NotFoundException(null, "The mixi2 persona was not found.", null)
     }
 
+    private suspend fun fetchProfileByName(name: String): Profile {
+        return proceed {
+            client.persona().getProfileByName(GetProfileByNameRequest(name)).data.profile
+        } ?: throw NotFoundException(null, "The mixi2 persona was not found.", null)
+    }
+
     /**
      * {@inheritDoc}
      * https://mixi.social/@handle
@@ -261,7 +268,8 @@ class Mixi2Action(
             ?.removePrefix("@")
             ?.takeIf { it.isNotEmpty() }
             ?: throw NotSupportedException("The URL is not a mixi2 persona URL.")
-        return Mixi2Mapper.user(fetchPersonaByName(name), service()).also {
+        return Mixi2Mapper.user(fetchProfileByName(name), service()).also {
+            profileLoadedPersonas.add(it.personaId)
             personaCache[it.personaId] = it
         }
     }
@@ -392,7 +400,10 @@ class Mixi2Action(
             }
             response.followingRequests.firstOrNull { it.senderId == personaId }
                 ?.let { return it.requestId }
-            cursor = response.nextCursor?.takeIf { it.isNotBlank() } ?: return null
+
+            val next = response.nextCursor?.takeIf { it.isNotBlank() } ?: return null
+            if (next == cursor) return null
+            cursor = next
         }
     }
 
@@ -751,8 +762,19 @@ class Mixi2Action(
     /**
      * {@inheritDoc}
      */
+    /**
+     * {@inheritDoc}
+     *
+     * mixi2 marks a range before a time-series id, so the bounded case marks
+     * that range and then the boundary itself, keeping "up to" inclusive.
+     */
     override suspend fun markNotificationsRead(upToId: Identify?) {
         if (upToId != null) {
+            proceedUnit {
+                client.notification().markNotificationsAsReadBeforeTime(
+                    MarkNotificationsAsReadBeforeTimeRequest(upToId.id())
+                )
+            }
             proceedUnit {
                 client.notification().markNotificationAsRead(
                     MarkNotificationAsReadRequest(upToId.id())
@@ -811,6 +833,9 @@ class Mixi2Action(
     // ============================================================== //
     /**
      * {@inheritDoc}
+     *
+     * Set `params["communityId"]` to post into a community; the same value is
+     * passed to the uploads the post's images need.
      */
     override suspend fun postComment(req: CommentForm) {
         doPostComment(req)
