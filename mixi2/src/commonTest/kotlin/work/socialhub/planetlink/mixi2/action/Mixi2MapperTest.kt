@@ -2,6 +2,7 @@ package work.socialhub.planetlink.mixi2.action
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -27,6 +28,7 @@ import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.define.NotificationActionType
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Service
+import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.mixi2.model.Mixi2Comment
 import work.socialhub.planetlink.mixi2.model.Mixi2User
 
@@ -61,6 +63,7 @@ class Mixi2MapperTest {
         assertEquals("https://img.mixi.social/cover.png", user.coverImageUrl)
         assertEquals("https://mixi.social/@planetlink", user.webUrl)
         assertEquals(true, user.verified)
+        assertTrue(assertNotNull(user.relationship).following)
     }
 
     @Test
@@ -278,6 +281,8 @@ class Mixi2MapperTest {
         val form = comment.replyForm
         assertTrue(form.isMessage)
         assertEquals("room-1", form.replyId?.value<String>())
+
+        assertFailsWith<NotSupportedException> { comment.quoteForm }
     }
 
     @Test

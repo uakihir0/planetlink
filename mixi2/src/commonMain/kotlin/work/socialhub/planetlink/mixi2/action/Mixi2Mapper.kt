@@ -71,10 +71,13 @@ object Mixi2Mapper {
             u.isBlocking = persona.isBlocking
             u.followingStatus = persona.followingStatus
             u.webUrl = "${service.host ?: HOST}/@${persona.name}"
-            connectivity?.let { c ->
+
+            val following = connectivity?.following ?: persona.following
+            val followed = connectivity?.followed ?: persona.followed
+            if (connectivity != null || following || followed || persona.isBlocking) {
                 u.relationship = Relationship().also { r ->
-                    r.following = c.following
-                    r.followed = c.followed
+                    r.following = following
+                    r.followed = followed
                     r.blocking = persona.isBlocking
                 }
             }

@@ -6,6 +6,7 @@ import work.socialhub.planetlink.model.Comment
 import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Reaction
 import work.socialhub.planetlink.model.Service
+import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.model.request.CommentForm
 
 /**
@@ -77,8 +78,13 @@ class Mixi2Comment(
         }
 
     override val quoteForm: CommentForm
-        get() = CommentForm().also {
-            it.quoteId(id)
+        get() {
+            if (directMessage) {
+                throw NotSupportedException("A mixi2 chat message cannot be quoted.")
+            }
+            return CommentForm().also {
+                it.quoteId(id)
+            }
         }
 
     override var webUrl: String = ""
