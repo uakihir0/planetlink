@@ -25,6 +25,7 @@ This is a Kotlin Multiplatform port of [SocialHub](https://github.com/uakihir0/S
 - Tumblr (library: [ktumblr](https://github.com/uakihir0/ktumblr))
 - Saypip (library: [ksaypip](https://github.com/uakihir0/ksaypip))
 - X / Twitter (read-only, library: [kxweb](https://github.com/uakihir0/kxweb))
+- mixi2 (library: [kmixi2web](https://github.com/uakihir0/kmixi2web))
 
 ## Usage
 
@@ -109,6 +110,33 @@ val following = account.action.homeTimeLine(XPaging(20))
 // Guest mode supports a limited set of public reads.
 val guest = PlanetLink.x().guestAccount()
 ```
+
+### mixi2
+
+mixi2 publishes no official API, so the adapter speaks the undocumented web
+protobuf RPC interface used by the mixi2 web client. Authentication is the
+browser session cookie and the `x-auth-key` header, copied from an authorized
+account's DevTools.
+
+```kotlin
+import work.socialhub.planetlink.PlanetLink
+import work.socialhub.planetlink.mixi2.expand.PlanetLinkEx.mixi2
+import work.socialhub.planetlink.mixi2.model.Mixi2Paging
+
+val account = PlanetLink.mixi2().accountWithCredentials(
+    cookie = "MIXI2_COOKIE",
+    authKey = "MIXI2_AUTH_KEY",
+)
+
+val me = account.action.userMe()
+val feed = account.action.homeTimeLine(Mixi2Paging(20))
+```
+
+A like is a like and a custom stamp is a reaction (addressed by its stamp id),
+a community is a channel, a chat room is a message thread, and a repost carries
+the original post as `sharedComment`. A post goes to a community by setting
+`params["communityId"]` on the `CommentForm`. What mixi2 does not have —
+editing, polls, a mention timeline, a stream socket — is not advertised.
 
 ## License
 
