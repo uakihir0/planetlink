@@ -1,5 +1,5 @@
 [versions]
-kotlin = "2.4.0"
+kotlin = "2.4.20"
 dokka = "2.2.0"
 maven-publish = "0.37.0"
 serialization = "1.11.0"
@@ -26,7 +26,7 @@ ksaypip-auth = "work.socialhub.ksaypip:auth:0.0.1-SNAPSHOT"
 ksaypip-stream = "work.socialhub.ksaypip:stream:0.0.1-SNAPSHOT"
 kxweb-core = "work.socialhub.kxweb:core:0.1.0-SNAPSHOT"
 kmixi2web-core = "work.socialhub.kmixi2web:core:0.1.0-SNAPSHOT"
-ktor-core = "io.ktor:ktor-client-core:3.5.1"
+ktor-core = "io.ktor:ktor-client-core:3.6.0"
 ksoup = "com.mohamedrejeb.ksoup:ksoup-html:0.6.0"
 datetime = "org.jetbrains.kotlinx:kotlinx-datetime:0.8.0"
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -36,7 +36,7 @@ serialization-cbor = { module = "org.jetbrains.kotlinx:kotlinx-serialization-cbo
 nexus-publish = "io.github.gradle-nexus.publish-plugin:io.github.gradle-nexus.publish-plugin.gradle.plugin:2.0.0"
 maven-publish = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "maven-publish" }
 dokka = { module = "org.jetbrains.dokka:dokka-gradle-plugin", version.ref = "dokka" }
-slf4j-simple = "org.slf4j:slf4j-simple:2.0.18"
+slf4j-simple = "org.slf4j:slf4j-simple:2.0.20"
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
