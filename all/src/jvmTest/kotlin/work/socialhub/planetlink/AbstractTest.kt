@@ -9,6 +9,7 @@ import work.socialhub.planetlink.mastodon.expand.PlanetLinkEx.mastodon
 import work.socialhub.planetlink.misskey.expand.PlanetLinkEx.misskey
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.matrix.expand.PlanetLinkEx.matrix
+import work.socialhub.planetlink.mixi2.expand.PlanetLinkEx.mixi2
 import work.socialhub.planetlink.nostr.expand.PlanetLinkEx.nostr
 import work.socialhub.planetlink.slack.expand.PlanetLinkEx.slack
 import work.socialhub.planetlink.tumblr.expand.PlanetLinkEx.tumblr
@@ -151,6 +152,14 @@ open class AbstractTest {
         return PlanetLink.x().accountWithCookies(
             checkNotNull(c["X_AUTH_TOKEN"]),
             checkNotNull(c["X_CSRF_TOKEN"]),
+        )
+    }
+
+    fun mixi2(): Account {
+        val c = checkNotNull(config)
+        return PlanetLink.mixi2().accountWithCredentials(
+            checkNotNull(c["MIXI2_COOKIE"]),
+            checkNotNull(c["MIXI2_AUTH_KEY"]),
         )
     }
 

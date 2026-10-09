@@ -18,6 +18,8 @@ This is a Kotlin Multiplatform port of [SocialHub](https://github.com/uakihir0/S
 | Matrix | [kmatrix](https://github.com/uakihir0/kmatrix) | `matrix/` |
 | Tumblr | [ktumblr](https://github.com/uakihir0/ktumblr) | `tumblr/` |
 | Saypip | [ksaypip](https://github.com/uakihir0/ksaypip) | `saypip/` |
+| X / Twitter | [kxweb](https://github.com/uakihir0/kxweb) | `x/` |
+| mixi2 | [kmixi2web](https://github.com/uakihir0/kmixi2web) | `mixi2/` |
 
 ### Kotlin Multiplatform Targets
 
@@ -44,8 +46,9 @@ PlanetLink Core (core/)
   ├── Nostr Adapter (nostr/) → knostr SDK
   ├── Slack Adapter (slack/) → kslack SDK
   ├── Matrix Adapter (matrix/) → kmatrix SDK
-  └── Tumblr Adapter (tumblr/) → ktumblr SDK
-  └── Saypip Adapter (saypip/) → ksaypip SDK
+  ├── Tumblr Adapter (tumblr/) → ktumblr SDK
+  ├── Saypip Adapter (saypip/) → ksaypip SDK
+  └── mixi2 Adapter (mixi2/) → kmixi2web SDK
 ```
 
 Each adapter module provides three key classes:
@@ -97,8 +100,18 @@ Each adapter module provides three key classes:
 - **`saypip/`**: Saypip adapter (ksaypip)
   - `action/` - `SaypipAuth`, `SaypipAction`, `SaypipMapper`
   - `define/` - `SaypipReactionType`
-  - `model/` - `SaypipUser`, `SaypipComment`, `SaypipPaging`, `SaypipThread`
+  - `model/` - `SaypipUser`, `SaypipMe`, `SaypipComment`, `SaypipPaging`, `SaypipThread`
   - `expand/` - `PlanetLinkEx`
+- **`x/`**: X / Twitter adapter (kxweb, read-only)
+  - `action/` - `XAuth`, `XAction`, `XMapper`
+  - `define/` - `XActionType`
+  - `model/` - `XUser`, `XComment`, `XPaging`, `XTrendLocation`, `XArticle`
+  - `expand/` - `PlanetLinkEx`, `ServiceEx`
+- **`mixi2/`**: mixi2 adapter (kmixi2web)
+  - `action/` - `Mixi2Auth`, `Mixi2Action`, `Mixi2Mapper`
+  - `define/` - `Mixi2ActionType`, `Mixi2ReactionType`
+  - `model/` - `Mixi2User`, `Mixi2Comment`, `Mixi2Paging`, `Mixi2Thread`, `Mixi2Channel`
+  - `expand/` - `PlanetLinkEx`, `ServiceEx`
 - **`all/`**: Aggregation module (CocoaPods, XCFramework, JS, Swift Package)
 - **`plugins/`**: Gradle build plugins (module.publications, root.publications)
 - **`docs/`**: Documentation
@@ -130,49 +143,50 @@ If network access is not available, verify that the build succeeds:
 ./gradlew jvmJar
 ```
 
-If authentication credentials are required for testing, create `secrets.json` (refer to `secrets.json.default`):
+If authentication credentials are required for testing, create `secrets.json` (refer to `secrets.json.default`). The integration tests read the flat `planetlink` entry:
 
 ```json
 {
-  "bluesky": [
-    {
-      "apiHost": "https://bsky.social",
-      "streamHost": "wss://bsky.network",
-      "identify": "your-handle",
-      "password": "your-app-password"
-    }
-  ],
-  "misskey": [
-    {
-      "host": "https://misskey.io/api/",
-      "userToken": "YOUR_USER_TOKEN"
-    }
-  ],
-  "mastodon": [
-    {
-      "host": "https://mastodon.social",
-      "clientId": "YOUR_CLIENT_ID",
-      "clientSecret": "YOUR_CLIENT_SECRET",
-      "userToken": "YOUR_USER_TOKEN"
-    }
-  ],
-  "tumblr": [
-    {
-      "clientId": "YOUR_CLIENT_ID",
-      "clientSecret": "YOUR_CLIENT_SECRET",
-      "accessToken": "YOUR_ACCESS_TOKEN",
-      "refreshToken": "YOUR_REFRESH_TOKEN"
-    }
-  ],
-  "saypip": [
-    {
-      "host": "https://saypip.app",
-      "clientId": "YOUR_CLIENT_ID",
-      "clientSecret": "YOUR_CLIENT_SECRET",
-      "accessToken": "YOUR_ACCESS_TOKEN",
-      "refreshToken": "YOUR_REFRESH_TOKEN"
-    }
-  ]
+  "planetlink": {
+    "BLUESKY_API_HOST": "",
+    "BLUESKY_STREAM_HOST": "",
+    "BLUESKY_IDENTIFY": "",
+    "BLUESKY_PASSWORD": "",
+    "MISSKEY_HOST": "",
+    "MISSKEY_USER_TOKEN": "",
+    "MASTODON_HOST": "",
+    "MASTODON_USER_TOKEN": "",
+    "MASTODON_SERVICE": "",
+    "TUMBLR_CLIENT_ID": "",
+    "TUMBLR_CLIENT_SECRET": "",
+    "TUMBLR_ACCESS_TOKEN": "",
+    "TUMBLR_REFRESH_TOKEN": "",
+    "SLACK_CLIENT_ID": "",
+    "SLACK_CLIENT_SECRET": "",
+    "SLACK_USER_TOKEN": "",
+    "NOSTR_NSEC": "",
+    "NOSTR_RELAYS": "",
+    "MATRIX_HOST": "",
+    "MATRIX_USER": "",
+    "MATRIX_PASSWORD": "",
+    "MATRIX_ACCESS_TOKEN": "",
+    "DISCORD_API_HOST": "",
+    "DISCORD_USER_TOKEN": "",
+    "DISCORD_CHANNEL_ID": "",
+    "DISCORD_GUILD_ID": "",
+    "X_AUTH_TOKEN": "",
+    "X_CSRF_TOKEN": "",
+    "X_SCREEN_NAME": "",
+    "MIXI2_COOKIE": "",
+    "MIXI2_AUTH_KEY": "",
+    "MIXI2_COMMUNITY_ID": "",
+    "SAYPIP_HOST": "",
+    "SAYPIP_CLIENT_ID": "",
+    "SAYPIP_CLIENT_SECRET": "",
+    "SAYPIP_REDIRECT_URI": "",
+    "SAYPIP_ACCESS_TOKEN": "",
+    "SAYPIP_REFRESH_TOKEN": ""
+  }
 }
 ```
 
@@ -316,7 +330,7 @@ Zero output = no reachable unwired bridges. Then build an action with a fake tok
 
 - JS target only (JVM / Native use a different coroutine implementation)
 - No compile-time error — runtime only, and often only on a specific path (cache-miss, a particular URL overload, a reaction code branch)
-- All known call sites fixed in: core (`userMeWithCache`/`userMe` via per-adapter overrides), bluesky, misskey, mastodon, tumblr, matrix, slack, nostr, saypip. Verified: 0 reachable unwired bridges remain across all adapter `.mjs`.
+- All known call sites fixed in: core (`userMeWithCache`/`userMe` via per-adapter overrides), bluesky, misskey, mastodon, tumblr, matrix, slack, nostr, saypip, x, mixi2. Verified: 0 reachable unwired bridges remain across all adapter `.mjs`.
 
 #### Why it surfaced only in Slack first
 
@@ -360,6 +374,7 @@ Each adapter statically declares which `ActionType` entries it supports via a `C
 | Matrix action | `matrix/src/commonMain/kotlin/work/socialhub/planetlink/matrix/action/MatrixAction.kt` |
 | Tumblr action | `tumblr/src/commonMain/kotlin/work/socialhub/planetlink/tumblr/action/TumblrAction.kt` |
 | Saypip action | `saypip/src/commonMain/kotlin/work/socialhub/planetlink/saypip/action/SaypipAction.kt` |
+| mixi2 action | `mixi2/src/commonMain/kotlin/work/socialhub/planetlink/mixi2/action/Mixi2Action.kt` |
 | Integration tests | `all/src/jvmTest/kotlin/work/socialhub/planetlink/` |
 | Test configuration | `all/src/jvmTest/kotlin/work/socialhub/planetlink/AbstractTest.kt` |
 

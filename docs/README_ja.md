@@ -20,6 +20,7 @@
 - Matrix (library: [kmatrix](https://github.com/uakihir0/kmatrix))
 - Tumblr (library: [ktumblr](https://github.com/uakihir0/ktumblr))
 - X / Twitter (読み取り専用、library: [kxweb](https://github.com/uakihir0/kxweb))
+- mixi2 (library: [kmixi2web](https://github.com/uakihir0/kmixi2web))
 
 ## 使い方
 
@@ -61,6 +62,34 @@ val following = account.action.homeTimeLine(XPaging(20))
 // Guest モードでは一部の公開情報だけを取得できます。
 val guest = PlanetLink.x().guestAccount()
 ```
+
+### mixi2
+
+mixi2 は公式 API を公開していないため、このアダプターは mixi2 の
+Web クライアントが利用する非公開の protobuf RPC インターフェースを
+扱います。認証には、認可済みアカウントの DevTools から取得した
+ブラウザのセッション Cookie と `x-auth-key` ヘッダーを使用します。
+
+```kotlin
+import work.socialhub.planetlink.PlanetLink
+import work.socialhub.planetlink.mixi2.expand.PlanetLinkEx.mixi2
+import work.socialhub.planetlink.mixi2.model.Mixi2Paging
+
+val account = PlanetLink.mixi2().accountWithCredentials(
+    cookie = "MIXI2_COOKIE",
+    authKey = "MIXI2_AUTH_KEY",
+)
+
+val me = account.action.userMe()
+val feed = account.action.homeTimeLine(Mixi2Paging(20))
+```
+
+いいねはいいねとして、カスタムスタンプはリアクション (スタンプ ID で指定)
+として扱われ、コミュニティはチャンネル、チャットルームはメッセージスレッド
+に対応します。リポストは元のポストを `sharedComment` として持ちます。
+コミュニティへの投稿は `CommentForm` の `params["communityId"]` で指定します。
+mixi2 に存在しない編集・投票・メンションタイムライン・ストリームは
+サポート対象として公開されません。
 
 ## ライセンス
 
