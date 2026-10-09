@@ -824,7 +824,7 @@ class NostrAction(
                     val signer = nostr.signer()
                         ?: throw SocialHubException("Signer is required for channel reply")
                     val unsigned = UnsignedEvent(
-                        pubkey = signer.getPublicKey(),
+                        pubkey = signer.getPublicKeyAsync(),
                         createdAt = Clock.System.now().epochSeconds,
                         kind = EventKind.CHANNEL_MESSAGE,
                         tags = listOf(
@@ -833,7 +833,7 @@ class NostrAction(
                         ),
                         content = contentWithUploadedMedia(req),
                     )
-                    val signed = signer.sign(unsigned)
+                    val signed = signer.signAsync(unsigned)
                     nostr.events().publishEvent(signed)
                 } else {
                     social.channels().sendMessage(channelId, contentWithUploadedMedia(req))

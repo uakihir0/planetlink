@@ -2,6 +2,7 @@ package work.socialhub.planetlink.nostr.action
 
 import kotlin.js.JsExport
 import work.socialhub.knostr.Nostr
+import work.socialhub.knostr.NostrConfig
 import work.socialhub.knostr.NostrFactory
 import work.socialhub.knostr.entity.Nip19Entity
 import work.socialhub.knostr.social.NostrSocial
@@ -10,6 +11,7 @@ import work.socialhub.knostr.social.NostrSocialFactory
 import work.socialhub.planetlink.action.ServiceAuth
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Service
+import work.socialhub.planetlink.nostr.define.NostrSigner
 
 /** Manages Nostr authentication and account creation */
 @JsExport
@@ -58,6 +60,43 @@ class NostrAuth(
         val signer = nostr.signer()
             ?: throw IllegalStateException("Signer not available without private key")
         val pubkey = signer.getPublicKey()
+
+        this._accessor = NostrAccessor(nostr, social, pubkey)
+
+        return Account().also { acc ->
+            acc.action = NostrAction(acc, this)
+            acc.service = Service("nostr", acc).also {
+                it.host = relays.firstOrNull() ?: "nostr"
+            }
+        }
+    }
+
+    /**
+     * Create an account backed by an external asynchronous signer, such as a
+     * NIP-07 browser extension.
+     *
+     * The public key is read from the signer and no private key is stored.
+     * Every write operation awaits the signer before publishing, and NIP-42
+     * relay challenges are answered through the same async path.
+     */
+    suspend fun accountWithSigner(signer: NostrSigner): Account {
+        // Read the key through the adapter so its cache is primed: the first
+        // write reuses this read instead of asking the external signer again.
+        val adapter = NostrSignerAdapter(signer)
+        val pubkey = adapter.getPublicKeyAsync()
+
+        val config = NostrConfig().also {
+            it.relayUrls = relays
+            it.autoAuth = true
+            it.signer = adapter
+        }
+        val nostr = NostrFactory.instance(config)
+        val social = NostrSocialFactory.instance(
+            nostr,
+            NostrSocialConfig().also {
+                it.mediaUploadServerUrl = mediaUploadServerUrl
+            },
+        )
 
         this._accessor = NostrAccessor(nostr, social, pubkey)
 
