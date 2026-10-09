@@ -80,12 +80,15 @@ class NostrAuth(
      * relay challenges are answered through the same async path.
      */
     suspend fun accountWithSigner(signer: NostrSigner): Account {
-        val pubkey = signer.getPublicKey()
+        // Read the key through the adapter so its cache is primed: the first
+        // write reuses this read instead of asking the external signer again.
+        val adapter = NostrSignerAdapter(signer)
+        val pubkey = adapter.getPublicKeyAsync()
 
         val config = NostrConfig().also {
             it.relayUrls = relays
             it.autoAuth = true
-            it.signer = NostrSignerAdapter(signer)
+            it.signer = adapter
         }
         val nostr = NostrFactory.instance(config)
         val social = NostrSocialFactory.instance(
