@@ -110,7 +110,7 @@ Each adapter module provides three key classes:
 - **`mixi2/`**: mixi2 adapter (kmixi2web)
   - `action/` - `Mixi2Auth`, `Mixi2Action`, `Mixi2Mapper`
   - `define/` - `Mixi2ActionType`, `Mixi2ReactionType`
-  - `model/` - `Mixi2User`, `Mixi2Comment`, `Mixi2Paging`, `Mixi2Thread`, `Mixi2Channel`
+  - `model/` - `Mixi2User`, `Mixi2Comment`, `Mixi2Notification`, `Mixi2Paging`, `Mixi2Thread`, `Mixi2Channel`
   - `expand/` - `PlanetLinkEx`, `ServiceEx`
 - **`all/`**: Aggregation module (CocoaPods, XCFramework, JS, Swift Package)
 - **`plugins/`**: Gradle build plugins (module.publications, root.publications)
