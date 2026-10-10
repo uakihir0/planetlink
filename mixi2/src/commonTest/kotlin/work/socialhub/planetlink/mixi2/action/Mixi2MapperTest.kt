@@ -15,6 +15,7 @@ import work.socialhub.kmixi2web.entity.LinkCard
 import work.socialhub.kmixi2web.entity.Media
 import work.socialhub.kmixi2web.entity.Notification
 import work.socialhub.kmixi2web.entity.NotificationActivityType
+import work.socialhub.kmixi2web.entity.NotificationReaction
 import work.socialhub.kmixi2web.entity.Persona
 import work.socialhub.kmixi2web.entity.PersonaConnectivity
 import work.socialhub.kmixi2web.entity.PersonaName
@@ -30,6 +31,7 @@ import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.error.NotSupportedException
 import work.socialhub.planetlink.mixi2.model.Mixi2Comment
+import work.socialhub.planetlink.mixi2.model.Mixi2Notification
 import work.socialhub.planetlink.mixi2.model.Mixi2User
 
 class Mixi2MapperTest {
@@ -251,6 +253,89 @@ class Mixi2MapperTest {
         assertEquals(1704112496000, assertNotNull(notification.createAt).toEpochMilliseconds())
         assertEquals(author, notification.users?.single())
         assertEquals("post-1", notification.comments?.single()?.id<String>())
+    }
+
+    @Test
+    fun mapsNotificationReactionDetails() {
+        val author = Mixi2Mapper.user(
+            Persona(personaId = "persona-1", name = "planetlink"),
+            service,
+        )
+        val notification = Mixi2Mapper.notification(
+            Notification(
+                activityType = NotificationActivityType.REACTION,
+                timeSeriesId = "ts-2",
+                issuerId = "persona-1",
+                postId = "post-1",
+                reaction = NotificationReaction(
+                    stampId = "o_mixi2",
+                    imageUrl = "https://assets.mixi.social/assets/stamps/me/o_mixi2.webp",
+                ),
+            ),
+            mapOf("persona-1" to author),
+            service,
+        ) as Mixi2Notification
+
+        assertEquals(NotificationActionType.REACTION.code, notification.action)
+        assertEquals("o_mixi2", notification.reaction)
+        assertEquals(
+            "https://assets.mixi.social/assets/stamps/me/o_mixi2.webp",
+            notification.iconUrl,
+        )
+    }
+
+    @Test
+    fun attachesTheFetchedNotificationPost() {
+        val author = Mixi2Mapper.user(
+            Persona(personaId = "persona-1", name = "planetlink"),
+            service,
+        )
+        val users = mapOf("persona-1" to author)
+        val post = Mixi2Mapper.comment(
+            Post(postId = "post-1", personaId = "persona-1", text = "Hello"),
+            users,
+            service,
+        )
+        val notification = Mixi2Mapper.notification(
+            Notification(
+                activityType = NotificationActivityType.REACTION,
+                timeSeriesId = "ts-3",
+                issuerId = "persona-1",
+                postId = "post-1",
+            ),
+            users,
+            service,
+            posts = mapOf("post-1" to post),
+        )
+
+        val target = assertNotNull(notification.comments?.single())
+        assertEquals("post-1", target.id<String>())
+        assertEquals("Hello", target.text?.displayText)
+        assertEquals(author, target.user)
+    }
+
+    @Test
+    fun fallsBackToAStubWhenThePostIsGone() {
+        val author = Mixi2Mapper.user(
+            Persona(personaId = "persona-1", name = "planetlink"),
+            service,
+        )
+        val notification = Mixi2Mapper.notification(
+            Notification(
+                activityType = NotificationActivityType.LIKE,
+                timeSeriesId = "ts-4",
+                issuerId = "persona-1",
+                postId = "post-1",
+            ),
+            mapOf("persona-1" to author),
+            service,
+        )
+
+        val target = assertNotNull(notification.comments?.single())
+        assertEquals("post-1", target.id<String>())
+        assertNull(target.user)
+        assertNull(target.text)
+        assertEquals("https://mixi.social/posts/post-1", target.webUrl)
     }
 
     @Test

@@ -6,7 +6,7 @@ import work.socialhub.kmixi2web.entity.ChatRoomMessage
 import work.socialhub.kmixi2web.entity.Community
 import work.socialhub.kmixi2web.entity.CommunityAccessLevel
 import work.socialhub.kmixi2web.entity.Media as Mixi2Media
-import work.socialhub.kmixi2web.entity.Notification as Mixi2Notification
+import work.socialhub.kmixi2web.entity.Notification as Mixi2RawNotification
 import work.socialhub.kmixi2web.entity.NotificationActivityType
 import work.socialhub.kmixi2web.entity.Persona
 import work.socialhub.kmixi2web.entity.PersonaConnectivity
@@ -32,6 +32,7 @@ import work.socialhub.planetlink.model.User
 import work.socialhub.planetlink.model.common.AttributedString
 import work.socialhub.planetlink.mixi2.model.Mixi2Channel
 import work.socialhub.planetlink.mixi2.model.Mixi2Comment
+import work.socialhub.planetlink.mixi2.model.Mixi2Notification
 import work.socialhub.planetlink.mixi2.model.Mixi2Paging
 import work.socialhub.planetlink.mixi2.model.Mixi2Thread
 import work.socialhub.planetlink.mixi2.model.Mixi2User
@@ -363,21 +364,28 @@ object Mixi2Mapper {
     // ============================================================== //
     /**
      * 通知のマッピング
+     *
+     * The post a notification is about is read back by the action and handed in
+     * as [posts]; without it (the post is gone, or was never fetched) the
+     * target degrades to a stub carrying the id and web URL only.
      */
     fun notification(
-        source: Mixi2Notification,
+        source: Mixi2RawNotification,
         users: Map<String, Mixi2User>,
         service: Service,
+        posts: Map<String, Mixi2Comment> = emptyMap(),
     ): Notification {
-        return Notification(service).also { n ->
+        return Mixi2Notification(service).also { n ->
             n.id = ID(source.timeSeriesId)
             n.type = source.activityType.name.lowercase()
             n.action = actionOf(source.activityType)?.code
             n.createAt = instant(source.createdAt)
             n.users = listOfNotNull(users[source.issuerId])
+            n.reaction = source.reaction?.stampId?.takeIf { it.isNotBlank() }
+            n.iconUrl = source.reaction?.imageUrl?.takeIf { it.isNotBlank() }
             source.postId?.let { postId ->
                 n.comments = listOf(
-                    Mixi2Comment(service).also { c ->
+                    posts[postId] ?: Mixi2Comment(service).also { c ->
                         c.id = ID(postId)
                         c.createAt = n.createAt
                         c.webUrl = "${service.host ?: HOST}/posts/$postId"
@@ -391,14 +399,15 @@ object Mixi2Mapper {
      * 通知一覧のマッピング
      */
     fun notifications(
-        sources: List<Mixi2Notification>,
+        sources: List<Mixi2RawNotification>,
         users: Map<String, Mixi2User>,
         service: Service,
         paging: Paging?,
         nextCursor: String?,
+        posts: Map<String, Mixi2Comment> = emptyMap(),
     ): Pageable<Notification> {
         return Pageable<Notification>().also { p ->
-            p.entities = sources.map { notification(it, users, service) }
+            p.entities = sources.map { notification(it, users, service, posts) }
             p.paging = Mixi2Paging.fromPaging(paging).also { it.nextCursor = nextCursor }
         }
     }
