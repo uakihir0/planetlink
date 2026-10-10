@@ -339,6 +339,63 @@ class Mixi2MapperTest {
     }
 
     @Test
+    fun dropsBlankReactionAndPostFields() {
+        val notification = Mixi2Mapper.notification(
+            Notification(
+                activityType = NotificationActivityType.REACTION,
+                timeSeriesId = "ts-5",
+                issuerId = "persona-1",
+                postId = "",
+                reaction = NotificationReaction(stampId = "", imageUrl = ""),
+            ),
+            emptyMap(),
+            service,
+        ) as Mixi2Notification
+
+        assertNull(notification.reaction)
+        assertNull(notification.iconUrl)
+        assertNull(notification.comments)
+    }
+
+    @Test
+    fun attachesPostsAcrossANotificationPage() {
+        val author = Mixi2Mapper.user(
+            Persona(personaId = "persona-1", name = "planetlink"),
+            service,
+        )
+        val users = mapOf("persona-1" to author)
+        val post = Mixi2Mapper.comment(
+            Post(postId = "post-1", personaId = "persona-1", text = "Hello"),
+            users,
+            service,
+        )
+        val page = Mixi2Mapper.notifications(
+            sources = listOf(
+                Notification(
+                    activityType = NotificationActivityType.REACTION,
+                    timeSeriesId = "ts-6",
+                    issuerId = "persona-1",
+                    postId = "post-1",
+                ),
+                Notification(
+                    activityType = NotificationActivityType.FOLLOW,
+                    timeSeriesId = "ts-7",
+                    issuerId = "persona-1",
+                ),
+            ),
+            users = users,
+            service = service,
+            paging = null,
+            nextCursor = null,
+            posts = mapOf("post-1" to post),
+        )
+
+        assertEquals(2, page.entities.size)
+        assertEquals("Hello", page.entities[0].comments?.single()?.text?.displayText)
+        assertNull(page.entities[1].comments)
+    }
+
+    @Test
     fun mapsCommunityAsChannel() {
         val channel = Mixi2Mapper.channel(
             Community(

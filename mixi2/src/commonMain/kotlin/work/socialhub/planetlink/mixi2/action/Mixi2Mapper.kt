@@ -383,7 +383,7 @@ object Mixi2Mapper {
             n.users = listOfNotNull(users[source.issuerId])
             n.reaction = source.reaction?.stampId?.takeIf { it.isNotBlank() }
             n.iconUrl = source.reaction?.imageUrl?.takeIf { it.isNotBlank() }
-            source.postId?.let { postId ->
+            source.postId?.takeIf { it.isNotBlank() }?.let { postId ->
                 n.comments = listOf(
                     posts[postId] ?: Mixi2Comment(service).also { c ->
                         c.id = ID(postId)
