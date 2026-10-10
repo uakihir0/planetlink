@@ -29,6 +29,7 @@ import work.socialhub.kmixi2web.api.request.GetPersonaByNameRequest
 import work.socialhub.kmixi2web.api.request.GetPersonalTimelineRequest
 import work.socialhub.kmixi2web.api.request.GetPersonasRequest
 import work.socialhub.kmixi2web.api.request.GetPostRequest
+import work.socialhub.kmixi2web.api.request.GetPostsRequest
 import work.socialhub.kmixi2web.api.request.GetProfileByNameRequest
 import work.socialhub.kmixi2web.api.request.GetProfileRequest
 import work.socialhub.kmixi2web.api.request.GetReactionPostsRequest
@@ -751,6 +752,9 @@ class Mixi2Action(
         }
 
         val users = fetchPersonas(response.notifications.map { it.issuerId })
+        val posts = fetchNotificationPosts(
+            response.notifications.mapNotNull { it.postId }
+        )
         val page = Mixi2Mapper.notifications(
             sources = response.notifications,
             users = users,
@@ -761,6 +765,7 @@ class Mixi2Action(
             } else {
                 null
             },
+            posts = posts,
         )
 
         actions?.let { requested ->
@@ -839,6 +844,25 @@ class Mixi2Action(
             }
         }
         return types.distinct()
+    }
+
+    /**
+     * A notification points at the post it is about by id, and the post body
+     * is not part of the notification: the ids are read back in one batch so
+     * the mapper can attach the real post — text, author, media — instead of
+     * a stub. An id that no longer resolves is simply absent from the result
+     * and the mapper falls back to the stub.
+     */
+    private suspend fun fetchNotificationPosts(
+        postIds: List<String>,
+    ): Map<String, Mixi2Comment> {
+        val ids = postIds.filter { it.isNotBlank() }.distinct()
+        if (ids.isEmpty()) return emptyMap()
+
+        val posts = proceed {
+            client.post().getPosts(GetPostsRequest(ids)).data.posts
+        }
+        return fetchComments(posts).associateBy { it.id<String>() }
     }
 
     // ============================================================== //
