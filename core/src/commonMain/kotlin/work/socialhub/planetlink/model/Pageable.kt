@@ -30,6 +30,7 @@ class Pageable<T : Identify> {
      * Get New Page
      * 最新のページを取得
      */
+    @Throws(Throwable::class)
     fun newPage(): Paging {
         return paging!!.newPage(entities)
     }
@@ -38,6 +39,7 @@ class Pageable<T : Identify> {
      * Get Past Page
      * 過去のページを取得
      */
+    @Throws(Throwable::class)
     fun pastPage(): Paging {
         return paging!!.pastPage(entities)
     }
@@ -46,6 +48,7 @@ class Pageable<T : Identify> {
      * Get Prev Page
      * 前のページを取得
      */
+    @Throws(Throwable::class)
     fun prevPage(): Paging {
         return paging!!.prevPage(entities)
     }
@@ -54,6 +57,7 @@ class Pageable<T : Identify> {
      * Get Next Page
      * 次のページを取得
      */
+    @Throws(Throwable::class)
     fun nextPage(): Paging {
         return paging!!.nextPage(entities)
     }
@@ -61,6 +65,7 @@ class Pageable<T : Identify> {
     /**
      * Set newest boarder identify. (for streaming)
      */
+    @Throws(Throwable::class)
     fun setNewestIdentify(identify: T) {
         val model = mutableListOf<T>()
         model.addAll(entities)
@@ -71,6 +76,7 @@ class Pageable<T : Identify> {
     /**
      * Set oldest boarder identify.
      */
+    @Throws(Throwable::class)
     fun setOldestIdentify(identify: T) {
         val model = mutableListOf<T>()
         model.addAll(entities)
@@ -94,6 +100,7 @@ class Pageable<T : Identify> {
      * Set mark as paging end
      * ページの終端をマークする
      */
+    @Throws(Throwable::class)
     fun setMarkPagingEnd() {
         paging?.setMarkPagingEnd(entities)
     }

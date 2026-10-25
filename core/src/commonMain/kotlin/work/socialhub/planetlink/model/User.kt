@@ -3,7 +3,6 @@ package work.socialhub.planetlink.model
 import work.socialhub.planetlink.action.UserActionImpl
 import work.socialhub.planetlink.model.common.AttributedFiled
 import work.socialhub.planetlink.model.common.AttributedString
-import work.socialhub.planetlink.model.error.NotImplementedException
 import work.socialhub.planetlink.model.request.CommentForm
 import kotlin.js.JsExport
 
@@ -17,7 +16,7 @@ open class User(
 ) : Identify(service) {
 
     /** User's display name  */
-    open lateinit var name: String
+    open var name: String = ""
 
     /**
      * SNS アカウント ID 表現を取得
@@ -25,7 +24,7 @@ open class User(
      * Need each SNS implementation
      */
     open val accountIdentify: String
-        get() = throw NotImplementedException()
+        get() = ""
 
     /** User's description  */
     var description: AttributedString? = null
@@ -54,19 +53,19 @@ open class User(
      * Get Comment Form
      * コメント投稿用のフォームを取得
      */
-    val commentForm: CommentForm
-        get() = throw NotImplementedException()
+    val commentForm: CommentForm?
+        get() = null
 
     /**
      * Get Message Form
      * メッセージ投稿用のフォームを取得
      */
-    open val messageForm: CommentForm
-        get() = throw NotImplementedException()
+    open val messageForm: CommentForm?
+        get() = null
 
     /**
      * Get Web Url
      * Web のアドレスを取得
      */
-    open lateinit var webUrl: String
+    open var webUrl: String = ""
 }

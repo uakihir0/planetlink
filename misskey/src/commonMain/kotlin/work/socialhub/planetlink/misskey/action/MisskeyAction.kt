@@ -175,6 +175,7 @@ class MisskeyAction(
         )
     }
 
+    @Throws(Throwable::class)
     override fun capabilities(): Capabilities = CAPABILITIES
 
     /** Actual instance hostname for emoji URL construction */
@@ -1107,6 +1108,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     override fun emojis(): List<Emoji> {
         return emojisCache ?: super.emojis()
     }
@@ -1114,6 +1116,7 @@ class MisskeyAction(
     /**
      * Get List of Emojis
      */
+    @Throws(Throwable::class)
     suspend fun getEmojis(): List<Emoji> {
         if (this.emojisCache != null) {
             return checkNotNull(this.emojisCache)
@@ -1146,6 +1149,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     suspend fun commentContext(
         id: Identify
     ): Context {
@@ -1386,6 +1390,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     suspend fun trends(
         limit: Int
     ): List<Trend> {
@@ -1455,6 +1460,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     suspend fun homeTimeLineStream(
         callback: EventCallback
     ): Stream {
@@ -1516,6 +1522,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     suspend fun notificationStream(
         callback: EventCallback
     ): Stream {
@@ -1546,6 +1553,7 @@ class MisskeyAction(
     /**
      * Get Social Timeline
      */
+    @Throws(Throwable::class)
     suspend fun socialTimeLine(
         paging: Paging
     ): Pageable<Comment> {
@@ -1568,6 +1576,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     suspend fun localTimeLine(
         paging: Paging
     ): Pageable<Comment> {
@@ -1590,6 +1599,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     suspend fun federationTimeLine(
         paging: Paging
     ): Pageable<Comment> {
@@ -1612,6 +1622,7 @@ class MisskeyAction(
     /**
      * Get Featured Timeline
      */
+    @Throws(Throwable::class)
     suspend fun featuredTimeLine(
         paging: Paging
     ): Pageable<Comment> {
@@ -1643,6 +1654,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     suspend fun localLineStream(
         callback: EventCallback
     ): Stream {
@@ -1667,6 +1679,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     suspend fun federationLineStream(
         callback: EventCallback
     ): Stream {
@@ -1692,6 +1705,7 @@ class MisskeyAction(
      * Register ServiceWorker endpoint.
      * サービスワーカーのエンドポイントを設定
      */
+    @Throws(Throwable::class)
     suspend fun registerSubscription(
         endpoint: String,
         publicKey: String,
@@ -1714,6 +1728,7 @@ class MisskeyAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     override fun request(): RequestAction {
         return MisskeyRequest(account)
     }

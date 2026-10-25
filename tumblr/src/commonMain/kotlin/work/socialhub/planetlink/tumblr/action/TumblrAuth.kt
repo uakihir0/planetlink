@@ -34,6 +34,7 @@ class TumblrAuth : ServiceAuth<Tumblr> {
      * Set Consumer Info
      * 申請済みクライアント情報を設定
      */
+    @Throws(Throwable::class)
     fun setConsumerInfo(
         consumerKey: String,
         consumerSecret: String,
@@ -46,6 +47,7 @@ class TumblrAuth : ServiceAuth<Tumblr> {
      * Authentication with AccessToken Secret
      * アクセストークンから生成
      */
+    @Throws(Throwable::class)
     fun accountWithAccessToken(
         accessToken: String,
         refreshToken: String?
@@ -63,8 +65,11 @@ class TumblrAuth : ServiceAuth<Tumblr> {
      * Get Authorization URL
      * Tumblr の認証ページの URL を取得
      */
+    @Throws(Throwable::class)
     suspend fun authorizationURL(
-        redirectUri: String?
+        redirectUri: String?,
+        state: String? = null,
+        scope: String? = null,
     ): String {
         return TumblrFactory.instance(
             checkNotNull(consumerKey)
@@ -73,6 +78,12 @@ class TumblrAuth : ServiceAuth<Tumblr> {
         ).auth().authorizeUrl(
             AuthAuthorizeUrlRequest().also {
                 it.redirectUri = redirectUri
+                if (state != null) {
+                    it.state = state
+                }
+                if (scope != null) {
+                    it.scope = scope
+                }
             })
     }
 
@@ -80,6 +91,7 @@ class TumblrAuth : ServiceAuth<Tumblr> {
      * Authentication with Code
      * 認証してアクセストークンを取得し格納
      */
+    @Throws(Throwable::class)
     suspend fun accountWithVerifier(
         redirectUri: String?,
         code: String
@@ -93,6 +105,7 @@ class TumblrAuth : ServiceAuth<Tumblr> {
                 it.clientId = consumerKey
                 it.clientSecret = consumerSecret
                 it.redirectUri = redirectUri
+                it.code = code
             })
 
         return accountWithAccessToken(
@@ -103,6 +116,7 @@ class TumblrAuth : ServiceAuth<Tumblr> {
     }
 
     @JsExport.Ignore
+    @Throws(Throwable::class)
     fun setTokenRefreshCallback(callback: (TumblrAuth) -> Unit) =
         also { it.tokenRefreshCallback = callback }
 }

@@ -23,6 +23,7 @@ class XAuth : ServiceAuth<XWeb> {
             else -> XWebFactory.instanceGuest()
         }
 
+    @Throws(Throwable::class)
     fun accountWithCookies(
         authToken: String,
         csrfToken: String,
@@ -33,6 +34,7 @@ class XAuth : ServiceAuth<XWeb> {
         return account(XWebFactory.instance(authToken, csrfToken), guest = false)
     }
 
+    @Throws(Throwable::class)
     fun accountWithCookieString(
         cookieString: String,
     ): Account {
@@ -42,6 +44,7 @@ class XAuth : ServiceAuth<XWeb> {
         return account(XWebFactory.instanceFromCookieString(cookieString), guest = false)
     }
 
+    @Throws(Throwable::class)
     fun guestAccount(): Account {
         this.authToken = null
         this.csrfToken = null

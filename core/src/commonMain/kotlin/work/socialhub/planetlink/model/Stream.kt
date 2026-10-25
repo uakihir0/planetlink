@@ -8,7 +8,9 @@ import kotlin.js.JsExport
  */
 @JsExport
 interface Stream {
+    @Throws(Throwable::class)
     suspend fun open()
+    @Throws(Throwable::class)
     fun close()
     val isOpened: Boolean
 }

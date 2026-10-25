@@ -28,6 +28,7 @@ open class Paging(
             it.isHasPast = isHasPast
         }
 
+    @Throws(Throwable::class)
     fun copyTo(pg: Paging) {
         pg.count = count
         pg.isHasNew = isHasNew
@@ -41,6 +42,7 @@ open class Paging(
      * @param entities DataList it's ordered by created date time for desc.
      * 算出するデータリスト、先頭から最新の ID になっている想定
      */
+    @Throws(Throwable::class)
     open fun <T : Identify> newPage(
         entities: List<T>
     ): Paging {
@@ -54,6 +56,7 @@ open class Paging(
      * @param entities DataList it's ordered by created date time for desc.
      * 算出するデータリスト、先頭から最新の ID になっている想定
      */
+    @Throws(Throwable::class)
     open fun <T : Identify> pastPage(
         entities: List<T>
     ): Paging {
@@ -64,6 +67,7 @@ open class Paging(
      * Alias
      * New <-> Prev
      */
+    @Throws(Throwable::class)
     fun <T : Identify> prevPage(
         entities: List<T>
     ): Paging {
@@ -74,6 +78,7 @@ open class Paging(
      * Alias
      * Past <-> Next
      */
+    @Throws(Throwable::class)
     fun <T : Identify> nextPage(
         entities: List<T>
     ): Paging {

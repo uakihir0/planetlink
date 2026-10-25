@@ -23,7 +23,9 @@ object ServiceEx {
     /** Is Tumblr Account ?  */
     @JsExport.Ignore
     val Service.isTumblr: Boolean
-        get() = ("tumblr" == type.lowercase())
+        // Tumblr アダプタの Service.type は "tumber" という綴りになっている。
+        // web 版が "tumber" に依存しているので、両方を受け付ける。
+        get() = ("tumblr" == type.lowercase() || "tumber" == type.lowercase())
 
     /** Is Nostr Account ?  */
     @JsExport.Ignore

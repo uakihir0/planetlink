@@ -47,6 +47,7 @@ class XAction(
     private val guest: Boolean,
 ) : AccountActionImpl(account) {
 
+    @Throws(Throwable::class)
     override fun capabilities(): Capabilities {
         return if (guest) GUEST_CAPABILITIES else AUTHENTICATED_CAPABILITIES
     }
@@ -164,6 +165,7 @@ class XAction(
         return fetchHomeTimeLine(paging, recommended = false)
     }
 
+    @Throws(Throwable::class)
     suspend fun recommendedTimeLine(
         paging: Paging,
     ): Pageable<Comment> {
@@ -332,6 +334,7 @@ class XAction(
         }
     }
 
+    @Throws(Throwable::class)
     suspend fun trends(
         woeid: Long = 1,
     ): List<Trend> {
@@ -342,6 +345,7 @@ class XAction(
         }
     }
 
+    @Throws(Throwable::class)
     suspend fun trendLocations(): List<XTrendLocation> {
         return proceed {
             client.trend().getTrendLocations()

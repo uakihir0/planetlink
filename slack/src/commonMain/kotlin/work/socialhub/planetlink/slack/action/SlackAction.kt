@@ -59,6 +59,7 @@ class SlackAction(
         )
     }
 
+    @Throws(Throwable::class)
     override fun capabilities(): Capabilities = CAPABILITIES
 
     internal val userCache = mutableMapOf<String, User>()
@@ -303,6 +304,7 @@ class SlackAction(
     }
 
     /** Slack-specific: set the read cursor in a conversation up to the given message. */
+    @Throws(Throwable::class)
     suspend fun markConversationRead(id: Identify) {
         proceedUnit {
             val channelId = getChannelId(id)
@@ -321,10 +323,12 @@ class SlackAction(
         return helper.getCommentContexts(id)
     }
 
+    @Throws(Throwable::class)
     override fun emojis(): List<Emoji> {
         return helper.emojisCache ?: super.emojis()
     }
 
+    @Throws(Throwable::class)
     suspend fun getEmojis(): List<Emoji> {
         return helper.getEmojis()
     }
@@ -381,18 +385,22 @@ class SlackAction(
         throw NotSupportedException("Use Socket Mode or RTM for Slack streaming")
     }
 
+    @Throws(Throwable::class)
     override fun request(): RequestAction {
         return SlackRequest(account)
     }
 
+    @Throws(Throwable::class)
     suspend fun getBots(id: Identify): User {
         return helper.getBotWithCache(id)
     }
 
+    @Throws(Throwable::class)
     fun getGeneralChannel(): String {
         return helper.generalChannel ?: ""
     }
 
+    @Throws(Throwable::class)
     fun getTeam(): SlackTeam? = helper.team
 
     private fun getChannelId(id: Identify): String {
