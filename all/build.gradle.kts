@@ -28,26 +28,33 @@ kotlin {
         }
     }
 
+    // XCFramework（Swift Package / CocoaPods）に含めるアダプタの一覧。
+    // ここを増減させたら、sourceSets の commonMain.dependencies も揃える。
+    val exportedModules = listOf(
+        "core",
+        "bluesky",
+        "misskey",
+        "mastodon",
+        "tumblr",
+        "slack",
+        "nostr",
+        "matrix",
+        "discord",
+        "x",
+        "mixi2",
+        "saypip",
+    )
+
     val xcf = XCFramework("planetlink")
+    // x86_64 シミュレータは含めない（D-039）。全アダプタを入れると
+    // fat バイナリが 145 MB になり、GitHub の 1 ファイル 100 MB 制限を超えるため。
     listOf(
-        iosX64(),
         iosArm64(),
         iosSimulatorArm64(),
         macosArm64(),
     ).forEach {
         it.binaries.framework {
-            export(project(":core"))
-            export(project(":bluesky"))
-            export(project(":misskey"))
-            export(project(":mastodon"))
-            export(project(":tumblr"))
-            export(project(":slack"))
-            export(project(":nostr"))
-            export(project(":matrix"))
-            export(project(":discord"))
-            export(project(":x"))
-            export(project(":mixi2"))
-            export(project(":saypip"))
+            exportedModules.forEach { module -> export(project(":$module")) }
             baseName = "planetlink"
             xcf.add(this)
         }
@@ -60,7 +67,12 @@ kotlin {
         homepage = "https://github.com/uakihir0/planetlink"
         authors = "Akihiro Urushihara"
         license = "MIT"
-        framework { baseName = "planetlink" }
+        framework {
+            // CocoaPods 側の framework にも export を付けないと、
+            // multiplatform-swiftpackage が生成する XCFramework にアダプタが入らない。
+            exportedModules.forEach { module -> export(project(":$module")) }
+            baseName = "planetlink"
+        }
     }
 
     sourceSets {
@@ -99,7 +111,7 @@ multiplatformSwiftPackage {
     swiftToolsVersion("5.7")
     targetPlatforms {
         iOS { v("15") }
-        macOS { v("12.0") }
+        macOS { v("12") }
     }
 }
 
@@ -107,6 +119,11 @@ tasks.configureEach {
     // Fix implicit dependency between XCFramework and FatFramework tasks
     if (name.contains("assemblePlanetlink") && name.contains("XCFramework")) {
         mustRunAfter(tasks.matching { it.name.contains("FatFramework") })
+    }
+    // GitHub の 1 ファイル 100 MB 制限を避けるため、配布用 zip は作らない（D-039）。
+    // Swift Package は xcframework を直接参照するので、zip は不要。
+    if (name == "createZipFile") {
+        enabled = false
     }
 }
 
