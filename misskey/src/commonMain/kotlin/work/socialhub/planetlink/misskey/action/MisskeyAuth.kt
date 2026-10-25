@@ -45,6 +45,7 @@ class MisskeyAuth(
      * Authentication with AccessToken
      * アクセストークンから生成
      */
+    @Throws(Throwable::class)
     fun accountWithAccessToken(
         accessToken: String
     ): Account {
@@ -65,6 +66,7 @@ class MisskeyAuth(
      * Set Client Info
      * 申請済みクライアント情報を設定
      */
+    @Throws(Throwable::class)
     fun setClientInfo(
         clientId: String,
         clientSecret: String,
@@ -77,6 +79,7 @@ class MisskeyAuth(
      * Request Client Application
      * クライアント情報を申請して設定
      */
+    @Throws(Throwable::class)
     suspend fun requestClientApplication(
         appName: String,
         description: String,
@@ -101,6 +104,7 @@ class MisskeyAuth(
      * Get Authorization URL
      * Misskey の認証ページの URL を取得
      */
+    @Throws(Throwable::class)
     suspend fun authorizationURL(): String {
         val misskey = MisskeyFactory.instance(apiHost ?: host)
         val response = misskey.auth().sessionGenerate(
@@ -114,6 +118,7 @@ class MisskeyAuth(
      * Authentication with Code
      * 認証コードよりアカウントモデルを生成
      */
+    @Throws(Throwable::class)
     suspend fun accountWithCode(
         verifier: String
     ): Account {

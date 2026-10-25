@@ -13,5 +13,6 @@ interface UsersRequest : Request {
      * Get Users
      * ユーザーを取得
      */
+    @Throws(Throwable::class)
     suspend fun users(paging: Paging): Pageable<User>
 }

@@ -83,6 +83,7 @@ class TumblrAction(
         )
     }
 
+    @Throws(Throwable::class)
     override fun capabilities(): Capabilities = CAPABILITIES
 
     // ============================================================== //
@@ -92,6 +93,7 @@ class TumblrAction(
      * Get User's Avatar Icon Url
      * アバター画像 URL を取得
      */
+    @Throws(Throwable::class)
     fun userAvatar(
         host: String
     ): String {

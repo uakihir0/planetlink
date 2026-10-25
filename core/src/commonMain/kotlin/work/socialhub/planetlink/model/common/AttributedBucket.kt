@@ -12,7 +12,13 @@ class AttributedBucket : AttributedElement {
 
     private val params = mutableMapOf<String, String>()
 
-    private var children = mutableListOf<AttributedElement>()
+    /** 入れ子にする要素（引用の中身など） */
+    val children = mutableListOf<AttributedElement>()
+
+    /** 入れ子の要素を追加する */
+    fun add(element: AttributedElement): AttributedBucket = also {
+        children.add(element)
+    }
 
     override val displayText: String
         get() {
@@ -21,7 +27,7 @@ class AttributedBucket : AttributedElement {
             }
             return children
                 .map { it.displayText }
-                .joinToString { "" }
+                .joinToString("")
         }
 
     override val expandedText: String?

@@ -10,6 +10,7 @@ value class ID(val value: Any) {
      * (Get id string with type information.)
      * 識別情報の ID に型情報を入れて文字列として返却
      */
+    @Throws(Throwable::class)
     fun toSerializedString(): String {
         if (value is Int) {
             return "I$value"
@@ -30,6 +31,7 @@ value class ID(val value: Any) {
      */
 
     companion object {
+        @Throws(Throwable::class)
         fun fromSerializedString(value: String): ID {
             if (value.startsWith("I")) {
                 return ID(value.substring(1).toInt())

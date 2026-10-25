@@ -54,6 +54,7 @@ class BlueskyAuth(
      * Get Access Token for Bluesky
      * Bluesky のアクセストークンの取得
      */
+    @Throws(Throwable::class)
     fun accountWithIdentifyAndPassword(
         identifier: String,
         password: String,

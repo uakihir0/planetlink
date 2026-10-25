@@ -61,6 +61,20 @@ open class RequestActionImpl(
         )
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    override fun channelUsers(
+        id: Identify
+    ): UsersRequest {
+        return getUsersRequest(
+            UsersActionType.ChannelUsers,
+            { paging -> account.action.channelUsers(id, paging) },
+            SerializedRequest(UsersActionType.ChannelUsers)
+                .add("id", id.id!!.toSerializedString())
+        )
+    }
+
     // ============================================================== //
     // TimeLine API
     // ============================================================== //
@@ -214,8 +228,8 @@ open class RequestActionImpl(
                 return when (UsersActionType.valueOf(action)) {
                     UsersActionType.GetFollowingUsers -> followingUsers(checkNotNull(id))
                     UsersActionType.GetFollowerUsers -> followerUsers(checkNotNull(id))
-                    UsersActionType.SearchUsers -> searchTimeLine(checkNotNull(query))
-                    UsersActionType.ChannelUsers -> channelTimeLine(checkNotNull(id))
+                    UsersActionType.SearchUsers -> searchUsers(checkNotNull(query))
+                    UsersActionType.ChannelUsers -> channelUsers(checkNotNull(id))
                 }.also { it.raw = request }
             }
 

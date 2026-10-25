@@ -21,18 +21,24 @@ class SlackAuth(
         const val AUTHORIZE_URL = "https://slack.com/oauth/v2/authorize"
     }
 
+    @Throws(Throwable::class)
     fun getAuthorizationURL(
         redirectUri: String,
-        scopes: String
+        scopes: String,
+        state: String? = null,
     ): String {
         val params = buildString {
             append("client_id=$clientId")
             append("&redirect_uri=$redirectUri")
             append("&scope=$scopes")
+            if (state != null) {
+                append("&state=$state")
+            }
         }
         return "$AUTHORIZE_URL?$params"
     }
 
+    @Throws(Throwable::class)
     suspend fun getAccountWithCode(
         redirectUri: String,
         code: String
@@ -56,6 +62,7 @@ class SlackAuth(
         return getAccountWithToken(response.accessToken!!)
     }
 
+    @Throws(Throwable::class)
     fun getAccountWithToken(
         token: String
     ): Account {

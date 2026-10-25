@@ -90,22 +90,22 @@ open class Comment(
      * Get Reply Form
      * 返信用のフォームを取得
      */
-    open val replyForm: CommentForm
-        get() = throw NotImplementedException()
+    open val replyForm: CommentForm?
+        get() = null
 
 
     /**
      * Get Quote Form
      * 引用RT用のフォームを取得
      */
-    open val quoteForm: CommentForm
-        get() = throw NotImplementedException()
+    open val quoteForm: CommentForm?
+        get() = null
 
     /**
      * Get Web Url
      * Web のアドレスを取得
      */
-    open lateinit var webUrl: String
+    open var webUrl: String = ""
 
     /**
      * Only shared content comment.

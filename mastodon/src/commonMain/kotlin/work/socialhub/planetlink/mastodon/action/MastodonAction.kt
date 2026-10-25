@@ -121,6 +121,7 @@ class MastodonAction(
     val auth: MastodonAuth,
 ) : AccountActionImpl(account) {
 
+    @Throws(Throwable::class)
     override fun capabilities(): Capabilities = CAPABILITIES
 
     /** List of Emoji  */
@@ -1227,6 +1228,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     suspend fun commentContext(
         id: Identify
     ): Context {
@@ -1261,6 +1263,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     override fun emojis(): List<Emoji> {
         return emojisCache ?: super.emojis()
     }
@@ -1268,6 +1271,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     suspend fun getEmojis(): List<Emoji> {
         if (this.emojisCache != null) {
             return checkNotNull(this.emojisCache)
@@ -1321,6 +1325,7 @@ class MastodonAction(
      * This exposes Mastodon's `GET /api/v1/accounts/:id/lists` separately from
      * [channels], which returns the authenticated user's owned lists.
      */
+    @Throws(Throwable::class)
     suspend fun listsContainingAccount(
         id: Identify,
     ): Pageable<Channel> {
@@ -1515,6 +1520,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     suspend fun homeTimeLineStream(
         callback: EventCallback
     ): Stream {
@@ -1549,6 +1555,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     fun notificationStream(
         callback: EventCallback
     ): Stream {
@@ -1582,6 +1589,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     suspend fun trends(
         limit: Int
     ): List<Trend> {
@@ -1658,6 +1666,7 @@ class MastodonAction(
      * 通知情報を取得
      */
     @JsName("notificationById")
+    @Throws(Throwable::class)
     suspend fun notification(
         identify: Identify
     ): Notification {
@@ -1679,6 +1688,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     override fun request(): RequestAction {
         return MastodonRequest(account)
     }
@@ -1689,6 +1699,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     suspend fun localTimeLine(
         paging: Paging,
     ): Pageable<Comment> {
@@ -1716,6 +1727,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     suspend fun federationTimeLine(
         paging: Paging
     ): Pageable<Comment> {
@@ -1743,6 +1755,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     suspend fun localLineStream(
         callback: EventCallback
     ): Stream {
@@ -1759,6 +1772,7 @@ class MastodonAction(
     /**
      * {@inheritDoc}
      */
+    @Throws(Throwable::class)
     suspend fun federationLineStream(
         callback: EventCallback
     ): Stream {
@@ -1842,6 +1856,7 @@ class MastodonAction(
      * Get scheduled statuses.
      * 予約投稿一覧を取得
      */
+    @Throws(Throwable::class)
     suspend fun scheduledStatuses(
         paging: Paging
     ): Pageable<Comment> {
@@ -1885,6 +1900,7 @@ class MastodonAction(
      * Get a single scheduled status.
      * 予約投稿を1件取得
      */
+    @Throws(Throwable::class)
     suspend fun scheduledStatus(
         id: Identify
     ): Comment {
@@ -1920,6 +1936,7 @@ class MastodonAction(
      * Update a scheduled status.
      * 予約投稿を更新
      */
+    @Throws(Throwable::class)
     suspend fun patchScheduledStatus(
         id: Identify,
         scheduledAt: String
@@ -1943,6 +1960,7 @@ class MastodonAction(
      * Delete a scheduled status.
      * 予約投稿を削除
      */
+    @Throws(Throwable::class)
     suspend fun deleteScheduledStatus(
         id: Identify
     ) {
@@ -1964,6 +1982,7 @@ class MastodonAction(
      * Get domain blocks.
      * ドメインブロック一覧を取得
      */
+    @Throws(Throwable::class)
     suspend fun domainBlocks(
         paging: Paging
     ): List<String> {
@@ -1988,6 +2007,7 @@ class MastodonAction(
      * Block a domain.
      * ドメインをブロック
      */
+    @Throws(Throwable::class)
     suspend fun blockDomain(
         domain: String
     ) {
@@ -2009,6 +2029,7 @@ class MastodonAction(
      * Unblock a domain.
      * ドメインのブロックを解除
      */
+    @Throws(Throwable::class)
     suspend fun unblockDomain(
         domain: String
     ) {
@@ -2030,6 +2051,7 @@ class MastodonAction(
      * Pin a status.
      * ステータスをピン留め
      */
+    @Throws(Throwable::class)
     suspend fun pinComment(
         id: Identify
     ) {
@@ -2051,6 +2073,7 @@ class MastodonAction(
      * Unpin a status.
      * ステータスのピン留めを解除
      */
+    @Throws(Throwable::class)
     suspend fun unpinComment(
         id: Identify
     ) {
@@ -2072,6 +2095,7 @@ class MastodonAction(
      * Direct stream for direct messages.
      * ダイレクトメッセージのストリーム
      */
+    @Throws(Throwable::class)
     suspend fun directStream(
         callback: EventCallback
     ): Stream {
@@ -2089,6 +2113,7 @@ class MastodonAction(
      * Register ServiceWorker endpoint.
      * サービスワーカーのエンドポイントを設定
      */
+    @Throws(Throwable::class)
     suspend fun registerSubscription(
         endpoint: String,
         publicKey: String,
@@ -2120,6 +2145,7 @@ class MastodonAction(
      * Get user pinned comments.
      * ユーザーのピンされたコメントを取得
      */
+    @Throws(Throwable::class)
     suspend fun userPinedComments(
         id: Identify
     ): List<Comment> {
@@ -2144,6 +2170,7 @@ class MastodonAction(
      * Get Service Type.
      * サービスの種類を取得
      */
+    @Throws(Throwable::class)
     fun serviceType(): String {
         return auth.accessor.service().name
     }
