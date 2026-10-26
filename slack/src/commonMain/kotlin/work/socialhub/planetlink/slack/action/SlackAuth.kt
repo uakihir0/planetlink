@@ -21,16 +21,30 @@ class SlackAuth(
         const val AUTHORIZE_URL = "https://slack.com/oauth/v2/authorize"
     }
 
+    /**
+     * Build the OAuth v2 authorize URL.
+     *
+     * [scopes] are bot token scopes (`scope`) and [userScopes] are user token
+     * scopes (`user_scope`). Pass [userScopes] to obtain an `xoxp-` user token,
+     * which reads channels, DMs and emojis as the signed-in user.
+     * Either of them may be empty, but not both.
+     */
     @Throws(Throwable::class)
     fun getAuthorizationURL(
         redirectUri: String,
         scopes: String,
         state: String? = null,
+        userScopes: String? = null,
     ): String {
         val params = buildString {
             append("client_id=$clientId")
             append("&redirect_uri=$redirectUri")
-            append("&scope=$scopes")
+            if (scopes.isNotEmpty()) {
+                append("&scope=$scopes")
+            }
+            if (!userScopes.isNullOrEmpty()) {
+                append("&user_scope=$userScopes")
+            }
             if (state != null) {
                 append("&state=$state")
             }
@@ -59,7 +73,11 @@ class SlackAuth(
             throw RuntimeException(response.error)
         }
 
-        return getAccountWithToken(response.accessToken!!)
+        // Prefer the user token (requested with `user_scope`) over the bot token.
+        val token = response.authedUser?.accessToken
+            ?: response.accessToken
+            ?: throw RuntimeException("No access token returned.")
+        return getAccountWithToken(token)
     }
 
     @Throws(Throwable::class)
