@@ -79,7 +79,7 @@ class MastodonUser(
 
     override val additionalFields: MutableList<AttributedFiled>
         get() = fields.toMutableList().also {
-            it.addAll(additionalFields)
+            it.addAll(super.additionalFields)
         }
 
     /**

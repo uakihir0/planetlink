@@ -4,9 +4,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlin.time.Clock
-import work.socialhub.planetlink.action.request.CommentsRequest
-import work.socialhub.planetlink.model.Comment
-import work.socialhub.planetlink.model.Pageable
 import work.socialhub.planetlink.model.Paging
 import work.socialhub.planetlink.model.group.CommentGroup
 import work.socialhub.planetlink.model.group.CommentGroupImpl
@@ -31,16 +28,17 @@ class CommentsRequestGroupActionImpl(
     suspend fun comments(
         paging: Paging
     ): CommentGroup {
-        val entities = mutableMapOf<CommentsRequest, Pageable<Comment>>()
-
-        coroutineScope {
+        // Collect the results first and add them in request order.
+        // Writing to one map from several async blocks at once could crash,
+        // and the order depended on which request finished first.
+        val results = coroutineScope {
             requestGroup.requests.map {
-                async { entities[it] = it.comments(paging) }
+                async { it to it.comments(paging) }
             }.awaitAll()
         }
 
         return CommentGroupImpl(requestGroup).also {
-            it.entities.putAll(entities)
+            it.entities.putAll(results)
             it.maxDate = Clock.System.now()
             it.setSinceDateFromEntities()
         }
