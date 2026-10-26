@@ -41,6 +41,7 @@ import work.socialhub.planetlink.model.error.SocialHubException
 import work.socialhub.planetlink.utils.ExceptionHandler
 import work.socialhub.planetlink.model.request.CommentForm
 import work.socialhub.planetlink.model.support.TupleIdentify
+import work.socialhub.planetlink.tumblr.define.TumblrFormKey
 import work.socialhub.planetlink.tumblr.define.TumblrIconSize
 import work.socialhub.planetlink.tumblr.define.TumblrReactionType
 import work.socialhub.planetlink.tumblr.model.TumblrComment
@@ -81,6 +82,34 @@ class TumblrAction(
                 UsersActionType.GetFollowerUsers,
             )
         )
+
+        /**
+         * Build the reblog request for a quote post.
+         * (Tumblr has no quote post; a reblog with a comment is the equivalent.)
+         */
+        internal fun reblogRequest(
+            req: CommentForm,
+            blogName: String,
+        ): BlogReblogRequest {
+            val quoteId = checkNotNull(req.quoteId)
+            if (req.images.isNotEmpty()) {
+                throw NotSupportedException(
+                    "Tumblr cannot attach images to a reblog (quote)."
+                )
+            }
+            val reblogKey = req.params[TumblrFormKey.REBLOG_KEY] as? String
+                ?: throw NotSupportedException(
+                    "Tumblr quote requires the reblog key in params[\"${TumblrFormKey.REBLOG_KEY}\"]. " +
+                            "Use TumblrComment.quoteForm."
+                )
+
+            return BlogReblogRequest().also {
+                it.blogName = blogName
+                it.id = quoteId.value<String>()
+                it.reblogKey = reblogKey
+                it.comment = req.text?.takeIf { t -> t.isNotEmpty() }
+            }
+        }
     }
 
     @Throws(Throwable::class)
@@ -481,6 +510,17 @@ class TumblrAction(
         req: CommentForm
     ) {
         val me = userMeWithCache()
+
+        // Quote: Tumblr expresses a quote as a reblog with a comment.
+        if (req.quoteId != null) {
+            val reblog = reblogRequest(req, me.id<String>())
+            validateToken {
+                auth.accessor.blog()
+                    .postReblog(reblog)
+            }
+            return
+        }
+
         val post: BlogPostRequest
 
         if (req.images.isNotEmpty()) {
