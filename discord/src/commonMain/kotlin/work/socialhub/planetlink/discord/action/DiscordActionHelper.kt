@@ -129,14 +129,14 @@ internal class DiscordActionHelper(
     suspend fun reactionComment(id: Identify, reaction: String) {
         val channelId = getChannelId(id)
         action.proceedUnit {
-            auth.accessor.discord.reactions().createReaction(channelId, id.id!!.value(), reaction)
+            auth.accessor.discord.reactions().createReaction(channelId, id.id!!.value(), reactionEmoji(reaction))
         }
     }
 
     suspend fun unreactionComment(id: Identify, reaction: String) {
         val channelId = getChannelId(id)
         action.proceedUnit {
-            auth.accessor.discord.reactions().deleteOwnReaction(channelId, id.id!!.value(), reaction)
+            auth.accessor.discord.reactions().deleteOwnReaction(channelId, id.id!!.value(), reactionEmoji(reaction))
         }
     }
 
@@ -253,5 +253,23 @@ internal class DiscordActionHelper(
 
         /** Max guilds returnable by GET /users/@me/guilds in a single request. */
         const val MAX_GUILD_LIMIT = 200
+
+        /** Discord message markup of a custom emoji: `<:name:id>` / `<a:name:id>`. */
+        private val CUSTOM_EMOJI_MARKUP = Regex("^<a?:([^:<>]*):(\\d+)>$")
+
+        /**
+         * Normalise a reaction for the reactions endpoint.
+         * A unicode emoji is used as is; a custom emoji must be `name:id`
+         * (what [DiscordMapper.reactions] puts in `Reaction.name`). The
+         * message markup `<:name:id>` / `<a:name:id>` is also accepted.
+         */
+        fun reactionEmoji(reaction: String): String {
+            val trimmed = reaction.trim()
+            CUSTOM_EMOJI_MARKUP.matchEntire(trimmed)?.let { match ->
+                val (name, id) = match.destructured
+                return "${name.ifEmpty { "_" }}:$id"
+            }
+            return trimmed
+        }
     }
 }

@@ -432,6 +432,61 @@ class DiscordMapperTest {
         assertTrue(comment.reactionDetails.single().reactingWithBurst)
     }
 
+    @Test
+    fun customEmojiReactionNameIsNameAndId() {
+        val message = Message().also {
+            it.reactions = arrayOf(
+                Reaction().also { reaction ->
+                    reaction.count = 2
+                    reaction.me = true
+                    reaction.emoji = work.socialhub.kdiscord.entity.Emoji().also { emoji ->
+                        emoji.id = "123456789012345678"
+                        emoji.name = "blobcat"
+                        emoji.animated = true
+                    }
+                },
+                Reaction().also { reaction ->
+                    reaction.count = 1
+                    reaction.emoji = work.socialhub.kdiscord.entity.Emoji().also { emoji ->
+                        emoji.name = "👍"
+                    }
+                },
+            )
+        }
+
+        val comment = DiscordMapper.comment(message, null, service)
+        val (custom, unicode) = comment.reactions
+
+        // Custom emoji: name is the `name:id` key the reactions endpoint needs.
+        assertEquals("blobcat:123456789012345678", custom.name)
+        assertEquals("https://cdn.discordapp.com/emojis/123456789012345678.gif", custom.iconUrl)
+        assertTrue(custom.reacting)
+        // The key round-trips through the helper unchanged.
+        assertEquals(custom.name, DiscordActionHelper.reactionEmoji(custom.name!!))
+
+        // Unicode emoji: unchanged.
+        assertEquals("👍", unicode.name)
+        assertEquals("👍", unicode.emoji)
+
+        // Details keep the bare name and the id separately.
+        assertEquals("blobcat", comment.reactionDetails[0].name)
+        assertEquals("123456789012345678", comment.reactionDetails[0].emojiId)
+    }
+
+    @Test
+    fun customEmojiKeyFallsBackForMissingName() {
+        assertEquals("_:42", DiscordMapper.customEmojiKey(null, "42"))
+        assertEquals(null, DiscordMapper.customEmojiKey("👍", null))
+    }
+
+    @Test
+    fun reactionEmojiNormalisesMessageMarkup() {
+        assertEquals("blobcat:42", DiscordActionHelper.reactionEmoji("<:blobcat:42>"))
+        assertEquals("party:43", DiscordActionHelper.reactionEmoji("<a:party:43>"))
+        assertEquals("blobcat:42", DiscordActionHelper.reactionEmoji("blobcat:42"))
+        assertEquals("👍", DiscordActionHelper.reactionEmoji("👍"))
+    }
+
     private fun comment(
         content: String,
         mentions: Array<User>,
