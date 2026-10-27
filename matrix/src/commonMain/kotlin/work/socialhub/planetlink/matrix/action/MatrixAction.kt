@@ -14,6 +14,7 @@ import work.socialhub.kmatrix.api.request.events.EventsGetContextRequest
 import work.socialhub.kmatrix.api.request.relations.RelationsGetRequest
 import work.socialhub.kmatrix.api.request.media.MediaDownloadRequest
 import work.socialhub.kmatrix.api.request.media.MediaThumbnailRequest
+import work.socialhub.kmatrix.api.request.media.MediaUploadRequest
 import work.socialhub.kmatrix.api.request.notifications.NotificationsGetRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsGetMessagesRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsRedactEventRequest
@@ -389,14 +390,39 @@ class MatrixAction(
             val roomId = req.params[MatrixComment.ROOM_KEY] as? String
                 ?: throw SocialHubException("Room ID is required for Matrix messages")
 
-            accessor.rooms().sendMessage(
-                RoomsSendMessageRequest().apply {
-                    this.roomId = roomId
-                    body = req.text ?: ""
-                    msgtype = "m.text"
-                    replyTo = req.replyId?.value<String>()
-                }
-            )
+            // Matrix has no multi-attachment message: the text is sent as an
+            // m.text event and each image as its own m.image event (uploaded
+            // to the content repository first). The reply relation goes on the
+            // first event sent.
+            var replyTo = req.replyId?.value<String>()
+            val text = req.text ?: ""
+
+            if (text.isNotBlank() || req.images.isEmpty()) {
+                accessor.rooms().sendMessage(
+                    RoomsSendMessageRequest().apply {
+                        this.roomId = roomId
+                        body = text
+                        msgtype = "m.text"
+                        this.replyTo = replyTo
+                    }
+                )
+                replyTo = null
+            }
+
+            req.images.forEach { media ->
+                val contentUri = accessor.media().upload(
+                    MediaUploadRequest().apply {
+                        fileName = media.name
+                        contentType = MatrixMediaUpload.mimeType(media.name)
+                        bytes = media.data
+                    }
+                ).data.contentUri
+
+                accessor.rooms().sendMessage(
+                    MatrixMediaUpload.imageMessageRequest(roomId, contentUri, media, replyTo)
+                )
+                replyTo = null
+            }
         }
     }
 
