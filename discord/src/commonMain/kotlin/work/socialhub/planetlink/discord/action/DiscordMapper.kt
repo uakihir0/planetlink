@@ -557,7 +557,9 @@ object DiscordMapper {
         return reactions?.map { reaction ->
             Reaction().also {
                 val emoji = reaction.emoji
-                it.name = emoji?.name
+                // A custom emoji is addressed as `name:id` by the reactions
+                // endpoint, so the name doubles as the key to toggle it.
+                it.name = customEmojiKey(emoji?.name, emoji?.id) ?: emoji?.name
                 it.count = reaction.count
                 it.reacting = reaction.me == true ||
                     reaction.meBurst == true ||
@@ -571,6 +573,16 @@ object DiscordMapper {
                 }
             }
         } ?: emptyList()
+    }
+
+    /**
+     * `name:id` key of a custom emoji (null for a unicode emoji).
+     * The name can be null for a deleted emoji; Discord resolves the reaction
+     * by id, so a placeholder name is used.
+     */
+    fun customEmojiKey(name: String?, id: String?): String? {
+        if (id.isNullOrEmpty()) return null
+        return "${name?.takeIf { it.isNotEmpty() } ?: "_"}:$id"
     }
 
     fun reactionDetails(
