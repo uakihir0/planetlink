@@ -2,6 +2,7 @@ package work.socialhub.planetlink.slack.action
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class SlackAuthTest {
 
@@ -30,5 +31,15 @@ class SlackAuthTest {
             "https://slack.com/oauth/v2/authorize?client_id=id&redirect_uri=http://localhost:8080/&user_scope=channels:read,im:read&state=s",
             url,
         )
+    }
+
+    @Test
+    fun rejectsEmptyScopes() {
+        assertFailsWith<IllegalArgumentException> {
+            SlackAuth(clientId = "id").getAuthorizationURL(
+                redirectUri = "http://localhost:8080/",
+                scopes = "",
+            )
+        }
     }
 }

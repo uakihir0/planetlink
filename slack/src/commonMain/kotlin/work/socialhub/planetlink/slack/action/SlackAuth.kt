@@ -36,6 +36,9 @@ class SlackAuth(
         state: String? = null,
         userScopes: String? = null,
     ): String {
+        require(scopes.isNotEmpty() || !userScopes.isNullOrEmpty()) {
+            "Either scopes or userScopes must be specified."
+        }
         val params = buildString {
             append("client_id=$clientId")
             append("&redirect_uri=$redirectUri")
