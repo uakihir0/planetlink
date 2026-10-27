@@ -400,6 +400,10 @@ object MatrixMapper {
             Thread(service).apply {
                 id = ID(summary.roomId)
                 description = summary.displayName
+                users = summary.otherMembers.map { member ->
+                    user(member.userId, member.displayName, member.avatarUrl, service)
+                }
+                summary.lastEventAtMs?.let { lastUpdate = Instant.fromEpochMilliseconds(it) }
             }
         }
         model.paging = pagingWithCount(paging, model.entities.size)

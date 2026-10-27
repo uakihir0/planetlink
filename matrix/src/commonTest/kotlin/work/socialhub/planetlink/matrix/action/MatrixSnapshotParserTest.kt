@@ -7,13 +7,17 @@ import work.socialhub.kmatrix.api.response.sync.SyncResponse
 import work.socialhub.kmatrix.api.response.sync.SyncRoomSummary
 import work.socialhub.kmatrix.api.response.sync.SyncRooms
 import work.socialhub.kmatrix.api.response.sync.SyncState
+import work.socialhub.kmatrix.api.response.sync.SyncTimeline
 import work.socialhub.planetlink.matrix.model.MatrixSpace
+import work.socialhub.planetlink.matrix.model.MatrixUser
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.Paging
 import work.socialhub.planetlink.model.Service
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -185,6 +189,87 @@ class MatrixSnapshotParserTest {
         assertTrue(summary.isDirect)
         assertEquals("Alice", summary.displayName)
         assertEquals(2, summary.memberCount)
+    }
+
+    @Test
+    fun testDirectMessageThreadCarriesOtherMember() {
+        // With lazy_load_members the hero's member event comes with the sync;
+        // the thread exposes the partner as a user (name + icon), not just a description.
+        val dm = SyncJoinedRoom().apply {
+            state = SyncState().apply {
+                events = arrayOf(
+                    memberEvent(self, "Me"),
+                    event(
+                        "m.room.member",
+                        mapOf(
+                            "membership" to "join",
+                            "displayname" to "Alice",
+                            "avatar_url" to "mxc://example.org/alice",
+                        ),
+                        stateKey = "@alice:example.org",
+                    ),
+                )
+            }
+            timeline = SyncTimeline().apply {
+                events = arrayOf(event("m.room.message", mapOf("body" to "hi"), stateKey = null, ts = 1_700_000_000_000))
+            }
+            summary = SyncRoomSummary().apply {
+                heroes = arrayOf("@alice:example.org")
+                joinedMemberCount = 2
+            }
+        }
+        val snapshot = MatrixSnapshotParser.parse(
+            sync(
+                join = mapOf("!dm:example.org" to dm),
+                direct = mapOf("@alice:example.org" to listOf("!dm:example.org")),
+            ),
+            self,
+        )
+        val summary = snapshot.rooms["!dm:example.org"]!!
+        assertEquals(listOf("@alice:example.org"), summary.otherMembers.map { it.userId })
+        assertEquals(1_700_000_000_000, summary.lastEventAtMs)
+
+        val svc = service().also { it.host = "https://example.org" }
+        val thread = MatrixMapper.threads(listOf(summary), svc, Paging()).entities.single()
+        val user = thread.users!!.single() as MatrixUser
+        assertEquals("@alice:example.org", user.userId)
+        assertEquals("Alice", user.name)
+        assertEquals("mxc://example.org/alice", user.avatarUrl)
+        assertNotNull(user.iconImageUrl)
+        assertTrue(user.iconImageUrl!!.startsWith("https://example.org/"))
+        assertEquals(1_700_000_000_000, thread.lastUpdate!!.toEpochMilliseconds())
+    }
+
+    @Test
+    fun testOtherMembersFallsBackToMemberScanWithoutSummary() {
+        val dm = joinedRoom(
+            memberEvent(self, "Me"),
+            memberEvent("@bob:example.org", null),
+            memberEvent("@carol:example.org", "Carol", membership = "leave"),
+        )
+        val snapshot = MatrixSnapshotParser.parse(sync(mapOf("!dm:example.org" to dm)), self)
+        val members = snapshot.rooms["!dm:example.org"]!!.otherMembers
+        assertEquals(listOf("@bob:example.org"), members.map { it.userId })
+        assertNull(members.single().displayName)
+
+        val thread = MatrixMapper.threads(
+            snapshot.rooms.values.toList(), service(), Paging(),
+        ).entities.single()
+        // No display name: the user falls back to the user id.
+        assertEquals("@bob:example.org", thread.users!!.single().name)
+        assertNull(thread.lastUpdate)
+    }
+
+    @Test
+    fun testOtherMembersUsesTimelineMemberEvents() {
+        // A member event that arrived in the timeline (newer than state) wins.
+        val events = listOf(
+            memberEvent("@alice:example.org", "Old"),
+            memberEvent("@alice:example.org", "New"),
+        )
+        val members = MatrixSnapshotParser.otherMembers(events, self, listOf(self, "@alice:example.org"))
+        assertEquals(1, members.size)
+        assertEquals("New", members.single().displayName)
     }
 
     @Test
