@@ -226,6 +226,8 @@ object TumblrMapper {
 
             it.noteCount = post.noteCount
             it.reblogKey = post.reblogKey
+            // The key above is the reblog's, not the root post's.
+            it.reblogKeyPostId = post.idString
             it.createAt = Instant.fromEpochSeconds(post.timestamp!!.toLong())
 
             it.user = reblogUser(post, trails, service)

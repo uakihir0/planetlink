@@ -94,7 +94,7 @@ Each adapter module provides three key classes:
   - `expand/` - `PlanetLinkEx`, `ServiceEx`, `AttributedStringEx`
 - **`tumblr/`**: Tumblr adapter (ktumblr)
   - `action/` - `TumblrAuth`, `TumblrAction`, `TumblrMapper`
-  - `define/` - `TumblrReactionType`, `TumblrIconSize`
+  - `define/` - `TumblrReactionType`, `TumblrIconSize`, `TumblrFormKey`
   - `model/` - `TumblrUser`, `TumblrComment`, `TumblrPaging`
   - `expand/` - `PlanetLinkEx`, `ServiceEx`, `AttributedStringEx`
 - **`saypip/`**: Saypip adapter (ksaypip)
