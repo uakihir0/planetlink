@@ -2,6 +2,7 @@ package work.socialhub.planetlink.tumblr.model
 
 import work.socialhub.planetlink.define.ReactionType
 import work.socialhub.planetlink.model.Comment
+import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.Reaction
 import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.request.CommentForm
@@ -26,6 +27,13 @@ class TumblrComment(
     /** Reblog key  */
     var reblogKey: String? = null
 
+    /**
+     * ID of the post that [reblogKey] belongs to, when it is not [id].
+     * The shared (root) comment of a reblog has the root post id, but only
+     * the reblog's key is known, so reblogging it must target the reblog.
+     */
+    var reblogKeyPostId: String? = null
+
     /** Parent post ID for context tracking */
     var parentId: String? = null
 
@@ -41,7 +49,7 @@ class TumblrComment(
      */
     override val quoteForm: CommentForm
         get() = CommentForm()
-            .quoteId(id)
+            .quoteId(reblogKeyPostId?.let { ID(it) } ?: id)
             .isMessage(false)
             .also { form ->
                 reblogKey?.let {

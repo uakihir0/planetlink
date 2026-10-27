@@ -1,5 +1,7 @@
 package work.socialhub.planetlink.tumblr.action
 
+import kotlinx.serialization.json.Json
+import work.socialhub.ktumblr.entity.post.legacy.LegacyTextPost
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.ID
 import work.socialhub.planetlink.model.request.MediaForm
@@ -68,5 +70,35 @@ class TumblrQuoteTest {
         assertFailsWith<NotSupportedException> {
             TumblrAction.reblogRequest(form, "myblog.tumblr.com")
         }
+    }
+
+    @Test
+    fun quoteOfReblogTargetsTheReblogWithItsKey() {
+        // A reblog (id 222, key "reblogKey") of a root post (id 111).
+        val post = Json { ignoreUnknownKeys = true; explicitNulls = false }.decodeFromString(
+            LegacyTextPost.serializer(),
+            """
+            {
+              "id_string": "222",
+              "reblog_key": "reblogKey",
+              "timestamp": 0,
+              "parent_post_url": "https://parent.tumblr.com/post/150",
+              "reblogged_root_id": "111",
+              "reblogged_root_url": "https://root.tumblr.com/post/111",
+              "reblogged_root_name": "root",
+              "body": "<p>hello</p>"
+            }
+            """.trimIndent()
+        )
+        val shared = TumblrMapper.reblogComment(post, mapOf(), service) as TumblrComment
+
+        // The shared comment shows the root post, but its key is the reblog's.
+        assertEquals("111", shared.id<String>())
+        assertEquals("222", shared.reblogKeyPostId)
+
+        val form = shared.quoteForm.text("x")
+        val req = TumblrAction.reblogRequest(form, "myblog.tumblr.com")
+        assertEquals("222", req.id)
+        assertEquals("reblogKey", req.reblogKey)
     }
 }

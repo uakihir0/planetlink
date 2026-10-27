@@ -64,6 +64,7 @@ kotlin {
 
         jvmTest.dependencies {
             implementation(libs.slf4j.simple)
+            implementation(libs.serialization.json)
         }
     }
 }

@@ -726,7 +726,7 @@ class TumblrAction(
             validateToken {
                 auth.accessor.blog().postReblog(
                     BlogReblogRequest().also {
-                        it.id = id.id<String>()
+                        it.id = id.reblogKeyPostId ?: id.id<String>()
                         it.reblogKey = id.reblogKey
                         it.blogName = blog.id<String>()
                     })
