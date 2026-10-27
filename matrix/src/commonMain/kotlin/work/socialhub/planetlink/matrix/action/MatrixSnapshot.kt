@@ -26,6 +26,23 @@ class MatrixRoomSummary(
     val childRoomIds: List<String>,
     /** Joined + invited member count. */
     val memberCount: Int,
+    /**
+     * Members other than the current user (the DM partner for a direct room):
+     * the summary heroes, or up to 5 joined/invited members when the server
+     * sent no summary. Display name / avatar come from the `m.room.member`
+     * events included in the sync (lazy-loaded members cover the heroes).
+     */
+    val otherMembers: List<MatrixRoomMember> = emptyList(),
+    /** Timestamp (epoch millis) of the newest timeline event in the sync, if any. */
+    val lastEventAtMs: Long? = null,
+)
+
+/** A room member resolved from `m.room.member` state, without a profile lookup. */
+class MatrixRoomMember(
+    val userId: String,
+    val displayName: String?,
+    /** `mxc://` avatar url, if any. */
+    val avatarUrl: String?,
 )
 
 /** All joined rooms of a sync, keyed by room id, plus the raw DM room-id set. */
@@ -49,6 +66,7 @@ object MatrixSnapshotParser {
             summarize(
                 roomId = roomId,
                 state = room.state?.events?.toList() ?: emptyList(),
+                timeline = room.timeline?.events?.toList() ?: emptyList(),
                 summary = room.summary,
                 directRoomIds = directRoomIds,
                 selfUserId = selfUserId,
@@ -60,6 +78,7 @@ object MatrixSnapshotParser {
     private fun summarize(
         roomId: String,
         state: List<RoomEvent>,
+        timeline: List<RoomEvent>,
         summary: SyncRoomSummary?,
         directRoomIds: Set<String>,
         selfUserId: String,
@@ -102,7 +121,47 @@ object MatrixSnapshotParser {
             isDirect = (roomId in directRoomIds) || (memberCount == 2),
             childRoomIds = childRoomIds,
             memberCount = memberCount,
+            otherMembers = otherMembers(state + timeline, selfUserId, heroes),
+            lastEventAtMs = timeline.maxOfOrNull { it.originServerTs }?.takeIf { it > 0 },
         )
+    }
+
+    /**
+     * Members other than [selfUserId]: the summary [heroes] when present,
+     * otherwise up to 5 joined/invited members (sorted, like the room name
+     * fallback). [events] may mix state and timeline events; the latest
+     * `m.room.member` per user supplies the display name and avatar.
+     */
+    fun otherMembers(
+        events: List<RoomEvent>,
+        selfUserId: String,
+        heroes: List<String>? = null,
+    ): List<MatrixRoomMember> {
+        val members = latestPerStateKey(events, "m.room.member")
+        val memberOf = members.associateBy { it.stateKey ?: "" }
+
+        val userIds = if (!heroes.isNullOrEmpty()) {
+            heroes.filter { it != selfUserId }.distinct()
+        } else {
+            members
+                .filter { membership(it) == "join" || membership(it) == "invite" }
+                .mapNotNull { it.stateKey?.takeIf { id -> id.isNotEmpty() } }
+                .filter { it != selfUserId }
+                .distinct()
+                .sorted()
+                .take(5)
+        }
+
+        return userIds.map { userId ->
+            val content = memberOf[userId]?.content
+            MatrixRoomMember(
+                userId = userId,
+                displayName = (content?.get("displayname") as? String)
+                    ?.trim()?.takeIf { it.isNotEmpty() },
+                avatarUrl = (content?.get("avatar_url") as? String)
+                    ?.takeIf { it.isNotEmpty() },
+            )
+        }
     }
 
     /**
