@@ -14,6 +14,7 @@ import work.socialhub.kmatrix.api.request.events.EventsGetContextRequest
 import work.socialhub.kmatrix.api.request.relations.RelationsGetRequest
 import work.socialhub.kmatrix.api.request.media.MediaDownloadRequest
 import work.socialhub.kmatrix.api.request.media.MediaThumbnailRequest
+import work.socialhub.kmatrix.api.request.media.MediaUploadRequest
 import work.socialhub.kmatrix.api.request.notifications.NotificationsGetRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsGetMessagesRequest
 import work.socialhub.kmatrix.api.request.rooms.RoomsRedactEventRequest
@@ -389,14 +390,46 @@ class MatrixAction(
             val roomId = req.params[MatrixComment.ROOM_KEY] as? String
                 ?: throw SocialHubException("Room ID is required for Matrix messages")
 
-            accessor.rooms().sendMessage(
-                RoomsSendMessageRequest().apply {
-                    this.roomId = roomId
-                    body = req.text ?: ""
-                    msgtype = "m.text"
-                    replyTo = req.replyId?.value<String>()
-                }
-            )
+            // Matrix has no multi-attachment message: the text is sent as an
+            // m.text event and each attachment as its own m.image / m.video
+            // event. Every attachment is checked and uploaded to the content
+            // repository before any event is sent, so a failed upload sends
+            // nothing. (Events are not transactional: if a later event fails,
+            // the earlier ones stay in the room.) The reply relation goes on
+            // the first event sent.
+            req.images.forEach { MatrixMediaUpload.checkUploadable(it.name) }
+
+            val contentUris = req.images.map { media ->
+                accessor.media().upload(
+                    MediaUploadRequest().apply {
+                        fileName = media.name
+                        contentType = MatrixMediaUpload.mimeType(media.name)
+                        bytes = media.data
+                    }
+                ).data.contentUri
+            }
+
+            var replyTo = req.replyId?.value<String>()
+            val text = req.text ?: ""
+
+            if (text.isNotBlank() || req.images.isEmpty()) {
+                accessor.rooms().sendMessage(
+                    RoomsSendMessageRequest().apply {
+                        this.roomId = roomId
+                        body = text
+                        msgtype = "m.text"
+                        this.replyTo = replyTo
+                    }
+                )
+                replyTo = null
+            }
+
+            req.images.zip(contentUris).forEach { (media, contentUri) ->
+                accessor.rooms().sendMessage(
+                    MatrixMediaUpload.mediaMessageRequest(roomId, contentUri, media, replyTo)
+                )
+                replyTo = null
+            }
         }
     }
 
