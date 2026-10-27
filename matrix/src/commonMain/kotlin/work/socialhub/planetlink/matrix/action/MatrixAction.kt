@@ -391,9 +391,24 @@ class MatrixAction(
                 ?: throw SocialHubException("Room ID is required for Matrix messages")
 
             // Matrix has no multi-attachment message: the text is sent as an
-            // m.text event and each image as its own m.image event (uploaded
-            // to the content repository first). The reply relation goes on the
-            // first event sent.
+            // m.text event and each attachment as its own m.image / m.video
+            // event. Every attachment is checked and uploaded to the content
+            // repository before any event is sent, so a failed upload sends
+            // nothing. (Events are not transactional: if a later event fails,
+            // the earlier ones stay in the room.) The reply relation goes on
+            // the first event sent.
+            req.images.forEach { MatrixMediaUpload.checkUploadable(it.name) }
+
+            val contentUris = req.images.map { media ->
+                accessor.media().upload(
+                    MediaUploadRequest().apply {
+                        fileName = media.name
+                        contentType = MatrixMediaUpload.mimeType(media.name)
+                        bytes = media.data
+                    }
+                ).data.contentUri
+            }
+
             var replyTo = req.replyId?.value<String>()
             val text = req.text ?: ""
 
@@ -409,17 +424,9 @@ class MatrixAction(
                 replyTo = null
             }
 
-            req.images.forEach { media ->
-                val contentUri = accessor.media().upload(
-                    MediaUploadRequest().apply {
-                        fileName = media.name
-                        contentType = MatrixMediaUpload.mimeType(media.name)
-                        bytes = media.data
-                    }
-                ).data.contentUri
-
+            req.images.zip(contentUris).forEach { (media, contentUri) ->
                 accessor.rooms().sendMessage(
-                    MatrixMediaUpload.imageMessageRequest(roomId, contentUri, media, replyTo)
+                    MatrixMediaUpload.mediaMessageRequest(roomId, contentUri, media, replyTo)
                 )
                 replyTo = null
             }
