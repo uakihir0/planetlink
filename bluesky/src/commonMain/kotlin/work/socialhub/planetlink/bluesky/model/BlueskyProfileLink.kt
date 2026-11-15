@@ -23,4 +23,7 @@ class BlueskyProfileLink {
 
     /** Image URL for the destination site's icon. */
     var icon: String? = null
+
+    /** Self-label values on the link (negated labels are omitted). */
+    var labels: List<String> = listOf()
 }

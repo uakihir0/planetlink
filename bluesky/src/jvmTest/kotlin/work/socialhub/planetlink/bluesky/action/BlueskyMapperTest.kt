@@ -18,6 +18,7 @@ import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsGeneratorView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPostReplyRef
 import work.socialhub.kbsky.model.app.bsky.graph.GraphDefsListView
+import work.socialhub.kbsky.model.com.atproto.label.LabelDefsLabel
 import work.socialhub.kbsky.model.share.Blob
 import work.socialhub.kbsky.model.share.BlobRef
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
@@ -37,6 +38,7 @@ import work.socialhub.planetlink.model.Service
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class BlueskyMapperTest {
@@ -281,6 +283,10 @@ class BlueskyMapperTest {
                     url = "https://example.com/shop",
                     title = "Shop",
                     icon = "https://cdn.example.com/icon.png",
+                    labels = listOf(
+                        LabelDefsLabel(`val` = "porn"),
+                        LabelDefsLabel(`val` = "!hide", neg = true),
+                    ),
                 )
             )
         }
@@ -297,6 +303,7 @@ class BlueskyMapperTest {
         assertEquals("https://example.com/shop", link.url)
         assertEquals("Shop", link.title)
         assertEquals("https://cdn.example.com/icon.png", link.icon)
+        assertEquals(listOf("porn"), link.labels)
     }
 
     @Test
@@ -324,6 +331,59 @@ class BlueskyMapperTest {
         assertEquals("she/her", fields["Pronouns"])
         assertEquals("https://example.com", fields["Website"])
         assertEquals("https://example.com/shop", fields["Shop"])
+    }
+
+    @Test
+    fun userDetailed_withoutLinks_mapsEmptyProfileLinks() {
+        val account = ActorDefsProfileViewDetailed().apply {
+            did = "did:plc:test792"
+            handle = "profile.bsky.social"
+            links = null
+        }
+
+        val user = BlueskyMapper.user(account, service) as BlueskyUser
+
+        assertTrue(user.profileLinks.isEmpty())
+    }
+
+    @Test
+    fun userDetailed_blankMetadataIsOmittedFromAdditionalFields() {
+        val account = ActorDefsProfileViewDetailed().apply {
+            did = "did:plc:test793"
+            handle = "profile.bsky.social"
+            pronouns = " "
+            website = ""
+            links = listOf(
+                ActorDefsProfileLinkView(
+                    uri = "at://did:plc:test793/app.bsky.actor.link/3llink",
+                    cid = "bafyreilink",
+                    url = "https://example.com/shop",
+                    title = null,
+                )
+            )
+        }
+
+        val user = BlueskyMapper.user(account, service) as BlueskyUser
+        val fields = user.additionalFields.associate {
+            it.name to it.value?.displayText
+        }
+
+        assertNull(fields["Pronouns"])
+        assertNull(fields["Website"])
+        assertEquals("https://example.com/shop", fields["Link"])
+    }
+
+    @Test
+    fun streamProfile_mapsPronouns() {
+        val account = ActorDefsProfileView().apply {
+            did = "did:plc:test794"
+            handle = "profile.bsky.social"
+            pronouns = "they/them"
+        }
+
+        val profile = BlueskyMapper.streamProfile(account)
+
+        assertEquals("they/them", profile.pronouns)
     }
 
     @Test

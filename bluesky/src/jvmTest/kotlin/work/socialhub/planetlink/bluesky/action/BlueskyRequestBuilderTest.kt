@@ -1,6 +1,12 @@
 package work.socialhub.planetlink.bluesky.action
 
 import work.socialhub.kbsky.auth.BearerTokenAuthProvider
+import work.socialhub.planetlink.bluesky.model.BlueskyPaging
+import work.socialhub.planetlink.model.Account
+import work.socialhub.planetlink.model.ID
+import work.socialhub.planetlink.model.Identify
+import work.socialhub.planetlink.model.Paging
+import work.socialhub.planetlink.model.Service
 import work.socialhub.planetlink.model.request.ProfileForm
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -30,6 +36,18 @@ class BlueskyRequestBuilderTest {
     }
 
     @Test
+    fun profileUpdateRequest_defaultPronounsAreNull() {
+        val request = profileUpdateRequest(
+            auth = auth,
+            form = ProfileForm().apply { displayName = "New name" },
+            avatar = null,
+            banner = null,
+        )
+
+        assertNull(request.pronouns)
+    }
+
+    @Test
     fun profileUpdateRequest_passesEmptyPronounsToClear() {
         val form = ProfileForm().apply {
             pronouns = ""
@@ -56,5 +74,37 @@ class BlueskyRequestBuilderTest {
         assertEquals("cursor-1", request.cursor)
         assertEquals(100, request.limit)
         assertEquals(listOf("reply", "quote", "mention"), request.reasons)
+    }
+
+    @Test
+    fun notificationRequest_nullReasonsDoesNotFilter() {
+        val request = notificationRequest(
+            auth = auth,
+            cursor = null,
+            reasons = null,
+        )
+
+        assertNull(request.cursor)
+        assertNull(request.reasons)
+    }
+
+    @Test
+    fun notificationReasons_usesReasonsForInitialLoad() {
+        val types = listOf("reply", "quote")
+
+        assertEquals(types, notificationReasons(Paging(), types))
+        assertEquals(types, notificationReasons(BlueskyPaging(), types))
+    }
+
+    @Test
+    fun notificationReasons_skipsReasonsForRefreshBoundary() {
+        val service = Service("bluesky", Account())
+        val paging = BlueskyPaging().apply {
+            latestRecord = Identify(service).apply {
+                id = ID("at://did:plc:test/app.bsky.notification/1")
+            }
+        }
+
+        assertNull(notificationReasons(paging, listOf("reply", "quote")))
     }
 }

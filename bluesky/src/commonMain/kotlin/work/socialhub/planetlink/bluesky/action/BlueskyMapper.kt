@@ -105,6 +105,9 @@ object BlueskyMapper {
                     it.url = link.url
                     it.title = link.title
                     it.icon = link.icon
+                    it.labels = link.labels.orEmpty()
+                        .filterNot { label -> label.neg == true }
+                        .mapNotNull { label -> label.`val` }
                 }
             }
 
@@ -167,8 +170,8 @@ object BlueskyMapper {
             displayName = account.displayName,
             avatar = account.avatar,
             description = account.description,
-            pronouns = account.pronouns,
         ).also { profile ->
+            profile.pronouns = account.pronouns
             account.viewer?.let {
                 profile.followRecordUri = it.following
                 profile.followedRecordUri = it.followedBy

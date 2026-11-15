@@ -183,12 +183,26 @@ internal fun profileUpdateRequest(
 internal fun notificationRequest(
     auth: AuthProvider,
     cursor: String?,
-    reasons: List<String>,
+    reasons: List<String>?,
 ): NotificationListNotificationsRequest {
     return NotificationListNotificationsRequest(auth).also {
         it.cursor = cursor
         it.limit = 100
         it.reasons = reasons
+    }
+}
+
+internal fun notificationReasons(
+    paging: Paging,
+    types: List<String>,
+): List<String>? {
+    // latestRecord は前回の取得境界。reasons でサーバー側フィルタをかけると
+    // 境界の通知がレスポンスから落ちて更新境界を判定できないため、
+    // 更新時は全種別を取得してクライアント側で絞り込む。
+    return if (paging is BlueskyPaging && paging.latestRecord != null) {
+        null
+    } else {
+        types
     }
 }
 
@@ -2028,9 +2042,11 @@ class BlueskyAction(
             var first: String? = null
             var stop = false
 
+            val reasons = notificationReasons(paging, types)
+
             for (i in 0..9) {
                 val response = auth.accessor.notification().listNotifications(
-                    notificationRequest(authProvider(), cursor, types)
+                    notificationRequest(authProvider(), cursor, reasons)
                 )
 
                 // 初期 ID の記録
