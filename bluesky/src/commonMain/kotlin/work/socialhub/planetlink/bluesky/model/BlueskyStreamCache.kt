@@ -13,6 +13,7 @@ class BlueskyStreamProfile(
     var avatar: String? = null,
     var description: String? = null,
 ) {
+    /** Cached pronouns; profiles persisted before this field was added have null. */
     var pronouns: String? = null
     var followRecordUri: String? = null
     var followedRecordUri: String? = null

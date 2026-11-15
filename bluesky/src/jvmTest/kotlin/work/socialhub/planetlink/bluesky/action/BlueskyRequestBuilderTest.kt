@@ -1,6 +1,7 @@
 package work.socialhub.planetlink.bluesky.action
 
 import work.socialhub.kbsky.auth.BearerTokenAuthProvider
+import work.socialhub.kbsky.model.app.bsky.notification.NotificationListNotificationsNotification
 import work.socialhub.planetlink.bluesky.model.BlueskyPaging
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.ID
@@ -107,4 +108,31 @@ class BlueskyRequestBuilderTest {
 
         assertNull(notificationReasons(paging, listOf("reply", "quote")))
     }
+
+    @Test
+    fun truncateNotificationsAtBoundary_keepsNewerNotifications() {
+        val notifications = listOf(
+            notification("new-1"),
+            notification("new-2"),
+            notification("boundary"),
+            notification("old"),
+        )
+
+        val result = truncateNotificationsAtBoundary(notifications, "boundary")
+
+        assertEquals(listOf("new-1", "new-2"), result?.map { it.uri })
+    }
+
+    @Test
+    fun truncateNotificationsAtBoundary_returnsNullWhenBoundaryIsMissing() {
+        val notifications = listOf(
+            notification("new-1"),
+            notification("new-2"),
+        )
+
+        assertNull(truncateNotificationsAtBoundary(notifications, "boundary"))
+    }
+
+    private fun notification(uri: String) =
+        NotificationListNotificationsNotification(uri = uri)
 }

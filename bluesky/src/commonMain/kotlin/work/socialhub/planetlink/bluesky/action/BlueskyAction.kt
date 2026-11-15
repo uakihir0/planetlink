@@ -206,6 +206,18 @@ internal fun notificationReasons(
     }
 }
 
+internal fun truncateNotificationsAtBoundary(
+    notifications: List<NotificationListNotificationsNotification>,
+    boundaryUri: String,
+): List<NotificationListNotificationsNotification>? {
+    val index = notifications.indexOfFirst { it.uri == boundaryUri }
+    return if (index >= 0) {
+        notifications.subList(0, index).toList()
+    } else {
+        null
+    }
+}
+
 /** Bluesky プラットフォームのアクション実装 */
 @JsExport
 class BlueskyAction(
@@ -2060,15 +2072,17 @@ class BlueskyAction(
 
                     if (paging.latestRecord != null) {
                         val uri = paging.latestRecord!!.id<String>()
-                        list = list.takeUntil { it.uri == uri }
+                        val truncated = truncateNotificationsAtBoundary(list, uri)
+                        if (truncated != null) {
+                            list = truncated
 
-                        // 処理を停止
-                        stop = true
+                            // 境界が見つかった場合のみ処理を停止
+                            stop = true
+                        }
                     }
                 }
 
-                // サーバー側でも reasons で絞り込むが、reasons 未対応の PDS に
-                // 備えてクライアント側でも同じ条件で絞り込む
+                // 初回取得はサーバー側 reasons、更新時はクライアント側で絞り込む
                 list = list.filter { types.contains(it.reason) }
 
                 if (list.isEmpty()) {
