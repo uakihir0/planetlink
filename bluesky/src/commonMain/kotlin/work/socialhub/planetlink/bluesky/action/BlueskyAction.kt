@@ -164,6 +164,34 @@ internal fun savedCustomFeedUris(
     }
 }
 
+internal fun profileUpdateRequest(
+    auth: AuthProvider,
+    form: ProfileForm,
+    avatar: Blob?,
+    banner: Blob?,
+): ActorUpdateProfileRequest {
+    return ActorUpdateProfileRequest(
+        auth = auth,
+        displayName = form.displayName,
+        description = form.description,
+        avatar = avatar,
+        banner = banner,
+        pronouns = form.pronouns,
+    )
+}
+
+internal fun notificationRequest(
+    auth: AuthProvider,
+    cursor: String?,
+    reasons: List<String>,
+): NotificationListNotificationsRequest {
+    return NotificationListNotificationsRequest(auth).also {
+        it.cursor = cursor
+        it.limit = 100
+        it.reasons = reasons
+    }
+}
+
 /** Bluesky プラットフォームのアクション実装 */
 @JsExport
 class BlueskyAction(
@@ -1064,10 +1092,9 @@ class BlueskyAction(
             }
 
             auth.accessor.actor().updateProfile(
-                ActorUpdateProfileRequest(
+                profileUpdateRequest(
                     auth = authProvider(),
-                    displayName = form.displayName,
-                    description = form.description,
+                    form = form,
                     avatar = avatarBlob,
                     banner = bannerBlob,
                 )
@@ -2003,10 +2030,7 @@ class BlueskyAction(
 
             for (i in 0..9) {
                 val response = auth.accessor.notification().listNotifications(
-                    NotificationListNotificationsRequest(authProvider()).also {
-                        it.cursor = cursor
-                        it.limit = 100
-                    }
+                    notificationRequest(authProvider(), cursor, types)
                 )
 
                 // 初期 ID の記録
@@ -2027,7 +2051,8 @@ class BlueskyAction(
                     }
                 }
 
-                // リアクションのみを取得
+                // サーバー側でも reasons で絞り込むが、reasons 未対応の PDS に
+                // 備えてクライアント側でも同じ条件で絞り込む
                 list = list.filter { types.contains(it.reason) }
 
                 if (list.isEmpty()) {

@@ -12,6 +12,7 @@ class BlueskyStreamProfile(
     var displayName: String? = null,
     var avatar: String? = null,
     var description: String? = null,
+    var pronouns: String? = null,
 ) {
     var followRecordUri: String? = null
     var followedRecordUri: String? = null

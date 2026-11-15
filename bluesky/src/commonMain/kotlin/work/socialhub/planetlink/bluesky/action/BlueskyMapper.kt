@@ -46,6 +46,7 @@ import work.socialhub.planetlink.bluesky.define.BlueskyNotificationType
 import work.socialhub.planetlink.bluesky.model.BlueskyChannel
 import work.socialhub.planetlink.bluesky.model.BlueskyComment
 import work.socialhub.planetlink.bluesky.model.BlueskyPaging
+import work.socialhub.planetlink.bluesky.model.BlueskyProfileLink
 import work.socialhub.planetlink.bluesky.model.BlueskyStreamProfile
 import work.socialhub.planetlink.bluesky.model.BlueskyUser
 import work.socialhub.planetlink.define.MediaType
@@ -95,6 +96,18 @@ object BlueskyMapper {
             followingCount = account.followsCount
             followersCount = account.followersCount
 
+            pronouns = account.pronouns
+            website = account.website
+            profileLinks = account.links.orEmpty().map { link ->
+                BlueskyProfileLink().also {
+                    it.uri = link.uri
+                    it.cid = link.cid
+                    it.url = link.url
+                    it.title = link.title
+                    it.icon = link.icon
+                }
+            }
+
             userViewer(this, account.viewer)
         }
     }
@@ -116,6 +129,7 @@ object BlueskyMapper {
             iconImageUrl = account.avatar
 
             description = AttributedString.plain(account.description)
+            pronouns = account.pronouns
 
             userViewer(this, account.viewer)
         }
@@ -134,6 +148,7 @@ object BlueskyMapper {
             screenName = profile.handle
             iconImageUrl = profile.avatar
             description = AttributedString.plain(profile.description)
+            pronouns = profile.pronouns
 
             followRecordUri = profile.followRecordUri
             followedRecordUri = profile.followedRecordUri
@@ -152,6 +167,7 @@ object BlueskyMapper {
             displayName = account.displayName,
             avatar = account.avatar,
             description = account.description,
+            pronouns = account.pronouns,
         ).also { profile ->
             account.viewer?.let {
                 profile.followRecordUri = it.following
@@ -178,6 +194,7 @@ object BlueskyMapper {
             name = account.displayName ?: account.handle
             screenName = account.handle
             iconImageUrl = account.avatar
+            pronouns = account.pronouns
 
             userViewer(this, account.viewer)
         }

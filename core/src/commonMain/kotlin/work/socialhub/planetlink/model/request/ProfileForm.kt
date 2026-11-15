@@ -17,6 +17,12 @@ class ProfileForm {
     /** Biography / description */
     var description: String? = null
 
+    /**
+     * Free-form pronouns.
+     * null keeps the current value; an empty string removes it.
+     */
+    var pronouns: String? = null
+
     /** Avatar image bytes */
     var avatar: ByteArray? = null
 

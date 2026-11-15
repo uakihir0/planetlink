@@ -1,5 +1,6 @@
 package work.socialhub.planetlink.bluesky.action
 
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileLinkView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewBasic
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
@@ -26,6 +27,7 @@ import work.socialhub.planetlink.bluesky.define.BlueskyActionType
 import work.socialhub.planetlink.bluesky.model.BlueskyChannel
 import work.socialhub.planetlink.bluesky.model.BlueskyComment
 import work.socialhub.planetlink.bluesky.model.BlueskyPaging
+import work.socialhub.planetlink.bluesky.model.BlueskyUser
 import work.socialhub.planetlink.define.MediaType
 import work.socialhub.planetlink.model.Account
 import work.socialhub.planetlink.model.ID
@@ -263,6 +265,85 @@ class BlueskyMapperTest {
         val user = BlueskyMapper.user(account, service)
 
         assertEquals("Someone", user.name)
+    }
+
+    @Test
+    fun userDetailed_mapsPronounsWebsiteAndProfileLinks() {
+        val account = ActorDefsProfileViewDetailed().apply {
+            did = "did:plc:test789"
+            handle = "profile.bsky.social"
+            pronouns = "they/them"
+            website = "https://example.com"
+            links = listOf(
+                ActorDefsProfileLinkView(
+                    uri = "at://did:plc:test789/app.bsky.actor.link/3llink",
+                    cid = "bafyreilink",
+                    url = "https://example.com/shop",
+                    title = "Shop",
+                    icon = "https://cdn.example.com/icon.png",
+                )
+            )
+        }
+
+        val user = BlueskyMapper.user(account, service) as BlueskyUser
+
+        assertEquals("they/them", user.pronouns)
+        assertEquals("https://example.com", user.website)
+        assertEquals(1, user.profileLinks.size)
+
+        val link = user.profileLinks.single()
+        assertEquals("at://did:plc:test789/app.bsky.actor.link/3llink", link.uri)
+        assertEquals("bafyreilink", link.cid)
+        assertEquals("https://example.com/shop", link.url)
+        assertEquals("Shop", link.title)
+        assertEquals("https://cdn.example.com/icon.png", link.icon)
+    }
+
+    @Test
+    fun userDetailed_exposesProfileMetadataAsAdditionalFields() {
+        val account = ActorDefsProfileViewDetailed().apply {
+            did = "did:plc:test790"
+            handle = "profile.bsky.social"
+            pronouns = "she/her"
+            website = "https://example.com"
+            links = listOf(
+                ActorDefsProfileLinkView(
+                    uri = "at://did:plc:test790/app.bsky.actor.link/3llink",
+                    cid = "bafyreilink",
+                    url = "https://example.com/shop",
+                    title = "Shop",
+                )
+            )
+        }
+
+        val user = BlueskyMapper.user(account, service) as BlueskyUser
+        val fields = user.additionalFields.associate {
+            it.name to it.value?.displayText
+        }
+
+        assertEquals("she/her", fields["Pronouns"])
+        assertEquals("https://example.com", fields["Website"])
+        assertEquals("https://example.com/shop", fields["Shop"])
+    }
+
+    @Test
+    fun simpleComment_mapsAuthorPronouns() {
+        val post = FeedDefsPostView().apply {
+            uri = "at://did:plc:test791/app.bsky.feed.post/abc"
+            cid = "bafytest"
+            author = ActorDefsProfileViewBasic(
+                did = "did:plc:test791",
+                handle = "author.bsky.social",
+                pronouns = "he/him",
+            )
+            indexedAt = "2025-01-01T00:00:00.000Z"
+            record = FeedPost().apply { text = "hello" }
+        }
+
+        val comment = BlueskyMapper.simpleComment(post, service)
+        val author = assertNotNull(comment.user) as BlueskyUser
+
+        assertEquals("he/him", author.pronouns)
     }
 
     @Test
