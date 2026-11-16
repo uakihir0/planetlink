@@ -17,6 +17,13 @@ class ProfileForm {
     /** Biography / description */
     var description: String? = null
 
+    /**
+     * Free-form pronouns.
+     * null keeps the current value; an empty string removes it.
+     * Bluesky only; other adapters currently ignore this field.
+     */
+    var pronouns: String? = null
+
     /** Avatar image bytes */
     var avatar: ByteArray? = null
 

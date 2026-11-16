@@ -164,6 +164,60 @@ internal fun savedCustomFeedUris(
     }
 }
 
+internal fun profileUpdateRequest(
+    auth: AuthProvider,
+    form: ProfileForm,
+    avatar: Blob?,
+    banner: Blob?,
+): ActorUpdateProfileRequest {
+    return ActorUpdateProfileRequest(
+        auth = auth,
+        displayName = form.displayName,
+        description = form.description,
+        avatar = avatar,
+        banner = banner,
+        pronouns = form.pronouns,
+    )
+}
+
+internal fun notificationRequest(
+    auth: AuthProvider,
+    cursor: String?,
+    reasons: List<String>?,
+): NotificationListNotificationsRequest {
+    return NotificationListNotificationsRequest(auth).also {
+        it.cursor = cursor
+        it.limit = 100
+        it.reasons = reasons
+    }
+}
+
+internal fun notificationReasons(
+    paging: Paging,
+    types: List<String>,
+): List<String>? {
+    // latestRecord は前回の取得境界。reasons でサーバー側フィルタをかけると
+    // 境界の通知がレスポンスから落ちて更新境界を判定できないため、
+    // 更新時は全種別を取得してクライアント側で絞り込む。
+    return if (paging is BlueskyPaging && paging.latestRecord != null) {
+        null
+    } else {
+        types
+    }
+}
+
+internal fun truncateNotificationsAtBoundary(
+    notifications: List<NotificationListNotificationsNotification>,
+    boundaryUri: String,
+): List<NotificationListNotificationsNotification>? {
+    val index = notifications.indexOfFirst { it.uri == boundaryUri }
+    return if (index >= 0) {
+        notifications.subList(0, index).toList()
+    } else {
+        null
+    }
+}
+
 /** Bluesky プラットフォームのアクション実装 */
 @JsExport
 class BlueskyAction(
@@ -1064,10 +1118,9 @@ class BlueskyAction(
             }
 
             auth.accessor.actor().updateProfile(
-                ActorUpdateProfileRequest(
+                profileUpdateRequest(
                     auth = authProvider(),
-                    displayName = form.displayName,
-                    description = form.description,
+                    form = form,
                     avatar = avatarBlob,
                     banner = bannerBlob,
                 )
@@ -2001,12 +2054,11 @@ class BlueskyAction(
             var first: String? = null
             var stop = false
 
+            val reasons = notificationReasons(paging, types)
+
             for (i in 0..9) {
                 val response = auth.accessor.notification().listNotifications(
-                    NotificationListNotificationsRequest(authProvider()).also {
-                        it.cursor = cursor
-                        it.limit = 100
-                    }
+                    notificationRequest(authProvider(), cursor, reasons)
                 )
 
                 // 初期 ID の記録
@@ -2020,14 +2072,17 @@ class BlueskyAction(
 
                     if (paging.latestRecord != null) {
                         val uri = paging.latestRecord!!.id<String>()
-                        list = list.takeUntil { it.uri == uri }
+                        val truncated = truncateNotificationsAtBoundary(list, uri)
+                        if (truncated != null) {
+                            list = truncated
 
-                        // 処理を停止
-                        stop = true
+                            // 境界が見つかった場合のみ処理を停止
+                            stop = true
+                        }
                     }
                 }
 
-                // リアクションのみを取得
+                // 初回取得はサーバー側 reasons、更新時はクライアント側で絞り込む
                 list = list.filter { types.contains(it.reason) }
 
                 if (list.isEmpty()) {
