@@ -8,8 +8,12 @@ import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeed
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeedsPref
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsSavedFeedsPrefV2
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedExternalView
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedExternalViewExternal
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecord
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecordView
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecordWithMedia
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecordWithMediaView
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedUnion
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedVideo
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedVideoView
@@ -480,6 +484,78 @@ class BlueskyMapperTest {
 
         assertEquals(1, comment.medias.size)
         assertEquals(MediaType.Movie, comment.medias.first().type)
+    }
+
+    // ============================================================== //
+    // Link embeds
+    // ============================================================== //
+
+    @Test
+    fun simpleComment_externalView_mapsLinkMedia() {
+        // REST path: timeline/search/thread posts carry link cards as
+        // EmbedExternalView. Without this branch a link-only post has no text
+        // and no media, so clients render an empty row.
+        val post = FeedDefsPostView().apply {
+            uri = "at://did:plc:test/app.bsky.feed.post/link"
+            cid = "bafytest-link"
+            author = ActorDefsProfileViewBasic(
+                did = "did:plc:test",
+                handle = "link.bsky.social",
+            )
+            indexedAt = "2025-01-01T00:00:00.000Z"
+            record = FeedPost().apply { text = "" }
+            embed = EmbedExternalView(
+                external = EmbedExternalViewExternal(
+                    uri = "https://example.com/article",
+                    title = "Article",
+                    description = "Summary",
+                    thumb = "https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:test/bafythumb@jpeg",
+                ),
+            )
+        }
+
+        val comment = BlueskyMapper.simpleComment(post, service)
+
+        assertEquals(1, comment.medias.size)
+        val media = comment.medias.first()
+        assertEquals(MediaType.Link, media.type)
+        assertEquals("https://example.com/article", media.sourceUrl)
+        assertEquals(
+            "https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:test/bafythumb@jpeg",
+            media.previewUrl,
+        )
+    }
+
+    @Test
+    fun simpleComment_recordWithExternalMedia_mapsLinkMedia() {
+        // Quote-with-media carries the external link under `media`; embed()
+        // recurses into it, so the link card still has to survive that wrapper.
+        val post = FeedDefsPostView().apply {
+            uri = "at://did:plc:test/app.bsky.feed.post/quote-link"
+            cid = "bafytest-quote-link"
+            author = ActorDefsProfileViewBasic(
+                did = "did:plc:test",
+                handle = "link.bsky.social",
+            )
+            indexedAt = "2025-01-01T00:00:00.000Z"
+            record = FeedPost().apply { text = "Have a look" }
+            embed = EmbedRecordWithMediaView(
+                record = EmbedRecordView(),
+                media = EmbedExternalView(
+                    external = EmbedExternalViewExternal(
+                        uri = "https://example.com/article",
+                        title = "Article",
+                    ),
+                ),
+            )
+        }
+
+        val comment = BlueskyMapper.simpleComment(post, service)
+
+        assertEquals(1, comment.medias.size)
+        val media = comment.medias.first()
+        assertEquals(MediaType.Link, media.type)
+        assertEquals("https://example.com/article", media.sourceUrl)
     }
 
     private fun customFeed(

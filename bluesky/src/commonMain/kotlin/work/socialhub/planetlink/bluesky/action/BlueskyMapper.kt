@@ -11,6 +11,7 @@ import work.socialhub.kbsky.stream.entity.app.bsky.model.Commit
 import work.socialhub.kbsky.stream.entity.app.bsky.model.Event
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedExternal
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedExternalView
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedGallery
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedGalleryView
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedGalleryViewImage
@@ -341,6 +342,19 @@ object BlueskyMapper {
         // Video (also covers GIF-style autoplay videos)
         if (embed is EmbedVideoView) {
             model.medias = model.medias.plus(media(embed))
+        }
+
+        // Link card
+        if (embed is EmbedExternalView) {
+            embed.external?.let { ext ->
+                model.medias = model.medias.plus(
+                    Media().apply {
+                        type = MediaType.Link
+                        sourceUrl = ext.uri
+                        previewUrl = ext.thumb
+                    }
+                )
+            }
         }
 
         // Quote
