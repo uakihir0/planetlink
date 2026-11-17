@@ -40,7 +40,14 @@ jobs:
           printf '%s\n' "$binaries" | while IFS= read -r f; do
             echo "before: $(du -h "$f" | cut -f1) $f"
             strip -x "$f"
-            codesign --force --sign - "$f"
+            case "$f" in
+              */macos-*/planetlink.framework/planetlink)
+                echo "skip codesign for dereferenced macOS framework top-level: $f"
+                ;;
+              *)
+                codesign --force --sign - "$f"
+                ;;
+            esac
             echo "after:  $(du -h "$f" | cut -f1) $f"
           done
 
