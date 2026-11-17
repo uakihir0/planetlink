@@ -28,7 +28,7 @@ jobs:
           project_version=$(./gradlew version --no-daemon --console=plain -q)
           echo "PROJECT_VERSION=$project_version" >> $GITHUB_ENV
 
-      - name: Shrink XCFramework binaries
+      - name: Strip local symbols from XCFramework binaries
         run: |
           set -euo pipefail
           root=./all/build/cocoapods/repository
@@ -39,7 +39,7 @@ jobs:
           fi
           printf '%s\n' "$binaries" | while IFS= read -r f; do
             echo "before: $(du -h "$f" | cut -f1) $f"
-            strip -S -x "$f"
+            strip -x "$f"
             codesign --force --sign - "$f"
             echo "after:  $(du -h "$f" | cut -f1) $f"
           done
