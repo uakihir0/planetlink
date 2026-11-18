@@ -28,6 +28,29 @@ jobs:
           project_version=$(./gradlew version --no-daemon --console=plain -q)
           echo "PROJECT_VERSION=$project_version" >> $GITHUB_ENV
 
+      - name: Strip local symbols from XCFramework binaries
+        run: |
+          set -euo pipefail
+          root=./all/build/cocoapods/repository
+          binaries=$(find "$root" -path '*/planetlink.framework/*' -name planetlink -type f ! -path '*/dSYMs/*')
+          if [ -z "$binaries" ]; then
+            echo "No framework binaries found under $root" >&2
+            exit 1
+          fi
+          printf '%s\n' "$binaries" | while IFS= read -r f; do
+            echo "before: $(du -h "$f" | cut -f1) $f"
+            strip -x "$f"
+            case "$f" in
+              */macos-*/planetlink.framework/planetlink)
+                echo "skip codesign for dereferenced macOS framework top-level: $f"
+                ;;
+              *)
+                codesign --force --sign - "$f"
+                ;;
+            esac
+            echo "after:  $(du -h "$f" | cut -f1) $f"
+          done
+
       - name: Commit Pods to GitHub
         if: github.ref == 'refs/heads/main'
         run: |
