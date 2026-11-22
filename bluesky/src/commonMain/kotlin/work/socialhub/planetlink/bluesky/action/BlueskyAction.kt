@@ -184,10 +184,11 @@ internal fun notificationRequest(
     auth: AuthProvider,
     cursor: String?,
     reasons: List<String>?,
+    limit: Int = 100,
 ): NotificationListNotificationsRequest {
     return NotificationListNotificationsRequest(auth).also {
         it.cursor = cursor
-        it.limit = 100
+        it.limit = limit
         it.reasons = reasons
     }
 }
@@ -203,6 +204,27 @@ internal fun notificationReasons(
         null
     } else {
         types
+    }
+}
+
+/**
+ * 1 リクエストで取得する件数。
+ *
+ * 初回取得は保持する残り件数に合わせることで、レスポンスのカーソルと
+ * 実際に保持する通知の境界を一致させる。
+ *
+ * 更新時は latestRecord の境界を探す必要があるため、ページサイズではなく
+ * API の最大値 (100) 単位で遡る。残り件数に合わせると一致件数が少ないときに
+ * 探索が浅くなり、境界より新しい通知を取りこぼす。
+ */
+internal fun notificationRequestLimit(
+    paging: Paging,
+    remaining: Int,
+): Int {
+    return if (paging is BlueskyPaging && paging.latestRecord != null) {
+        100
+    } else {
+        remaining
     }
 }
 
@@ -2055,10 +2077,17 @@ class BlueskyAction(
             var stop = false
 
             val reasons = notificationReasons(paging, types)
+            val refreshing = paging is BlueskyPaging && paging.latestRecord != null
 
             for (i in 0..9) {
+                // 初回は残り件数、更新時は境界探索のため 100 件単位で取得する
+                val remaining = limit - notifications.size
+                if (remaining <= 0) break
+
+                val requestLimit = notificationRequestLimit(paging, remaining)
+                val requestCursor = cursor
                 val response = auth.accessor.notification().listNotifications(
-                    notificationRequest(authProvider(), cursor, reasons)
+                    notificationRequest(authProvider(), cursor, reasons, requestLimit)
                 )
 
                 // 初期 ID の記録
@@ -2091,8 +2120,10 @@ class BlueskyAction(
 
                 } else {
                     // ページング処理 (limit までデータを取得)
-                    if (notifications.size + list.size > limit) {
-                        list = list.subList(0, limit - notifications.size)
+                    // 更新時はページ境界で止めないと、カーソルが破棄した通知の
+                    // 先を指して次ページで欠落するため、取得した分をすべて保持する
+                    if (!refreshing && list.size > remaining) {
+                        list = list.subList(0, remaining)
                         stop = true
                     }
 
@@ -2104,7 +2135,8 @@ class BlueskyAction(
                 }
 
                 // 終了判定
-                if (stop || notifications.size >= limit) {
+                // カーソルが無い場合は最終ページなので、同じページを再取得しない
+                if (stop || notifications.size >= limit || cursor == null || cursor == requestCursor) {
                     break
                 }
             }

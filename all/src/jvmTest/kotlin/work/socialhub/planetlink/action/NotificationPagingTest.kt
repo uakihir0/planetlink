@@ -24,8 +24,15 @@ class NotificationPagingTest : AbstractTest() {
             println("  ${n.type} | ${n.action} | ${n.createAt}")
         }
 
+        // 要求件数を超えず、同じ通知が重複していないこと
+        assertTrue(page1.entities.size <= 5)
+        assertEquals(
+            page1.entities.size,
+            page1.entities.map { it.id?.value }.toSet().size,
+        )
+
         // 2ページ目: pastPage で次ページを取得
-        if (page1.entities.isNotEmpty()) {
+        if (page1.entities.isNotEmpty() && page1.paging?.isHasPast == true) {
             val paging2 = page1.pastPage()
             val page2 = action.notification(paging2)
             println("=== Page 2 (${page2.entities.size} items) ===")
@@ -44,7 +51,7 @@ class NotificationPagingTest : AbstractTest() {
             }
 
             // 3ページ目
-            if (page2.entities.isNotEmpty()) {
+            if (page2.entities.isNotEmpty() && page2.paging?.isHasPast == true) {
                 val paging3 = page2.pastPage()
                 val page3 = action.notification(paging3)
                 println("=== Page 3 (${page3.entities.size} items) ===")
