@@ -90,6 +90,18 @@ class BlueskyRequestBuilderTest {
     }
 
     @Test
+    fun notificationRequest_usesRemainingCountAsLimit() {
+        val request = notificationRequest(
+            auth = auth,
+            cursor = "cursor-1",
+            reasons = listOf("like"),
+            limit = 7,
+        )
+
+        assertEquals(7, request.limit)
+    }
+
+    @Test
     fun notificationReasons_usesReasonsForInitialLoad() {
         val types = listOf("reply", "quote")
 
@@ -107,6 +119,23 @@ class BlueskyRequestBuilderTest {
         }
 
         assertNull(notificationReasons(paging, listOf("reply", "quote")))
+    }
+
+    @Test
+    fun notificationRequestLimit_usesRemainingCountForInitialLoad() {
+        assertEquals(5, notificationRequestLimit(Paging(), 5))
+    }
+
+    @Test
+    fun notificationRequestLimit_scansFullPagesForRefresh() {
+        val service = Service("bluesky", Account())
+        val paging = BlueskyPaging().apply {
+            latestRecord = Identify(service).apply {
+                id = ID("at://did:plc:test/app.bsky.notification/1")
+            }
+        }
+
+        assertEquals(100, notificationRequestLimit(paging, 5))
     }
 
     @Test
